@@ -39,4 +39,48 @@ describe('local bridge command allowlist', () => {
     expect(result.status).toBe('warning');
     expect(result.output).toContain('Blocked by Web bridge allowlist');
   });
+
+  it('uses helper protocol responses for allowed commands', async () => {
+    const runner = createLocalBridgeRunner({
+      async send(request) {
+        return {
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'doctor ok',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'unit-test-helper',
+            startedAt: '2026-06-04T00:00:00.000Z',
+            finishedAt: '2026-06-04T00:00:00.000Z',
+          },
+        };
+      },
+    });
+
+    const result = await runner.run(buildDoctorCommand(defaultConfig));
+
+    expect(result.status).toBe('success');
+    expect(result.output).toContain('doctor ok');
+    expect(result.output).toContain('requestId: cbt_');
+    expect(result.output).toContain('helper: unit-test-helper');
+  });
+
+  it('returns an error when helper transport fails', async () => {
+    const runner = createLocalBridgeRunner({
+      async send() {
+        throw new Error('helper offline');
+      },
+    });
+
+    const result = await runner.run(buildDoctorCommand(defaultConfig));
+
+    expect(result.status).toBe('error');
+    expect(result.output).toContain('ERR_HELPER_UNAVAILABLE');
+    expect(result.output).toContain('helper offline');
+  });
 });

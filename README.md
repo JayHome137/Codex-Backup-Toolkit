@@ -182,7 +182,7 @@ http://127.0.0.1:5173
 
 界面目前支持目标端表单、`config.env` 预览、命令复制、mock 运行输出和运行历史，方便在接入原生执行层前先确认工作流。
 
-GUI 里有一个 `Local Bridge` 模式雏形，用来定义未来本地 helper 的安全边界。当前它仍不会执行 shell，只会允许 `codexbackup --doctor` 和使用 `dev.codexbackup.toolkit.test.*` label 的隔离 `codexinstallautomation validate` 通过 allowlist；备份、恢复、安装、卸载等命令都会被阻止。
+GUI 里有一个 `Local Bridge` 模式雏形，用来定义未来本地 helper 的安全边界。当前它仍不会执行 shell，只会允许 `codexbackup --doctor` 和使用 `dev.codexbackup.toolkit.test.*` label 的隔离 `codexinstallautomation validate` 通过 allowlist；备份、恢复、安装、卸载等命令都会被阻止。协议草案见 [helper-protocol.md](docs/helper-protocol.md)。
 
 ## 输出文件
 

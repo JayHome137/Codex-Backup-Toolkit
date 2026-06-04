@@ -174,7 +174,7 @@ The current GUI is preview-only: it shows the `codexbackup`, `codexrestore`, and
 
 The interface currently supports target forms, `config.env` previews, command copying, mock run output, and run history so the workflow can be validated before a native execution layer is added.
 
-The GUI also includes an early `Local Bridge` mode that defines the safety boundary for a future native helper. It still does not execute shell commands today. Its allowlist only accepts `codexbackup --doctor` and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels; backup, restore, install, uninstall, and similar commands are blocked.
+The GUI also includes an early `Local Bridge` mode that defines the safety boundary for a future native helper. It still does not execute shell commands today. Its allowlist only accepts `codexbackup --doctor` and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels; backup, restore, install, uninstall, and similar commands are blocked. See [helper-protocol.md](docs/helper-protocol.md) for the draft protocol.
 
 ## Output Files
 

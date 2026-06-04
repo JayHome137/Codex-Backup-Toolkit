@@ -1,4 +1,5 @@
 import type { CommandResult, CommandRunner } from './commands';
+import { createMockHelperTransport, runHelperCommand, type HelperResponse, type HelperTransport } from './helperProtocol';
 
 type AllowedLocalCommand = {
   allowed: true;
@@ -35,7 +36,21 @@ export function classifyLocalCommand(command: string): LocalCommandClassificatio
   return { allowed: false, reason: generalBlockReason };
 }
 
-export function createLocalBridgeRunner(): CommandRunner {
+function formatHelperResponse(response: HelperResponse): string {
+  return [
+    response.stdout,
+    '',
+    'Audit:',
+    `requestId: ${response.requestId}`,
+    `schema: ${response.schema}`,
+    `commandKind: ${response.audit.commandKind}`,
+    `decision: ${response.audit.decision}`,
+    `helper: ${response.audit.helper}`,
+    `exitCode: ${response.exitCode}`,
+  ].join('\n');
+}
+
+export function createLocalBridgeRunner(transport: HelperTransport = createMockHelperTransport()): CommandRunner {
   return {
     async run(command: string): Promise<CommandResult> {
       const classification = classifyLocalCommand(command);
@@ -47,10 +62,21 @@ export function createLocalBridgeRunner(): CommandRunner {
         };
       }
 
-      return {
-        status: 'warning',
-        output: `Native helper not connected yet.\n\nAllowed command kind: ${classification.kind}\n\nCommand:\n${command}`,
-      };
+      try {
+        const response = await runHelperCommand(command, transport);
+
+        return {
+          status: response.status === 'ok' ? 'success' : 'error',
+          output: formatHelperResponse(response),
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        return {
+          status: 'error',
+          output: `ERR_HELPER_UNAVAILABLE\n\n${message}\n\nCommand:\n${command}`,
+        };
+      }
     },
   };
 }

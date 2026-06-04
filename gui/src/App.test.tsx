@@ -76,8 +76,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /logs/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Native helper not connected yet\./)).toBeInTheDocument();
-      expect(screen.getByText(/Allowed command kind: doctor/)).toBeInTheDocument();
+      expect(screen.getByText(/Mock helper accepted doctor\./)).toBeInTheDocument();
+      expect(screen.getByText(/schema: codex-backup-helper\.v1/)).toBeInTheDocument();
+      expect(screen.getByText(/commandKind: doctor/)).toBeInTheDocument();
     });
   });
 
