@@ -180,10 +180,6 @@ Codex backups can contain sensitive material: local auth files, cookies, session
 
 Read [security.md](docs/security.md) before publishing backups to WebDAV or rclone-backed cloud drives.
 
-## Roadmap
-
-The current scope is Codex Desktop backup. Future phases may add additional AI developer-tool profiles and a GUI. The GUI direction is documented in [gui-design.md](docs/gui-design.md), using a CCSWITCH-like compact utility layout with Raycast-inspired dark command-palette styling from DESIGN.md.
-
 ## License
 
 MIT
