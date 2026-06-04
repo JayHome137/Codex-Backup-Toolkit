@@ -327,6 +327,13 @@ button {
   overflow-wrap: anywhere;
 }
 
+.copy-status {
+  display: inline-flex;
+  margin: -4px 0 8px;
+  color: var(--green);
+  font-size: 12px;
+}
+
 .target-form {
   display: grid;
   gap: 14px;
@@ -414,6 +421,46 @@ input[type="checkbox"] {
   color: var(--mute);
   font-size: 13px;
   line-height: 1.65;
+}
+
+.history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.history-item {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 10px;
+}
+
+.history-item div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.history-item strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.history-item span {
+  color: var(--mute);
+  font-size: 12px;
+}
+
+.history-item code {
+  color: var(--body);
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 860px) {

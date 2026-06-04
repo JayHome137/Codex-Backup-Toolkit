@@ -172,6 +172,8 @@ http://127.0.0.1:5173
 
 The current GUI is preview-only: it shows the `codexbackup`, `codexrestore`, and automation validation commands that a future native bridge could run, but it does not execute real backups, restores, or launchd installation from the browser. Automation validation previews use isolated `dev.codexbackup.toolkit.test.*` labels and do not modify any backup job the user has already installed.
 
+The interface currently supports target forms, `config.env` previews, command copying, mock run output, and run history so the workflow can be validated before a native execution layer is added.
+
 ## Output Files
 
 Each backup creates:

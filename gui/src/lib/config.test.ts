@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildBackupCommand,
   buildDoctorCommand,
+  buildEnvFile,
   buildRestoreCommand,
   buildValidateCommand,
   defaultConfig,
@@ -42,5 +43,15 @@ describe('command builders', () => {
 
     expect(command).toContain('./scripts/codexrestore.sh --archive /tmp/codex-backup.tar.gz.age');
     expect(command).toContain('--age-identity /path/to/age-identity.txt');
+  });
+
+  it('builds a config.env preview without credential secrets', () => {
+    const envFile = buildEnvFile({ ...defaultConfig, target: 'webdav', encrypt: true });
+
+    expect(envFile).toContain('CODEX_BACKUP_TARGET=webdav');
+    expect(envFile).toContain('CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup"');
+    expect(envFile).toContain('CODEX_BACKUP_ENCRYPT=1');
+    expect(envFile).toContain('# CODEX_BACKUP_WEBDAV_PASSWORD=');
+    expect(envFile).not.toContain('PASSWORD=backup-user');
   });
 });

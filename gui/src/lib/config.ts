@@ -39,6 +39,11 @@ const quoteEnv = (value: string) => `"${value}"`;
 const lineContinuation = ' ' + '\\' + '\n';
 const joinEnvLines = (lines: string[]) => lines.join(lineContinuation);
 
+const credentialPlaceholders: Partial<Record<BackupTarget, string[]>> = {
+  smb: ['# CODEX_BACKUP_SMB_PASSWORD='],
+  webdav: ['# CODEX_BACKUP_WEBDAV_PASSWORD='],
+};
+
 export function buildEnvLines(config: BackupConfig): string[] {
   const lines = [
     `CODEX_BACKUP_TARGET=${config.target}`,
@@ -72,6 +77,16 @@ export function buildDoctorCommand(config: BackupConfig): string {
 
 export function buildBackupCommand(config: BackupConfig): string {
   return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexbackup.sh --target ${config.target}`;
+}
+
+export function buildEnvFile(config: BackupConfig): string {
+  return [
+    '# Codex-Backup-toolkit config.env preview',
+    '# Fill secrets locally before sourcing this file.',
+    ...buildEnvLines(config),
+    ...(credentialPlaceholders[config.target] ?? []),
+    '',
+  ].join('\n');
 }
 
 export function buildValidateCommand(config: BackupConfig): string {

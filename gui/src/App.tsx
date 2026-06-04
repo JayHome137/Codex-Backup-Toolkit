@@ -8,6 +8,7 @@ import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import {
   buildBackupCommand,
   buildDoctorCommand,
+  buildEnvFile,
   buildRestoreCommand,
   buildValidateCommand,
   defaultConfig,
@@ -17,6 +18,12 @@ import {
 
 const runner = createMockCommandRunner();
 
+type HistoryEntry = {
+  command: string;
+  label: string;
+  result: CommandResult;
+};
+
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
   const [config, setConfig] = useState<BackupConfig>(defaultConfig);
@@ -24,22 +31,29 @@ function App() {
   const [restoreEncrypted, setRestoreEncrypted] = useState(false);
   const [lastResult, setLastResult] = useState<CommandResult | null>(null);
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   const commands = useMemo(
     () => ({
       doctor: buildDoctorCommand(config),
       backup: buildBackupCommand(config),
+      envFile: buildEnvFile(config),
       validate: buildValidateCommand(config),
       restore: buildRestoreCommand(archivePath, restoreEncrypted),
     }),
     [archivePath, config, restoreEncrypted],
   );
 
-  const runPreview = async (command: string) => {
+  const runPreview = async (command: string, label: string) => {
     setRunningCommand(command);
     const result = await runner.run(command);
     setLastResult(result);
+    setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
     setRunningCommand(null);
+  };
+
+  const copyText = async (text: string) => {
+    await navigator.clipboard.writeText(text);
   };
 
   const status = lastResult?.status ?? 'idle';
@@ -78,17 +92,17 @@ function App() {
                   <SummaryRow label="Automation" value="Validate command uses an isolated test label" />
                 </div>
                 <div className="action-row">
-                  <button className="button button--primary" onClick={() => runPreview(commands.doctor)} type="button">
+                  <button className="button button--primary" onClick={() => runPreview(commands.doctor, 'Doctor command')} type="button">
                     <Play size={15} aria-hidden="true" />
                     Run Doctor
                   </button>
-                  <button className="button button--tertiary" onClick={() => runPreview(commands.backup)} type="button">
+                  <button className="button button--tertiary" onClick={() => runPreview(commands.backup, 'Backup command')} type="button">
                     <Archive size={15} aria-hidden="true" />
                     Preview Backup
                   </button>
                 </div>
               </section>
-              <CommandPreview command={commands.backup} title="Backup command" />
+              <CommandPreview command={commands.backup} title="Backup command" onCopy={copyText} />
             </div>
           </section>
         )}
@@ -104,7 +118,8 @@ function App() {
               </div>
               <TargetForm config={config} onChange={setConfig} />
             </section>
-            <CommandPreview command={commands.backup} title="Generated backup command" />
+            <CommandPreview command={commands.envFile} title="config.env preview" onCopy={copyText} />
+            <CommandPreview command={commands.backup} title="Generated backup command" onCopy={copyText} />
           </section>
         )}
 
@@ -122,13 +137,13 @@ function App() {
                 not load or modify any backup job you have already installed.
               </p>
               <div className="action-row">
-                <button className="button button--primary" onClick={() => runPreview(commands.validate)} type="button">
+                <button className="button button--primary" onClick={() => runPreview(commands.validate, 'Validate command')} type="button">
                   <Play size={15} aria-hidden="true" />
                   Validate
                 </button>
               </div>
             </section>
-            <CommandPreview command={commands.validate} title="Validate command" />
+            <CommandPreview command={commands.validate} title="Validate command" onCopy={copyText} />
           </section>
         )}
 
@@ -153,13 +168,13 @@ function App() {
               </div>
               <p className="muted-copy">Restore remains preview-only in this browser build. Native execution will require an explicit bridge later.</p>
               <div className="action-row">
-                <button className="button button--tertiary" onClick={() => runPreview(commands.restore)} type="button">
+                <button className="button button--tertiary" onClick={() => runPreview(commands.restore, 'Restore command')} type="button">
                   <RotateCcw size={15} aria-hidden="true" />
                   Preview Restore
                 </button>
               </div>
             </section>
-            <CommandPreview command={commands.restore} title="Restore command" />
+            <CommandPreview command={commands.restore} title="Restore command" onCopy={copyText} />
           </section>
         )}
 
@@ -181,6 +196,29 @@ function App() {
                 <SummaryRow label="stdout" value="~/Library/Logs/CodexBackup/backup.out.log" />
                 <SummaryRow label="stderr" value="~/Library/Logs/CodexBackup/backup.err.log" />
                 <SummaryRow label="installed toolkit" value="~/Library/Application Support/CodexBackupToolkit/" />
+              </div>
+            </section>
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <Activity size={16} aria-hidden="true" />
+                  <span>Run history</span>
+                </div>
+              </div>
+              <div className="history-list">
+                {history.length === 0 ? (
+                  <p className="muted-copy">No preview runs yet.</p>
+                ) : (
+                  history.map((entry) => (
+                    <div className="history-item" key={`${entry.label}-${entry.command}-${entry.result.output}`}>
+                      <div>
+                        <strong>{entry.label}</strong>
+                        <span>{entry.result.status}</span>
+                      </div>
+                      <code>{entry.command}</code>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
           </section>
