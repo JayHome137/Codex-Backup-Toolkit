@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Syntax check shell scripts
+        run: |
+          for script in scripts/*.sh tests/*.sh; do
+            zsh -n "$script"
+          done
+
+      - name: Run open-source framework checks
+        run: ./tests/test-open-source-framework.sh
+
+      - name: Run local backup e2e
+        run: ./tests/test-local-e2e.sh
+
+      - name: Install age for encryption test
+        run: brew install age
+
+      - name: Run encrypted backup e2e
+        run: ./tests/test-encryption-e2e.sh
+
+      - name: Run isolated launchd validate check
+        run: ./tests/test-install-validate.sh
+
+      - name: Run retention check
+        run: ./tests/test-retention.sh

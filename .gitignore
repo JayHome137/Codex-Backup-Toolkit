@@ -1,0 +1,14 @@
+.DS_Store
+*.tar.gz
+*.tar.gz.sha256
+*.manifest.txt
+*.log
+*.tmp
+*.sock
+*.socket
+.env
+config.env
+spool/
+tmp/
+.tmp/
+CodexBackups/
