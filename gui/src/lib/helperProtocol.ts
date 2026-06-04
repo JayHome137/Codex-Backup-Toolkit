@@ -85,3 +85,58 @@ export function createMockHelperTransport(): HelperTransport {
     },
   };
 }
+
+export function createHttpHelperTransport(
+  baseUrl = 'http://127.0.0.1:37371',
+  fetcher: typeof fetch = fetch,
+): HelperTransport {
+  return {
+    async send(request: HelperRequest): Promise<HelperResponse> {
+      let response: Response;
+
+      try {
+        response = await fetcher(`${baseUrl.replace(/\/$/, '')}/run`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(request),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`ERR_HELPER_UNAVAILABLE: ${message}`);
+      }
+
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`ERR_HELPER_UNAVAILABLE: Invalid helper JSON response: ${message}`);
+      }
+
+      if (!isHelperResponse(body)) {
+        throw new Error('ERR_HELPER_UNAVAILABLE: Helper response did not match the protocol.');
+      }
+
+      return body;
+    },
+  };
+}
+
+function isHelperResponse(value: unknown): value is HelperResponse {
+  if (!value || typeof value !== 'object') return false;
+
+  const response = value as Partial<HelperResponse>;
+  return (
+    response.schema === schema &&
+    response.version === 1 &&
+    typeof response.requestId === 'string' &&
+    (response.status === 'ok' || response.status === 'error') &&
+    typeof response.exitCode === 'number' &&
+    typeof response.stdout === 'string' &&
+    typeof response.stderr === 'string' &&
+    !!response.audit &&
+    typeof response.audit === 'object' &&
+    (response.audit.decision === 'allowed' || response.audit.decision === 'blocked') &&
+    typeof response.audit.helper === 'string'
+  );
+}

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 beforeEach(() => {
@@ -8,6 +8,10 @@ beforeEach(() => {
       writeText: vi.fn().mockResolvedValue(undefined),
     },
   });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('App', () => {
@@ -92,5 +96,47 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText(/Blocked by Web bridge allowlist\./)).toBeInTheDocument();
     });
+  });
+
+  it('uses the HTTP helper transport when HTTP Helper mode is selected', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body));
+
+      return new Response(
+        JSON.stringify({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'doctor ok from helper',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'node-local-helper',
+            startedAt: '2026-06-04T00:00:00.000Z',
+            finishedAt: '2026-06-04T00:00:00.000Z',
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /http helper/i }));
+    fireEvent.click(screen.getByRole('button', { name: /run doctor/i }));
+    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/doctor ok from helper/)).toBeInTheDocument();
+      expect(screen.getByText(/helper: node-local-helper/)).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:37371/run',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });

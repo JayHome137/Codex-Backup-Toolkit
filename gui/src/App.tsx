@@ -5,6 +5,7 @@ import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
 import { TargetForm } from './components/TargetForm';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
+import { createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
 import {
   buildBackupCommand,
@@ -20,7 +21,7 @@ import {
 const runner = createMockCommandRunner();
 const localBridgeRunner = createLocalBridgeRunner();
 
-type RunnerMode = 'mock' | 'localBridge';
+type RunnerMode = 'mock' | 'localBridge' | 'httpHelper';
 
 type HistoryEntry = {
   command: string;
@@ -37,6 +38,7 @@ function App() {
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [runnerMode, setRunnerMode] = useState<RunnerMode>('mock');
+  const httpHelperRunner = useMemo(() => createLocalBridgeRunner(createHttpHelperTransport()), []);
 
   const commands = useMemo(
     () => ({
@@ -51,7 +53,7 @@ function App() {
 
   const runPreview = async (command: string, label: string) => {
     setRunningCommand(command);
-    const activeRunner = runnerMode === 'localBridge' ? localBridgeRunner : runner;
+    const activeRunner = runnerMode === 'httpHelper' ? httpHelperRunner : runnerMode === 'localBridge' ? localBridgeRunner : runner;
     const result = await activeRunner.run(command);
     setLastResult(result);
     setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
@@ -85,6 +87,13 @@ function App() {
               >
                 Local Bridge
               </button>
+              <button
+                className={runnerMode === 'httpHelper' ? 'segment segment--active' : 'segment'}
+                onClick={() => setRunnerMode('httpHelper')}
+                type="button"
+              >
+                HTTP Helper
+              </button>
             </div>
             <StatusBadge status={status} label={statusLabel(status)} />
           </div>
@@ -109,7 +118,7 @@ function App() {
                 <div className="summary-list">
                   <SummaryRow label="Doctor" value="Mock adapter validates command shape" />
                   <SummaryRow label="Last backup" value="No real backup has been started by this GUI" />
-                  <SummaryRow label="Runner" value={runnerMode === 'localBridge' ? 'Local bridge allowlist mode' : 'Mock preview mode'} />
+                  <SummaryRow label="Runner" value={runnerModeLabel(runnerMode)} />
                   <SummaryRow label="Automation" value="Validate command uses an isolated test label" />
                 </div>
                 <div className="action-row">
@@ -266,6 +275,14 @@ function statusLabel(status: CommandResult['status'] | 'idle'): string {
     warning: 'Preview warning',
     error: 'Preview failed',
   }[status];
+}
+
+function runnerModeLabel(mode: RunnerMode): string {
+  return {
+    mock: 'Mock preview mode',
+    localBridge: 'Local bridge allowlist mode',
+    httpHelper: 'HTTP helper on 127.0.0.1:37371',
+  }[mode];
 }
 
 type MetricCardProps = {

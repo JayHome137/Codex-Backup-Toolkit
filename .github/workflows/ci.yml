@@ -35,6 +35,9 @@ jobs:
       - name: Run retention check
         run: ./tests/test-retention.sh
 
+      - name: Run local helper tests
+        run: node --test helper/server.test.mjs
+
       - name: Install GUI dependencies
         working-directory: gui
         run: npm ci

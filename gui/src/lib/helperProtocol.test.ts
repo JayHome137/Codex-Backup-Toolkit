@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildBackupCommand, buildDoctorCommand, buildValidateCommand, defaultConfig } from './config';
-import { buildHelperRequest, createMockHelperTransport, runHelperCommand } from './helperProtocol';
+import { buildHelperRequest, createHttpHelperTransport, createMockHelperTransport, runHelperCommand } from './helperProtocol';
 
 describe('helper protocol', () => {
   it('builds a versioned helper request for allowed doctor commands', () => {
@@ -44,5 +44,50 @@ describe('helper protocol', () => {
     });
     expect(response.requestId).toMatch(/^cbt_/);
     expect(response.stdout).toContain('Mock helper accepted doctor');
+  });
+
+  it('sends allowed requests to the HTTP helper /run endpoint', async () => {
+    const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
+    const transport = createHttpHelperTransport('http://127.0.0.1:37371', async (input, init) => {
+      calls.push({ input, init });
+      const request = JSON.parse(String(init?.body));
+
+      return new Response(
+        JSON.stringify({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'doctor ok',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'node-local-helper',
+            startedAt: '2026-06-04T00:00:00.000Z',
+            finishedAt: '2026-06-04T00:00:00.000Z',
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+
+    const response = await runHelperCommand(buildDoctorCommand(defaultConfig), transport);
+
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0].input)).toBe('http://127.0.0.1:37371/run');
+    expect(calls[0].init?.method).toBe('POST');
+    expect(calls[0].init?.headers).toEqual({ 'content-type': 'application/json' });
+    expect(response.stdout).toBe('doctor ok');
+    expect(response.audit.helper).toBe('node-local-helper');
+  });
+
+  it('throws a typed unavailable error when the HTTP helper cannot be reached', async () => {
+    const transport = createHttpHelperTransport('http://127.0.0.1:37371', async () => {
+      throw new TypeError('fetch failed');
+    });
+
+    await expect(runHelperCommand(buildDoctorCommand(defaultConfig), transport)).rejects.toThrow('ERR_HELPER_UNAVAILABLE');
   });
 });

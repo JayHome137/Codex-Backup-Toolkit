@@ -182,7 +182,18 @@ http://127.0.0.1:5173
 
 界面目前支持目标端表单、`config.env` 预览、命令复制、mock 运行输出和运行历史，方便在接入原生执行层前先确认工作流。
 
-GUI 里有一个 `Local Bridge` 模式雏形，用来定义未来本地 helper 的安全边界。当前它仍不会执行 shell，只会允许 `codexbackup --doctor` 和使用 `dev.codexbackup.toolkit.test.*` label 的隔离 `codexinstallautomation validate` 通过 allowlist；备份、恢复、安装、卸载等命令都会被阻止。协议草案见 [helper-protocol.md](docs/helper-protocol.md)。
+GUI 里有两个本地桥接相关模式：
+
+- `Local Bridge`：使用 mock helper，展示协议响应和 allowlist 行为，不执行 shell。
+- `HTTP Helper`：连接手动启动的本地 helper，地址固定为 `http://127.0.0.1:37371`。
+
+本地 helper 默认不会启动，也不会随 GUI 自动运行。如需开发验证，可以另开终端手动启动：
+
+```zsh
+node helper/server.mjs
+```
+
+当前 helper 只允许两类命令：`codexbackup --doctor`，以及使用 `dev.codexbackup.toolkit.test.*` label 的隔离 `codexinstallautomation validate`。备份、恢复、安装、卸载、status 和拼接额外 shell 命令都会被阻止。协议草案见 [helper-protocol.md](docs/helper-protocol.md)。
 
 ## 输出文件
 

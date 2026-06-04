@@ -174,7 +174,18 @@ The current GUI is preview-only: it shows the `codexbackup`, `codexrestore`, and
 
 The interface currently supports target forms, `config.env` previews, command copying, mock run output, and run history so the workflow can be validated before a native execution layer is added.
 
-The GUI also includes an early `Local Bridge` mode that defines the safety boundary for a future native helper. It still does not execute shell commands today. Its allowlist only accepts `codexbackup --doctor` and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels; backup, restore, install, uninstall, and similar commands are blocked. See [helper-protocol.md](docs/helper-protocol.md) for the draft protocol.
+The GUI includes two local bridge-related modes:
+
+- `Local Bridge`: uses a mock helper to show protocol responses and allowlist behavior without executing shell commands.
+- `HTTP Helper`: connects to a manually started local helper at `http://127.0.0.1:37371`.
+
+The local helper is not started by default and does not auto-run with the GUI. For development validation, start it in a separate terminal:
+
+```zsh
+node helper/server.mjs
+```
+
+The current helper only allows two command families: `codexbackup --doctor`, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Backup, restore, install, uninstall, status, and appended shell commands are blocked. See [helper-protocol.md](docs/helper-protocol.md) for the draft protocol.
 
 ## Output Files
 

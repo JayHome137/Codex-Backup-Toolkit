@@ -2,7 +2,7 @@
 
 This document describes the draft protocol between the Web GUI and a future native/local helper.
 
-The current Web GUI does **not** execute shell commands. `Local Bridge` mode uses this protocol shape with a mock helper transport so the safety model can be tested before a native helper exists.
+The Web GUI does not execute shell commands by default. `Local Bridge` mode uses this protocol shape with a mock helper transport. `HTTP Helper` mode can call an opt-in local Node helper, but only when the user starts that helper manually.
 
 ## Safety Boundary
 
@@ -12,6 +12,46 @@ The helper protocol is allowlist-first. A request can only be created for:
 - `validate`: `./scripts/codexinstallautomation.sh validate` with `CODEX_BACKUP_LAUNCHD_LABEL=dev.codexbackup.toolkit.test.<target>`
 
 The GUI blocks backup, restore, install, uninstall, status, and any command outside the allowlist. The isolated validate label is intentional: it prevents the GUI from touching a user-installed backup job.
+
+The helper also rejects appended shell commands and common shell command separators for validate requests. A validate request must end with exactly `./scripts/codexinstallautomation.sh validate` and may only contain simple environment assignments before that final action.
+
+## HTTP Endpoints
+
+The draft Node helper listens on `127.0.0.1` only. Default port is `37371`.
+
+Start it manually for development validation:
+
+```zsh
+node helper/server.mjs
+```
+
+Optional port override:
+
+```zsh
+CODEX_BACKUP_HELPER_PORT=37372 node helper/server.mjs
+```
+
+The GUI currently expects `http://127.0.0.1:37371` when `HTTP Helper` mode is selected.
+
+### `GET /health`
+
+Returns helper status:
+
+```json
+{
+  "schema": "codex-backup-helper.v1",
+  "version": 1,
+  "status": "ok",
+  "helper": "node-local-helper",
+  "host": "127.0.0.1"
+}
+```
+
+### `POST /run`
+
+Accepts a helper request JSON body and returns a helper response. The server re-checks the allowlist before running anything, even if the GUI has already checked it.
+
+Unsupported paths and methods return JSON errors. Browser CORS is only opened for local HTTP origins such as `127.0.0.1`, `localhost`, and `::1`.
 
 ## Request Schema
 
@@ -73,9 +113,18 @@ Fields:
 
 ## Current Implementation
 
-The current implementation lives in the Web GUI code:
+The current implementation lives in two places:
 
 - `gui/src/lib/localBridge.ts`: allowlist classification and Local Bridge runner.
-- `gui/src/lib/helperProtocol.ts`: request/response types, request builder, mock transport.
+- `gui/src/lib/helperProtocol.ts`: request/response types, request builder, mock transport, HTTP transport.
+- `helper/server.mjs`: opt-in loopback HTTP helper.
+- `helper/allowlist.mjs`: helper-side allowlist.
+- `helper/executor.mjs`: shell executor used only after helper-side allowlist approval.
 
-No native helper server is started by this repository yet. The mock transport exists so the UI can show request ids, schema names, command kinds, decisions, helper identity, and exit codes without running shell commands.
+Run helper tests:
+
+```zsh
+node --test helper/server.test.mjs
+```
+
+The helper server is never started automatically by this repository. The mock transport exists so the UI can show request ids, schema names, command kinds, decisions, helper identity, and exit codes without running shell commands.
