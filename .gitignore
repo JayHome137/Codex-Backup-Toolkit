@@ -12,3 +12,5 @@ spool/
 tmp/
 .tmp/
 CodexBackups/
+node_modules/
+dist/

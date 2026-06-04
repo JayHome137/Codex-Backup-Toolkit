@@ -162,6 +162,24 @@ CODEX_BACKUP_INTERVAL_DAYS=3 \
 ./scripts/codexinstallautomation.sh validate
 ```
 
+## Web GUI 原型
+
+仓库包含一个浏览器版 GUI 原型，用来先验证界面、目标端配置流程和命令预览：
+
+```zsh
+cd gui
+npm ci
+npm run dev
+```
+
+默认访问地址：
+
+```text
+http://127.0.0.1:5173
+```
+
+当前 GUI 是预览版：它会显示未来要执行的 `codexbackup`、`codexrestore` 和自动化校验命令，但浏览器内不会直接执行真实备份、恢复或安装 launchd 任务。自动化校验预览使用 `dev.codexbackup.toolkit.test.*` 这类隔离 label，不会改动用户已经安装的备份定时任务。
+
 ## 输出文件
 
 每次备份会生成：

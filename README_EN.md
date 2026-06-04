@@ -154,6 +154,24 @@ Logs are written to:
 ~/Library/Logs/CodexBackup/backup.err.log
 ```
 
+## Web GUI Prototype
+
+The repository includes a browser-based GUI prototype for validating the interface, target configuration flow, and command previews:
+
+```zsh
+cd gui
+npm ci
+npm run dev
+```
+
+Default local URL:
+
+```text
+http://127.0.0.1:5173
+```
+
+The current GUI is preview-only: it shows the `codexbackup`, `codexrestore`, and automation validation commands that a future native bridge could run, but it does not execute real backups, restores, or launchd installation from the browser. Automation validation previews use isolated `dev.codexbackup.toolkit.test.*` labels and do not modify any backup job the user has already installed.
+
 ## Output Files
 
 Each backup creates:
