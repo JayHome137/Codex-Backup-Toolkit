@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { classifyHelperCommand, schema } from './allowlist.mjs';
 import { createShellExecutor } from './executor.mjs';
 
@@ -213,7 +214,7 @@ function closeServer(server) {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const port = Number.parseInt(process.env.CODEX_BACKUP_HELPER_PORT ?? `${defaultPort}`, 10);
   const helper = await createHelperServer({ port });
   console.log(`CodexBackupToolKit helper listening on ${helper.origin}`);

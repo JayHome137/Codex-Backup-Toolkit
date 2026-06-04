@@ -33,6 +33,8 @@ CODEX_BACKUP_HELPER_PORT=37372 node helper/server.mjs
 
 The GUI currently expects `http://127.0.0.1:37371` when `HTTP Helper` mode is selected.
 
+The GUI `Check Helper` action calls only `GET /health`; it does not invoke `/run` and cannot execute shell commands.
+
 ### `GET /health`
 
 Returns helper status:

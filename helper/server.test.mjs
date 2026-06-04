@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -55,6 +56,46 @@ async function requestJson(origin, path, init = {}) {
   return { response, body: await response.json() };
 }
 
+function readFirstStdoutLine(child) {
+  return new Promise((resolve, reject) => {
+    let output = '';
+    const timer = setTimeout(() => reject(new Error(`Timed out waiting for helper CLI output. ${output}`)), 5_000);
+
+    child.stdout.on('data', (chunk) => {
+      output += chunk.toString();
+      const newlineIndex = output.indexOf('\n');
+      if (newlineIndex !== -1) {
+        clearTimeout(timer);
+        resolve(output.slice(0, newlineIndex).trim());
+      }
+    });
+
+    child.stderr.on('data', (chunk) => {
+      output += chunk.toString();
+    });
+
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`Helper CLI exited before printing its origin: ${code}. ${output}`));
+    });
+  });
+}
+
+function waitForExit(child) {
+  return new Promise((resolve) => {
+    if (child.exitCode !== null) {
+      resolve();
+      return;
+    }
+    child.once('exit', () => resolve());
+  });
+}
+
 test('health reports helper status and binds to loopback only', async () => {
   await withHelper(async () => ({ exitCode: 0, stdout: '', stderr: '' }), async (helper) => {
     assert.equal(helper.address.address, '127.0.0.1');
@@ -70,6 +111,30 @@ test('health reports helper status and binds to loopback only', async () => {
       host: '127.0.0.1',
     });
   });
+});
+
+test('server module starts as a CLI even when the repository path contains spaces', async () => {
+  const child = spawn(process.execPath, ['helper/server.mjs'], {
+    cwd: process.cwd(),
+    env: { ...process.env, CODEX_BACKUP_HELPER_PORT: '0' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  try {
+    const line = await readFirstStdoutLine(child);
+    assert.match(line, /^CodexBackupToolKit helper listening on http:\/\/127\.0\.0\.1:\d+$/);
+
+    const origin = line.replace('CodexBackupToolKit helper listening on ', '');
+    const response = await fetch(`${origin}/health`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.status, 'ok');
+    assert.equal(body.helper, 'node-local-helper');
+  } finally {
+    child.kill('SIGTERM');
+    await waitForExit(child);
+  }
 });
 
 test('run accepts doctor requests and calls the injected executor', async () => {

@@ -195,6 +195,8 @@ node helper/server.mjs
 
 当前 helper 只允许两类命令：`codexbackup --doctor`，以及使用 `dev.codexbackup.toolkit.test.*` label 的隔离 `codexinstallautomation validate`。备份、恢复、安装、卸载、status 和拼接额外 shell 命令都会被阻止。协议草案见 [helper-protocol.md](docs/helper-protocol.md)。
 
+在 GUI 中选择 `HTTP Helper` 后，可以先点 `Check Helper` 检查 `/health`，这个动作只确认 helper 在线，不会运行备份脚本或修改任何定时任务。
+
 ## 输出文件
 
 每次备份会生成：

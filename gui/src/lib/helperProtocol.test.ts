@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildBackupCommand, buildDoctorCommand, buildValidateCommand, defaultConfig } from './config';
-import { buildHelperRequest, createHttpHelperTransport, createMockHelperTransport, runHelperCommand } from './helperProtocol';
+import { checkHelperHealth, buildHelperRequest, createHttpHelperTransport, createMockHelperTransport, runHelperCommand } from './helperProtocol';
 
 describe('helper protocol', () => {
   it('builds a versioned helper request for allowed doctor commands', () => {
@@ -89,5 +89,39 @@ describe('helper protocol', () => {
     });
 
     await expect(runHelperCommand(buildDoctorCommand(defaultConfig), transport)).rejects.toThrow('ERR_HELPER_UNAVAILABLE');
+  });
+
+  it('checks the HTTP helper health endpoint', async () => {
+    const calls: Array<RequestInfo | URL> = [];
+    const health = await checkHelperHealth('http://127.0.0.1:37371', async (input) => {
+      calls.push(input);
+      return new Response(
+        JSON.stringify({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          helper: 'node-local-helper',
+          host: '127.0.0.1',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+
+    expect(String(calls[0])).toBe('http://127.0.0.1:37371/health');
+    expect(health).toEqual({
+      schema: 'codex-backup-helper.v1',
+      version: 1,
+      status: 'ok',
+      helper: 'node-local-helper',
+      host: '127.0.0.1',
+    });
+  });
+
+  it('throws a typed unavailable error when helper health cannot be reached', async () => {
+    await expect(
+      checkHelperHealth('http://127.0.0.1:37371', async () => {
+        throw new TypeError('fetch failed');
+      }),
+    ).rejects.toThrow('ERR_HELPER_UNAVAILABLE');
   });
 });

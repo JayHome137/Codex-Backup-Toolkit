@@ -30,6 +30,14 @@ export type HelperResponse = {
   };
 };
 
+export type HelperHealth = {
+  schema: 'codex-backup-helper.v1';
+  version: 1;
+  status: 'ok';
+  helper: string;
+  host: string;
+};
+
 export type HelperTransport = {
   send(request: HelperRequest): Promise<HelperResponse>;
 };
@@ -122,6 +130,34 @@ export function createHttpHelperTransport(
   };
 }
 
+export async function checkHelperHealth(
+  baseUrl = 'http://127.0.0.1:37371',
+  fetcher: typeof fetch = fetch,
+): Promise<HelperHealth> {
+  let response: Response;
+
+  try {
+    response = await fetcher(`${baseUrl.replace(/\/$/, '')}/health`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`ERR_HELPER_UNAVAILABLE: ${message}`);
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`ERR_HELPER_UNAVAILABLE: Invalid helper JSON response: ${message}`);
+  }
+
+  if (!response.ok || !isHelperHealth(body)) {
+    throw new Error('ERR_HELPER_UNAVAILABLE: Helper health response did not match the protocol.');
+  }
+
+  return body;
+}
+
 function isHelperResponse(value: unknown): value is HelperResponse {
   if (!value || typeof value !== 'object') return false;
 
@@ -138,5 +174,18 @@ function isHelperResponse(value: unknown): value is HelperResponse {
     typeof response.audit === 'object' &&
     (response.audit.decision === 'allowed' || response.audit.decision === 'blocked') &&
     typeof response.audit.helper === 'string'
+  );
+}
+
+function isHelperHealth(value: unknown): value is HelperHealth {
+  if (!value || typeof value !== 'object') return false;
+
+  const health = value as Partial<HelperHealth>;
+  return (
+    health.schema === schema &&
+    health.version === 1 &&
+    health.status === 'ok' &&
+    typeof health.helper === 'string' &&
+    typeof health.host === 'string'
   );
 }

@@ -139,4 +139,32 @@ describe('App', () => {
       expect.objectContaining({ method: 'POST' }),
     );
   });
+
+  it('checks helper health without running a command', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe('http://127.0.0.1:37371/health');
+      return new Response(
+        JSON.stringify({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          helper: 'node-local-helper',
+          host: '127.0.0.1',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /http helper/i }));
+    fireEvent.click(screen.getByRole('button', { name: /check helper/i }));
+    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Helper is online/)).toBeInTheDocument();
+      expect(screen.getByText(/node-local-helper/)).toBeInTheDocument();
+    });
+  });
 });

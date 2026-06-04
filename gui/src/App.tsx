@@ -5,7 +5,7 @@ import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
 import { TargetForm } from './components/TargetForm';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
-import { createHttpHelperTransport } from './lib/helperProtocol';
+import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
 import {
   buildBackupCommand,
@@ -58,6 +58,32 @@ function App() {
     setLastResult(result);
     setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
     setRunningCommand(null);
+  };
+
+  const checkHelper = async () => {
+    setRunningCommand('GET http://127.0.0.1:37371/health');
+    try {
+      const health = await checkHelperHealth();
+      setLastResult({
+        status: 'success',
+        output: [
+          'Helper is online.',
+          '',
+          `schema: ${health.schema}`,
+          `helper: ${health.helper}`,
+          `host: ${health.host}`,
+          `status: ${health.status}`,
+        ].join('\n'),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setLastResult({
+        status: 'error',
+        output: `ERR_HELPER_UNAVAILABLE\n\n${message}`,
+      });
+    } finally {
+      setRunningCommand(null);
+    }
   };
 
   const copyText = async (text: string) => {
@@ -126,6 +152,12 @@ function App() {
                     <Play size={15} aria-hidden="true" />
                     Run Doctor
                   </button>
+                  {runnerMode === 'httpHelper' && (
+                    <button className="button button--tertiary" onClick={checkHelper} type="button">
+                      <Activity size={15} aria-hidden="true" />
+                      Check Helper
+                    </button>
+                  )}
                   <button className="button button--tertiary" onClick={() => runPreview(commands.backup, 'Backup command')} type="button">
                     <Archive size={15} aria-hidden="true" />
                     Preview Backup
