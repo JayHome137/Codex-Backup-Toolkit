@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-06-04
 
 - Prepare Codex-Backup-toolkit as a GitHub-ready open-source project.
 - Add public `codexbackup`, `codexrestore`, `codexinstallautomation`, and `codexscheduledbackup` command scripts.
