@@ -67,4 +67,29 @@ describe('App', () => {
       expect(screen.getByText(/Backup command/i)).toBeInTheDocument();
     });
   });
+
+  it('uses the local bridge allowlist mode for doctor commands', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /local bridge/i }));
+    fireEvent.click(screen.getByRole('button', { name: /run doctor/i }));
+    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Native helper not connected yet\./)).toBeInTheDocument();
+      expect(screen.getByText(/Allowed command kind: doctor/)).toBeInTheDocument();
+    });
+  });
+
+  it('blocks backup commands in local bridge mode', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /local bridge/i }));
+    fireEvent.click(screen.getByRole('button', { name: /preview backup/i }));
+    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Blocked by Web bridge allowlist\./)).toBeInTheDocument();
+    });
+  });
 });

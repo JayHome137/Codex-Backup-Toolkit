@@ -133,6 +133,23 @@ button {
   min-height: 46px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mode-switch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: #090a0c;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;

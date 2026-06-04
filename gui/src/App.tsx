@@ -5,6 +5,7 @@ import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
 import { TargetForm } from './components/TargetForm';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
+import { createLocalBridgeRunner } from './lib/localBridge';
 import {
   buildBackupCommand,
   buildDoctorCommand,
@@ -17,6 +18,9 @@ import {
 } from './lib/config';
 
 const runner = createMockCommandRunner();
+const localBridgeRunner = createLocalBridgeRunner();
+
+type RunnerMode = 'mock' | 'localBridge';
 
 type HistoryEntry = {
   command: string;
@@ -32,6 +36,7 @@ function App() {
   const [lastResult, setLastResult] = useState<CommandResult | null>(null);
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [runnerMode, setRunnerMode] = useState<RunnerMode>('mock');
 
   const commands = useMemo(
     () => ({
@@ -46,7 +51,8 @@ function App() {
 
   const runPreview = async (command: string, label: string) => {
     setRunningCommand(command);
-    const result = await runner.run(command);
+    const activeRunner = runnerMode === 'localBridge' ? localBridgeRunner : runner;
+    const result = await activeRunner.run(command);
     setLastResult(result);
     setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
     setRunningCommand(null);
@@ -67,7 +73,21 @@ function App() {
             <p className="eyebrow">Codex-Backup-toolkit</p>
             <h2>{sectionTitle(activeSection)}</h2>
           </div>
-          <StatusBadge status={status} label={statusLabel(status)} />
+          <div className="topbar-actions">
+            <div className="mode-switch" role="group" aria-label="Runner mode">
+              <button className={runnerMode === 'mock' ? 'segment segment--active' : 'segment'} onClick={() => setRunnerMode('mock')} type="button">
+                Mock
+              </button>
+              <button
+                className={runnerMode === 'localBridge' ? 'segment segment--active' : 'segment'}
+                onClick={() => setRunnerMode('localBridge')}
+                type="button"
+              >
+                Local Bridge
+              </button>
+            </div>
+            <StatusBadge status={status} label={statusLabel(status)} />
+          </div>
         </header>
 
         {activeSection === 'overview' && (
@@ -89,6 +109,7 @@ function App() {
                 <div className="summary-list">
                   <SummaryRow label="Doctor" value="Mock adapter validates command shape" />
                   <SummaryRow label="Last backup" value="No real backup has been started by this GUI" />
+                  <SummaryRow label="Runner" value={runnerMode === 'localBridge' ? 'Local bridge allowlist mode' : 'Mock preview mode'} />
                   <SummaryRow label="Automation" value="Validate command uses an isolated test label" />
                 </div>
                 <div className="action-row">
