@@ -32,6 +32,7 @@ assert_not_contains() {
 }
 
 assert_file README.md
+assert_file README_EN.md
 assert_file LICENSE
 assert_file .gitignore
 assert_file config.example.env
@@ -62,11 +63,14 @@ assert_executable scripts/codexscheduledbackup.sh
 
 assert_contains README.md 'Codex-Backup-toolkit'
 assert_contains README.md 'codexbackup'
+assert_contains README.md 'English README'
 assert_contains README.md '--doctor'
 assert_contains README.md 'CODEX_BACKUP_ENCRYPT'
 assert_contains README.md 'CODEX_BACKUP_RETENTION_COUNT'
 assert_contains README.md 'WebDAV'
 assert_contains README.md 'rclone'
+assert_contains README_EN.md 'Codex-Backup-toolkit'
+assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains docs/gui-design.md 'Raycast'
 assert_contains docs/gui-design.md 'CCSWITCH'
 assert_contains config.example.env 'CODEX_BACKUP_TARGET=(local|smb|webdav|rclone)'

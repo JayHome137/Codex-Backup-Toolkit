@@ -1,10 +1,12 @@
 # Codex-Backup-toolkit
 
-`codexbackup` is a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote.
+[English README](README_EN.md)
 
-The first public version is intentionally Codex-only. The project structure leaves room for more AI developer-tool profiles later, but the current promise is narrow: reliable Codex backup, restore, and automation.
+`codexbackup` 是一个面向 macOS 的 Codex Desktop 备份与恢复工具。它会把让 Codex 在本机“像现在这样工作”的本地状态打包成归档文件，然后发布到本地目录、SMB/NAS、WebDAV 或 rclone 远端。
 
-## What It Backs Up
+第一版刻意只聚焦 Codex Desktop。项目结构会为后续 Claude Code、Cursor、Windsurf 等 AI 开发工具 profile 留空间，但当前承诺很窄：把 Codex 的备份、恢复和自动化做好。
+
+## 备份内容
 
 - `~/.codex`
 - `~/Library/Application Support/Codex`
@@ -13,33 +15,33 @@ The first public version is intentionally Codex-only. The project structure leav
 - `~/Library/Application Support/com.openai.codex`
 - `~/Documents/Codex`
 
-The archive includes Codex config, skills, plugins, memories, sessions, local app/browser state, auth files present on disk, and Codex workspaces under `~/Documents/Codex`.
+归档中会包含 Codex 配置、skills、plugins、memories、sessions、本地 app/browser 状态、磁盘上存在的认证文件，以及 `~/Documents/Codex` 下的 Codex 工作区。
 
-Transient runtime files such as `.codex/tmp`, `.codex/.tmp`, sockets, and Git fsmonitor IPC files are excluded because they can disappear while Codex is running and are not useful for restore.
+`.codex/tmp`、`.codex/.tmp`、socket、Git fsmonitor IPC 文件等临时运行文件会被排除。它们可能在 Codex 运行时消失，也不适合用于恢复。
 
-Important limitation: some login/session material may be protected by macOS Keychain or device-bound browser encryption. Restoring files to a new Mac may still require signing in again.
+重要限制：有些登录/session 数据可能被 macOS Keychain 或设备绑定的浏览器加密保护。恢复文件到新 Mac 后，Codex 或某些浏览器集成仍可能要求重新登录。
 
-## Quick Start
+## 快速开始
 
-Create a local backup:
+创建本地备份：
 
 ```zsh
 ./scripts/codexbackup.sh --target local --local-output "$HOME/CodexBackups"
 ```
 
-Check your environment before a real backup:
+真实备份前检查环境：
 
 ```zsh
 ./scripts/codexbackup.sh --doctor --target local
 ```
 
-Preview what would be backed up:
+预览将要备份的内容：
 
 ```zsh
 ./scripts/codexbackup.sh --dry-run
 ```
 
-Restore the latest local backup:
+从本地目录恢复最新备份：
 
 ```zsh
 CODEX_BACKUP_TARGET=local \
@@ -47,15 +49,15 @@ CODEX_BACKUP_LOCAL_DIR="$HOME/CodexBackups" \
 ./scripts/codexrestore.sh --latest
 ```
 
-Restore a specific archive:
+恢复指定归档：
 
 ```zsh
 ./scripts/codexrestore.sh --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
 ```
 
-## Configure A Target
+## 配置备份目标
 
-Copy the example config and edit it:
+复制示例配置并编辑：
 
 ```zsh
 cp config.example.env config.env
@@ -63,24 +65,24 @@ $EDITOR config.env
 source ./config.env
 ```
 
-Supported `CODEX_BACKUP_TARGET` values:
+支持的 `CODEX_BACKUP_TARGET`：
 
-- `local`: write archives to a folder on this Mac.
-- `smb`: mount an SMB/NAS share with `mount_smbfs`.
-- `webdav`: upload archives with `curl` to a WebDAV server.
-- `rclone`: upload archives with `rclone copy` to any configured rclone remote.
+- `local`：写入本机目录。
+- `smb`：使用 `mount_smbfs` 挂载 SMB/NAS 共享。
+- `webdav`：使用 `curl` 上传到 WebDAV 服务。
+- `rclone`：使用 `rclone copy` 上传到任意已配置的 rclone remote。
 
-See [storage-targets.md](docs/storage-targets.md) and the files in [examples](examples) for target-specific configuration.
+更多目标端配置见 [storage-targets.md](docs/storage-targets.md) 和 [examples](examples) 下的示例文件。
 
-Print supported targets:
+列出支持的目标端：
 
 ```zsh
 ./scripts/codexbackup.sh --list-targets
 ```
 
-## Optional Encryption
+## 可选加密
 
-Set `CODEX_BACKUP_ENCRYPT=1` to encrypt the archive with [age](https://age-encryption.org/):
+设置 `CODEX_BACKUP_ENCRYPT=1` 后，工具会用 [age](https://age-encryption.org/) 加密备份归档：
 
 ```zsh
 CODEX_BACKUP_ENCRYPT=1 \
@@ -88,14 +90,14 @@ CODEX_BACKUP_AGE_RECIPIENT='age1...' \
 ./scripts/codexbackup.sh --target local --local-output "$HOME/CodexBackups"
 ```
 
-Encrypted backups are written as:
+加密备份会生成：
 
 ```text
 codex-backup-<host>-<timestamp>.tar.gz.age
 codex-backup-<host>-<timestamp>.tar.gz.age.sha256
 ```
 
-Restore with the matching age identity:
+使用对应的 age identity 恢复：
 
 ```zsh
 ./scripts/codexrestore.sh \
@@ -103,29 +105,29 @@ Restore with the matching age identity:
   --age-identity /path/to/age-identity.txt
 ```
 
-## Retention
+## 保留策略
 
-Local and SMB targets support simple cleanup after a successful backup:
+`local` 和 `smb` 目标支持在备份成功后做简单清理：
 
 ```zsh
 CODEX_BACKUP_RETENTION_COUNT=10
 CODEX_BACKUP_RETENTION_DAYS=30
 ```
 
-`CODEX_BACKUP_RETENTION_COUNT` keeps the newest N backup archives. `CODEX_BACKUP_RETENTION_DAYS` removes backup artifacts older than N days. Both default to `0`, which disables cleanup.
+`CODEX_BACKUP_RETENTION_COUNT` 会保留最新 N 份备份归档。`CODEX_BACKUP_RETENTION_DAYS` 会删除早于 N 天的备份文件。两者默认都是 `0`，也就是不自动清理。
 
-## Automatic Backups
+## 自动备份
 
-Install a macOS `launchd` job:
+安装 macOS `launchd` 定时任务：
 
 ```zsh
 source ./config.env
 ./scripts/codexinstallautomation.sh install
 ```
 
-By default the job checks every day at `03:00` and runs a real backup only when at least `3` days have passed since the last successful backup.
+默认情况下，任务每天本地时间 `03:00` 检查一次；只有距离上次成功备份至少过去 `3` 天时，才会真正运行备份。
 
-Change the schedule during install:
+安装时修改检查时间和间隔：
 
 ```zsh
 CODEX_BACKUP_HOUR=2 \
@@ -134,56 +136,64 @@ CODEX_BACKUP_INTERVAL_DAYS=3 \
 ./scripts/codexinstallautomation.sh install
 ```
 
-Check or remove the job:
+查看或移除任务：
 
 ```zsh
 ./scripts/codexinstallautomation.sh status
 ./scripts/codexinstallautomation.sh uninstall
 ```
 
-The installer copies this toolkit to:
+安装器会把工具复制到：
 
 ```text
 ~/Library/Application Support/CodexBackupToolkit/
 ```
 
-Logs are written to:
+日志路径：
 
 ```text
 ~/Library/Logs/CodexBackup/backup.out.log
 ~/Library/Logs/CodexBackup/backup.err.log
 ```
 
-## Output Files
+发布前或本地验证时，可以只生成并校验 plist，不加载 launchd 任务：
 
-Each backup creates:
+```zsh
+./scripts/codexinstallautomation.sh validate
+```
+
+## 输出文件
+
+每次备份会生成：
 
 - `codex-backup-<host>-<timestamp>.tar.gz`
 - `codex-backup-<host>-<timestamp>.tar.gz.sha256`
 - `codex-backup-<host>-<timestamp>.manifest.txt`
 
-The backup first writes finished files to a local spool directory, then publishes them to the configured target. If the remote target is unavailable, the local spool copy remains available for manual retry.
+如果启用加密，归档文件会变成 `.tar.gz.age`。
 
-## Restore Safety
+备份会先把完成的文件写入本地 spool 目录，再发布到配置好的目标端。如果远端暂时不可用，本地 spool 中的副本仍可用于手动重试。
 
-Before overwriting anything, `codexrestore` creates a safety archive of the current target files at:
+## 恢复安全
+
+覆盖任何文件前，`codexrestore` 会先创建当前目标文件的本地安全备份：
 
 ```text
 ~/CodexRestoreSafetyBackups/codex-before-restore-<timestamp>.tar.gz
 ```
 
-Read [restore-guide.md](docs/restore-guide.md) before restoring on a new Mac.
+在新 Mac 上恢复前，建议先阅读 [restore-guide.md](docs/restore-guide.md)。
 
-## Security
+## 安全说明
 
-Codex backups can contain sensitive material: local auth files, cookies, sessions, plugin state, memory, and project files. Keep backup targets private and consider encrypting archives before uploading to third-party cloud storage.
+Codex 备份可能包含敏感内容：本地认证文件、cookies、sessions、plugin 状态、memory 和项目文件。请把备份目标保持为私有；如果要上传到第三方云盘，建议启用加密。
 
-Read [security.md](docs/security.md) before publishing backups to WebDAV or rclone-backed cloud drives.
+发布到 WebDAV 或 rclone 云盘前，请阅读 [security.md](docs/security.md)。
 
-## Roadmap
+## 路线图
 
-The current scope is Codex Desktop backup. Future phases may add additional AI developer-tool profiles and a GUI. The GUI direction is documented in [gui-design.md](docs/gui-design.md), using a CCSWITCH-like compact utility layout with Raycast-inspired dark command-palette styling from DESIGN.md.
+当前范围是 Codex Desktop 备份。未来阶段可能增加更多 AI 开发工具 profile 和 GUI。GUI 方向记录在 [gui-design.md](docs/gui-design.md)，会参考 CCSWITCH 这种紧凑工具型界面，并结合 DESIGN.md 中 Raycast 风格的暗色命令面板视觉。
 
-## License
+## 许可证
 
 MIT
