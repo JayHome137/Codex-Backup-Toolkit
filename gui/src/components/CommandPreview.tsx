@@ -26,11 +26,11 @@ export function CommandPreview({ title, command, onCopy }: CommandPreviewProps) 
           <Terminal size={16} aria-hidden="true" />
           <span>{title}</span>
         </div>
-        <button className="icon-button" type="button" title={`Copy ${title}`} aria-label={`Copy ${title}`} onClick={copyCommand}>
+        <button className="icon-button" type="button" title={`复制${title}`} aria-label={`复制${title}`} onClick={copyCommand}>
           <Clipboard size={15} aria-hidden="true" />
         </button>
       </div>
-      {copied && <span className="copy-status">Copied</span>}
+      {copied && <span className="copy-status">已复制</span>}
       <pre>
         <code>{command}</code>
       </pre>

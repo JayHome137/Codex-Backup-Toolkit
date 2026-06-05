@@ -15,7 +15,7 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
 
   return (
     <div className="target-form">
-      <div className="segmented-control" role="group" aria-label="Backup target">
+      <div className="segmented-control" role="group" aria-label="备份目标端">
         {targets.map((target) => (
           <button
             className={config.target === target ? 'segment segment--active' : 'segment'}
@@ -31,7 +31,7 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
       <div className="form-grid">
         {config.target === 'local' && (
           <label className="field field--wide">
-            <span>Local output directory</span>
+            <span>本地输出目录</span>
             <input value={config.localDir} onChange={(event) => update('localDir', event.target.value)} />
           </label>
         )}
@@ -39,15 +39,15 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
         {config.target === 'smb' && (
           <>
             <label className="field">
-              <span>SMB host</span>
+              <span>SMB 主机</span>
               <input value={config.smbHost} onChange={(event) => update('smbHost', event.target.value)} />
             </label>
             <label className="field">
-              <span>SMB user</span>
+              <span>SMB 用户</span>
               <input value={config.smbUser} onChange={(event) => update('smbUser', event.target.value)} />
             </label>
             <label className="field field--wide">
-              <span>SMB share</span>
+              <span>SMB 共享名</span>
               <input value={config.smbShare} onChange={(event) => update('smbShare', event.target.value)} />
             </label>
           </>
@@ -56,11 +56,11 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
         {config.target === 'webdav' && (
           <>
             <label className="field field--wide">
-              <span>WebDAV URL</span>
+              <span>WebDAV 地址</span>
               <input value={config.webdavUrl} onChange={(event) => update('webdavUrl', event.target.value)} />
             </label>
             <label className="field field--wide">
-              <span>WebDAV user</span>
+              <span>WebDAV 用户</span>
               <input value={config.webdavUser} onChange={(event) => update('webdavUser', event.target.value)} />
             </label>
           </>
@@ -75,11 +75,11 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
 
         <label className="toggle-row field--wide">
           <input checked={config.encrypt} onChange={(event) => update('encrypt', event.target.checked)} type="checkbox" />
-          <span>Encrypt archives with age</span>
+          <span>使用 age 加密归档</span>
         </label>
 
         <label className="field">
-          <span>Retention count</span>
+          <span>保留份数</span>
           <input
             min="0"
             type="number"
@@ -88,7 +88,7 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
           />
         </label>
         <label className="field">
-          <span>Retention days</span>
+          <span>保留天数</span>
           <input
             min="0"
             type="number"

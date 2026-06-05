@@ -12,7 +12,7 @@ import {
 describe('command builders', () => {
   it('lists all supported target labels', () => {
     expect(targetLabels).toEqual({
-      local: 'Local Folder',
+      local: '本地目录',
       smb: 'SMB / NAS',
       webdav: 'WebDAV',
       rclone: 'rclone',
@@ -48,6 +48,7 @@ describe('command builders', () => {
   it('builds a config.env preview without credential secrets', () => {
     const envFile = buildEnvFile({ ...defaultConfig, target: 'webdav', encrypt: true });
 
+    expect(envFile).toContain('# Codex-Backup-toolkit config.env 预览');
     expect(envFile).toContain('CODEX_BACKUP_TARGET=webdav');
     expect(envFile).toContain('CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup"');
     expect(envFile).toContain('CODEX_BACKUP_ENCRYPT=1');

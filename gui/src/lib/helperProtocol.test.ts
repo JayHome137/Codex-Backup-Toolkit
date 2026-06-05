@@ -43,7 +43,7 @@ describe('helper protocol', () => {
       },
     });
     expect(response.requestId).toMatch(/^cbt_/);
-    expect(response.stdout).toContain('Mock helper accepted doctor');
+    expect(response.stdout).toContain('模拟助手已接受环境检查');
   });
 
   it('sends allowed requests to the HTTP helper /run endpoint', async () => {

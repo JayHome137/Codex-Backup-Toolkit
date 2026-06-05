@@ -80,7 +80,7 @@ export function createMockHelperTransport(): HelperTransport {
         requestId: request.requestId,
         status: 'ok',
         exitCode: 0,
-        stdout: `Mock helper accepted ${request.kind}.\n\nCommand:\n${request.command}`,
+        stdout: `模拟助手已接受${request.kind === 'doctor' ? '环境检查' : '计划校验'}。\n\n命令：\n${request.command}`,
         stderr: '',
         audit: {
           commandKind: request.kind,
@@ -118,11 +118,11 @@ export function createHttpHelperTransport(
         body = await response.json();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`ERR_HELPER_UNAVAILABLE: Invalid helper JSON response: ${message}`);
+        throw new Error(`ERR_HELPER_UNAVAILABLE: 助手返回了无效 JSON：${message}`);
       }
 
       if (!isHelperResponse(body)) {
-        throw new Error('ERR_HELPER_UNAVAILABLE: Helper response did not match the protocol.');
+        throw new Error('ERR_HELPER_UNAVAILABLE: 助手响应不符合协议。');
       }
 
       return body;
@@ -148,11 +148,11 @@ export async function checkHelperHealth(
     body = await response.json();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`ERR_HELPER_UNAVAILABLE: Invalid helper JSON response: ${message}`);
+    throw new Error(`ERR_HELPER_UNAVAILABLE: 助手健康检查返回了无效 JSON：${message}`);
   }
 
   if (!response.ok || !isHelperHealth(body)) {
-    throw new Error('ERR_HELPER_UNAVAILABLE: Helper health response did not match the protocol.');
+    throw new Error('ERR_HELPER_UNAVAILABLE: 助手健康检查响应不符合协议。');
   }
 
   return body;

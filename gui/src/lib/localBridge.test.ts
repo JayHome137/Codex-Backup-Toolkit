@@ -14,21 +14,21 @@ describe('local bridge command allowlist', () => {
   it('blocks backup commands', () => {
     expect(classifyLocalCommand(buildBackupCommand(defaultConfig))).toEqual({
       allowed: false,
-      reason: 'Only doctor and isolated validate are allowed in the Web bridge prototype.',
+      reason: 'Web 桥接原型只允许环境检查和隔离的计划校验。',
     });
   });
 
   it('blocks restore commands', () => {
     expect(classifyLocalCommand(buildRestoreCommand('/tmp/archive.tar.gz', false))).toEqual({
       allowed: false,
-      reason: 'Only doctor and isolated validate are allowed in the Web bridge prototype.',
+      reason: 'Web 桥接原型只允许环境检查和隔离的计划校验。',
     });
   });
 
   it('blocks non-isolated automation actions', () => {
     expect(classifyLocalCommand('./scripts/codexinstallautomation.sh install')).toEqual({
       allowed: false,
-      reason: 'Only isolated codexinstallautomation validate commands are allowed.',
+      reason: '只允许隔离的 codexinstallautomation validate 命令。',
     });
   });
 
@@ -37,7 +37,7 @@ describe('local bridge command allowlist', () => {
     const result = await runner.run(buildBackupCommand(defaultConfig));
 
     expect(result.status).toBe('warning');
-    expect(result.output).toContain('Blocked by Web bridge allowlist');
+    expect(result.output).toContain('已被 Web 桥接允许列表阻止');
   });
 
   it('uses helper protocol responses for allowed commands', async () => {
@@ -66,8 +66,8 @@ describe('local bridge command allowlist', () => {
 
     expect(result.status).toBe('success');
     expect(result.output).toContain('doctor ok');
-    expect(result.output).toContain('requestId: cbt_');
-    expect(result.output).toContain('helper: unit-test-helper');
+    expect(result.output).toContain('请求 ID: cbt_');
+    expect(result.output).toContain('助手: unit-test-helper');
   });
 
   it('returns an error when helper transport fails', async () => {

@@ -18,42 +18,42 @@ describe('App', () => {
   it('shows WebDAV command preview after selecting WebDAV target', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /targets/i }));
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
-    expect(screen.getByLabelText('WebDAV URL')).toBeInTheDocument();
+    expect(screen.getByLabelText('WebDAV 地址')).toBeInTheDocument();
     expect(screen.getAllByText(/CODEX_BACKUP_WEBDAV_URL=/).length).toBeGreaterThan(0);
   });
 
   it('runs doctor through the preview-only mock runner', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /run doctor/i }));
-    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Doctor passed\./)).toBeInTheDocument();
+      expect(screen.getByText(/环境检查通过/)).toBeInTheDocument();
     });
   });
 
   it('copies command previews to the clipboard', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /copy backup command/i }));
+    fireEvent.click(screen.getByRole('button', { name: /复制备份命令/i }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('./scripts/codexbackup.sh --target local'));
     });
-    expect(screen.getByText('Copied')).toBeInTheDocument();
+    expect(screen.getByText('已复制')).toBeInTheDocument();
   });
 
   it('shows a config.env preview for the selected target', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /targets/i }));
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
-    expect(screen.getAllByText(/config.env preview/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/config.env 预览/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/CODEX_BACKUP_WEBDAV_URL=/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/# CODEX_BACKUP_WEBDAV_PASSWORD=/).length).toBeGreaterThan(0);
   });
@@ -61,44 +61,44 @@ describe('App', () => {
   it('keeps a history of preview runs in Logs', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /run doctor/i }));
-    fireEvent.click(screen.getByRole('button', { name: /preview backup/i }));
-    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
+    fireEvent.click(screen.getByRole('button', { name: /预览备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Run history/i)).toBeInTheDocument();
-      expect(screen.getByText(/Doctor command/i)).toBeInTheDocument();
-      expect(screen.getByText(/Backup command/i)).toBeInTheDocument();
+      expect(screen.getByText(/运行历史/i)).toBeInTheDocument();
+      expect(screen.getByText(/环境检查命令/i)).toBeInTheDocument();
+      expect(screen.getByText(/备份命令/i)).toBeInTheDocument();
     });
   });
 
   it('uses the local bridge allowlist mode for doctor commands', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /local bridge/i }));
-    fireEvent.click(screen.getByRole('button', { name: /run doctor/i }));
-    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /本地桥接/i }));
+    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Mock helper accepted doctor\./)).toBeInTheDocument();
-      expect(screen.getByText(/schema: codex-backup-helper\.v1/)).toBeInTheDocument();
-      expect(screen.getByText(/commandKind: doctor/)).toBeInTheDocument();
+      expect(screen.getByText(/模拟助手已接受环境检查/)).toBeInTheDocument();
+      expect(screen.getByText(/协议: codex-backup-helper\.v1/)).toBeInTheDocument();
+      expect(screen.getByText(/命令类型: 环境检查/)).toBeInTheDocument();
     });
   });
 
   it('blocks backup commands in local bridge mode', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /local bridge/i }));
-    fireEvent.click(screen.getByRole('button', { name: /preview backup/i }));
-    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /本地桥接/i }));
+    fireEvent.click(screen.getByRole('button', { name: /预览备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Blocked by Web bridge allowlist\./)).toBeInTheDocument();
+      expect(screen.getByText(/已被 Web 桥接允许列表阻止/)).toBeInTheDocument();
     });
   });
 
-  it('uses the HTTP helper transport when HTTP Helper mode is selected', async () => {
+  it('uses the HTTP helper transport when HTTP helper mode is selected', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body));
 
@@ -109,7 +109,7 @@ describe('App', () => {
           requestId: request.requestId,
           status: 'ok',
           exitCode: 0,
-          stdout: 'doctor ok from helper',
+          stdout: '助手返回环境检查正常',
           stderr: '',
           audit: {
             commandKind: request.kind,
@@ -126,13 +126,13 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /http helper/i }));
-    fireEvent.click(screen.getByRole('button', { name: /run doctor/i }));
-    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/doctor ok from helper/)).toBeInTheDocument();
-      expect(screen.getByText(/helper: node-local-helper/)).toBeInTheDocument();
+      expect(screen.getByText(/助手返回环境检查正常/)).toBeInTheDocument();
+      expect(screen.getByText(/助手: node-local-helper/)).toBeInTheDocument();
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'http://127.0.0.1:37371/run',
@@ -158,12 +158,12 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /http helper/i }));
-    fireEvent.click(screen.getByRole('button', { name: /check helper/i }));
-    fireEvent.click(screen.getByRole('button', { name: /logs/i }));
+    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /检查助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Helper is online/)).toBeInTheDocument();
+      expect(screen.getByText(/助手在线/)).toBeInTheDocument();
       expect(screen.getByText(/node-local-helper/)).toBeInTheDocument();
     });
   });

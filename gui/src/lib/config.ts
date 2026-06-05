@@ -15,7 +15,7 @@ export type BackupConfig = {
 };
 
 export const targetLabels: Record<BackupTarget, string> = {
-  local: 'Local Folder',
+  local: '本地目录',
   smb: 'SMB / NAS',
   webdav: 'WebDAV',
   rclone: 'rclone',
@@ -81,8 +81,8 @@ export function buildBackupCommand(config: BackupConfig): string {
 
 export function buildEnvFile(config: BackupConfig): string {
   return [
-    '# Codex-Backup-toolkit config.env preview',
-    '# Fill secrets locally before sourcing this file.',
+    '# Codex-Backup-toolkit config.env 预览',
+    '# 请在本地补充密钥后再 source 此文件。',
     ...buildEnvLines(config),
     ...(credentialPlaceholders[config.target] ?? []),
     '',

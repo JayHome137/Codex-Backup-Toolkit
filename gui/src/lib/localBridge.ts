@@ -13,7 +13,17 @@ type BlockedLocalCommand = {
 
 export type LocalCommandClassification = AllowedLocalCommand | BlockedLocalCommand;
 
-const generalBlockReason = 'Only doctor and isolated validate are allowed in the Web bridge prototype.';
+const generalBlockReason = 'Web 桥接原型只允许环境检查和隔离的计划校验。';
+
+const commandKindLabels: Record<AllowedLocalCommand['kind'], string> = {
+  doctor: '环境检查',
+  validate: '计划校验',
+};
+
+const decisionLabels: Record<HelperResponse['audit']['decision'], string> = {
+  allowed: '已允许',
+  blocked: '已阻止',
+};
 
 export function classifyLocalCommand(command: string): LocalCommandClassification {
   if (command.trim() === '' || command.includes('codexrestore.sh') || command.includes('codexbackup.sh --target')) {
@@ -26,7 +36,7 @@ export function classifyLocalCommand(command: string): LocalCommandClassificatio
     if (isValidate && isIsolated) {
       return { allowed: true, kind: 'validate' };
     }
-    return { allowed: false, reason: 'Only isolated codexinstallautomation validate commands are allowed.' };
+    return { allowed: false, reason: '只允许隔离的 codexinstallautomation validate 命令。' };
   }
 
   if (command.startsWith('./scripts/codexbackup.sh --doctor --target ')) {
@@ -40,13 +50,13 @@ function formatHelperResponse(response: HelperResponse): string {
   return [
     response.stdout,
     '',
-    'Audit:',
-    `requestId: ${response.requestId}`,
-    `schema: ${response.schema}`,
-    `commandKind: ${response.audit.commandKind}`,
-    `decision: ${response.audit.decision}`,
-    `helper: ${response.audit.helper}`,
-    `exitCode: ${response.exitCode}`,
+    '审计信息：',
+    `请求 ID: ${response.requestId}`,
+    `协议: ${response.schema}`,
+    `命令类型: ${commandKindLabels[response.audit.commandKind]}`,
+    `决策: ${decisionLabels[response.audit.decision]}`,
+    `助手: ${response.audit.helper}`,
+    `退出码: ${response.exitCode}`,
   ].join('\n');
 }
 
@@ -58,7 +68,7 @@ export function createLocalBridgeRunner(transport: HelperTransport = createMockH
       if (!classification.allowed) {
         return {
           status: 'warning',
-          output: `Blocked by Web bridge allowlist.\n\n${classification.reason}\n\nCommand:\n${command}`,
+          output: `已被 Web 桥接允许列表阻止。\n\n${classification.reason}\n\n命令：\n${command}`,
         };
       }
 
@@ -74,7 +84,7 @@ export function createLocalBridgeRunner(transport: HelperTransport = createMockH
 
         return {
           status: 'error',
-          output: `ERR_HELPER_UNAVAILABLE\n\n${message}\n\nCommand:\n${command}`,
+          output: `ERR_HELPER_UNAVAILABLE\n\n${message}\n\n命令：\n${command}`,
         };
       }
     },

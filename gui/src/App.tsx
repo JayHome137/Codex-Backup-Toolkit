@@ -67,12 +67,12 @@ function App() {
       setLastResult({
         status: 'success',
         output: [
-          'Helper is online.',
+          '助手在线。',
           '',
-          `schema: ${health.schema}`,
-          `helper: ${health.helper}`,
-          `host: ${health.host}`,
-          `status: ${health.status}`,
+          `协议: ${health.schema}`,
+          `助手: ${health.helper}`,
+          `主机: ${health.host}`,
+          `状态: ${health.status === 'ok' ? '正常' : health.status}`,
         ].join('\n'),
       });
     } catch (error) {
@@ -102,23 +102,23 @@ function App() {
             <h2>{sectionTitle(activeSection)}</h2>
           </div>
           <div className="topbar-actions">
-            <div className="mode-switch" role="group" aria-label="Runner mode">
+            <div className="mode-switch" role="group" aria-label="运行模式">
               <button className={runnerMode === 'mock' ? 'segment segment--active' : 'segment'} onClick={() => setRunnerMode('mock')} type="button">
-                Mock
+                模拟
               </button>
               <button
                 className={runnerMode === 'localBridge' ? 'segment segment--active' : 'segment'}
                 onClick={() => setRunnerMode('localBridge')}
                 type="button"
               >
-                Local Bridge
+                本地桥接
               </button>
               <button
                 className={runnerMode === 'httpHelper' ? 'segment segment--active' : 'segment'}
                 onClick={() => setRunnerMode('httpHelper')}
                 type="button"
               >
-                HTTP Helper
+                HTTP 助手
               </button>
             </div>
             <StatusBadge status={status} label={statusLabel(status)} />
@@ -128,9 +128,9 @@ function App() {
         {activeSection === 'overview' && (
           <section className="view-stack">
             <div className="metric-grid">
-              <MetricCard icon={Archive} label="Target" value={targetLabels[config.target]} tone="blue" />
-              <MetricCard icon={ShieldCheck} label="Mode" value="Preview only" tone="green" />
-              <MetricCard icon={CalendarCheck2} label="Schedule" value="03:00 / 3 days" tone="yellow" />
+              <MetricCard icon={Archive} label="目标端" value={targetLabels[config.target]} tone="blue" />
+              <MetricCard icon={ShieldCheck} label="模式" value="仅预览" tone="green" />
+              <MetricCard icon={CalendarCheck2} label="计划" value="03:00 / 每 3 天" tone="yellow" />
             </div>
 
             <div className="two-column">
@@ -138,33 +138,33 @@ function App() {
                 <div className="panel-header">
                   <div className="panel-title">
                     <Activity size={16} aria-hidden="true" />
-                    <span>Current run</span>
+                    <span>当前运行</span>
                   </div>
                 </div>
                 <div className="summary-list">
-                  <SummaryRow label="Doctor" value="Mock adapter validates command shape" />
-                  <SummaryRow label="Last backup" value="No real backup has been started by this GUI" />
-                  <SummaryRow label="Runner" value={runnerModeLabel(runnerMode)} />
-                  <SummaryRow label="Automation" value="Validate command uses an isolated test label" />
+                  <SummaryRow label="环境检查" value="模拟适配器会校验命令形状" />
+                  <SummaryRow label="最近备份" value="此界面尚未启动任何真实备份" />
+                  <SummaryRow label="运行器" value={runnerModeLabel(runnerMode)} />
+                  <SummaryRow label="自动化" value="计划校验命令使用隔离测试标识" />
                 </div>
                 <div className="action-row">
-                  <button className="button button--primary" onClick={() => runPreview(commands.doctor, 'Doctor command')} type="button">
+                  <button className="button button--primary" onClick={() => runPreview(commands.doctor, '环境检查命令')} type="button">
                     <Play size={15} aria-hidden="true" />
-                    Run Doctor
+                    运行检查
                   </button>
                   {runnerMode === 'httpHelper' && (
                     <button className="button button--tertiary" onClick={checkHelper} type="button">
                       <Activity size={15} aria-hidden="true" />
-                      Check Helper
+                      检查助手
                     </button>
                   )}
-                  <button className="button button--tertiary" onClick={() => runPreview(commands.backup, 'Backup command')} type="button">
+                  <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令')} type="button">
                     <Archive size={15} aria-hidden="true" />
-                    Preview Backup
+                    预览备份
                   </button>
                 </div>
               </section>
-              <CommandPreview command={commands.backup} title="Backup command" onCopy={copyText} />
+              <CommandPreview command={commands.backup} title="备份命令" onCopy={copyText} />
             </div>
           </section>
         )}
@@ -175,13 +175,13 @@ function App() {
               <div className="panel-header">
                 <div className="panel-title">
                   <Archive size={16} aria-hidden="true" />
-                  <span>Target configuration</span>
+                  <span>目标端配置</span>
                 </div>
               </div>
               <TargetForm config={config} onChange={setConfig} />
             </section>
-            <CommandPreview command={commands.envFile} title="config.env preview" onCopy={copyText} />
-            <CommandPreview command={commands.backup} title="Generated backup command" onCopy={copyText} />
+            <CommandPreview command={commands.envFile} title="config.env 预览" onCopy={copyText} />
+            <CommandPreview command={commands.backup} title="生成的备份命令" onCopy={copyText} />
           </section>
         )}
 
@@ -191,21 +191,21 @@ function App() {
               <div className="panel-header">
                 <div className="panel-title">
                   <CalendarCheck2 size={16} aria-hidden="true" />
-                  <span>Launchd validation</span>
+                  <span>launchd 校验</span>
                 </div>
               </div>
               <p className="muted-copy">
-                The Web MVP only previews `codexinstallautomation validate`. It uses `dev.codexbackup.toolkit.test.*` labels and does
-                not load or modify any backup job you have already installed.
+                网页版预览版只预览 `codexinstallautomation validate`。它使用 `dev.codexbackup.toolkit.test.*` 隔离标识，
+                不会加载或修改你已经安装的备份任务。
               </p>
               <div className="action-row">
-                <button className="button button--primary" onClick={() => runPreview(commands.validate, 'Validate command')} type="button">
+                <button className="button button--primary" onClick={() => runPreview(commands.validate, '计划校验命令')} type="button">
                   <Play size={15} aria-hidden="true" />
-                  Validate
+                  校验
                 </button>
               </div>
             </section>
-            <CommandPreview command={commands.validate} title="Validate command" onCopy={copyText} />
+            <CommandPreview command={commands.validate} title="计划校验命令" onCopy={copyText} />
           </section>
         )}
 
@@ -215,28 +215,28 @@ function App() {
               <div className="panel-header">
                 <div className="panel-title">
                   <RotateCcw size={16} aria-hidden="true" />
-                  <span>Restore preview</span>
+                  <span>恢复预览</span>
                 </div>
               </div>
               <div className="form-grid">
                 <label className="field field--wide">
-                  <span>Archive path</span>
+                  <span>归档路径</span>
                   <input value={archivePath} onChange={(event) => setArchivePath(event.target.value)} />
                 </label>
                 <label className="toggle-row field--wide">
                   <input checked={restoreEncrypted} onChange={(event) => setRestoreEncrypted(event.target.checked)} type="checkbox" />
-                  <span>Encrypted archive</span>
+                  <span>加密归档</span>
                 </label>
               </div>
-              <p className="muted-copy">Restore remains preview-only in this browser build. Native execution will require an explicit bridge later.</p>
+              <p className="muted-copy">当前浏览器版只预览恢复命令。后续接入原生执行层时才会开放真实恢复。</p>
               <div className="action-row">
-                <button className="button button--tertiary" onClick={() => runPreview(commands.restore, 'Restore command')} type="button">
+                <button className="button button--tertiary" onClick={() => runPreview(commands.restore, '恢复命令')} type="button">
                   <RotateCcw size={15} aria-hidden="true" />
-                  Preview Restore
+                  预览恢复
                 </button>
               </div>
             </section>
-            <CommandPreview command={commands.restore} title="Restore command" onCopy={copyText} />
+            <CommandPreview command={commands.restore} title="恢复命令" onCopy={copyText} />
           </section>
         )}
 
@@ -246,36 +246,36 @@ function App() {
               <div className="panel-header">
                 <div className="panel-title">
                   <Activity size={16} aria-hidden="true" />
-                  <span>Mock output</span>
+                  <span>运行输出</span>
                 </div>
               </div>
               <pre className="log-output">
-                <code>{runningCommand ? 'Running preview command...' : lastResult?.output ?? 'No command has been previewed yet.'}</code>
+                <code>{runningCommand ? '正在运行预览命令...' : lastResult?.output ?? '还没有运行任何预览命令。'}</code>
               </pre>
             </section>
             <section className="panel panel--compact">
               <div className="summary-list">
-                <SummaryRow label="stdout" value="~/Library/Logs/CodexBackup/backup.out.log" />
-                <SummaryRow label="stderr" value="~/Library/Logs/CodexBackup/backup.err.log" />
-                <SummaryRow label="installed toolkit" value="~/Library/Application Support/CodexBackupToolkit/" />
+                <SummaryRow label="标准输出" value="~/Library/Logs/CodexBackup/backup.out.log" />
+                <SummaryRow label="错误输出" value="~/Library/Logs/CodexBackup/backup.err.log" />
+                <SummaryRow label="安装路径" value="~/Library/Application Support/CodexBackupToolkit/" />
               </div>
             </section>
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
                   <Activity size={16} aria-hidden="true" />
-                  <span>Run history</span>
+                  <span>运行历史</span>
                 </div>
               </div>
               <div className="history-list">
                 {history.length === 0 ? (
-                  <p className="muted-copy">No preview runs yet.</p>
+                  <p className="muted-copy">还没有预览运行记录。</p>
                 ) : (
                   history.map((entry) => (
                     <div className="history-item" key={`${entry.label}-${entry.command}-${entry.result.output}`}>
                       <div>
                         <strong>{entry.label}</strong>
-                        <span>{entry.result.status}</span>
+                        <span>{resultStatusLabel(entry.result.status)}</span>
                       </div>
                       <code>{entry.command}</code>
                     </div>
@@ -292,28 +292,36 @@ function App() {
 
 function sectionTitle(section: SectionId): string {
   return {
-    overview: 'Overview',
-    targets: 'Backup Targets',
-    schedule: 'Schedule Validation',
-    restore: 'Restore Preview',
-    logs: 'Logs',
+    overview: '概览',
+    targets: '目标端',
+    schedule: '计划校验',
+    restore: '恢复预览',
+    logs: '日志',
   }[section];
 }
 
 function statusLabel(status: CommandResult['status'] | 'idle'): string {
   return {
-    idle: 'Ready',
-    success: 'Preview passed',
-    warning: 'Preview warning',
-    error: 'Preview failed',
+    idle: '就绪',
+    success: '预览通过',
+    warning: '预览警告',
+    error: '预览失败',
+  }[status];
+}
+
+function resultStatusLabel(status: CommandResult['status']): string {
+  return {
+    success: '成功',
+    warning: '警告',
+    error: '错误',
   }[status];
 }
 
 function runnerModeLabel(mode: RunnerMode): string {
   return {
-    mock: 'Mock preview mode',
-    localBridge: 'Local bridge allowlist mode',
-    httpHelper: 'HTTP helper on 127.0.0.1:37371',
+    mock: '模拟预览模式',
+    localBridge: '本地桥接允许列表模式',
+    httpHelper: 'HTTP 助手：127.0.0.1:37371',
   }[mode];
 }
 

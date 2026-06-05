@@ -8,11 +8,11 @@ type SidebarProps = {
 };
 
 const items = [
-  { id: 'overview', label: 'Overview', icon: Gauge },
-  { id: 'targets', label: 'Targets', icon: HardDrive },
-  { id: 'schedule', label: 'Schedule', icon: Clock3 },
-  { id: 'restore', label: 'Restore', icon: ArchiveRestore },
-  { id: 'logs', label: 'Logs', icon: FileText },
+  { id: 'overview', label: '概览', icon: Gauge },
+  { id: 'targets', label: '目标端', icon: HardDrive },
+  { id: 'schedule', label: '计划', icon: Clock3 },
+  { id: 'restore', label: '恢复', icon: ArchiveRestore },
+  { id: 'logs', label: '日志', icon: FileText },
 ] as const;
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
@@ -24,10 +24,10 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         </div>
         <div>
           <h1>CodexBackup</h1>
-          <p>Web GUI MVP</p>
+          <p>网页版预览版</p>
         </div>
       </div>
-      <nav className="nav-list" aria-label="GUI sections">
+      <nav className="nav-list" aria-label="GUI 分区">
         {items.map((item) => {
           const Icon = item.icon;
           return (
