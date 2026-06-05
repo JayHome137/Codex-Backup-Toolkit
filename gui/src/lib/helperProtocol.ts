@@ -1,6 +1,6 @@
 import { classifyLocalCommand } from './localBridge';
 
-export type HelperCommandKind = 'doctor' | 'validate';
+export type HelperCommandKind = 'doctor' | 'validate' | 'backup';
 export type HelperErrorCode = 'ERR_COMMAND_NOT_ALLOWED' | 'ERR_HELPER_UNAVAILABLE' | 'ERR_HELPER_FAILED';
 
 export type HelperRequest = {
@@ -80,7 +80,7 @@ export function createMockHelperTransport(): HelperTransport {
         requestId: request.requestId,
         status: 'ok',
         exitCode: 0,
-        stdout: `模拟助手已接受${request.kind === 'doctor' ? '环境检查' : '计划校验'}。\n\n命令：\n${request.command}`,
+        stdout: `模拟助手已接受${helperKindLabel(request.kind)}。\n\n命令：\n${request.command}`,
         stderr: '',
         audit: {
           commandKind: request.kind,
@@ -92,6 +92,14 @@ export function createMockHelperTransport(): HelperTransport {
       };
     },
   };
+}
+
+function helperKindLabel(kind: HelperCommandKind): string {
+  return {
+    doctor: '环境检查',
+    validate: '计划校验',
+    backup: '备份执行',
+  }[kind];
 }
 
 export function createHttpHelperTransport(

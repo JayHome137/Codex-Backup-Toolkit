@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - 2026-06-05
+
+- 增加 `codexbackup --config-guide`，可按目标端输出配置、安全和 age 加密引导，不创建文件、不访问网络、不修改自动化。
+- GUI 增加配置检查面板，覆盖目标端必填项、密钥处理、加密状态和远端保留策略提示。
+- GUI 增加 age 收件人和收件人文件配置字段，`config.env` 预览会输出对应环境变量但不输出密码。
+- HTTP helper 允许执行真实 `codexbackup` 备份命令，并在浏览器侧和服务端侧双重 allowlist 校验。
+- HTTP helper 继续阻止恢复、安装、卸载、status 和拼接额外 shell 命令。
+- 加密备份命令必须配置 `CODEX_BACKUP_AGE_RECIPIENT` 或 `CODEX_BACKUP_AGE_RECIPIENT_FILE` 才会被 helper 放行。
+- GUI 版本升至 `0.3.0`。
+
 ## 0.2.0 - 2026-06-05
 
 - 增加 `codexrestore --latest --target webdav`，可从 WebDAV 目标端选择并下载最新备份归档。
@@ -10,14 +20,14 @@
 
 ## 0.1.0 - 2026-06-04
 
-- Prepare Codex-Backup-toolkit as a GitHub-ready open-source project.
-- Add public `codexbackup`, `codexrestore`, `codexinstallautomation`, and `codexscheduledbackup` command scripts.
-- Support local, SMB/NAS, WebDAV, and rclone backup targets.
-- Add optional age encryption for backup archives.
-- Add retention settings for local and SMB targets.
-- Add `codexbackup --doctor`, `--dry-run`, and `--list-targets`.
-- Add isolated launchd plist validation for release checks.
-- Add GitHub Actions CI and release documentation.
-- Add Web GUI MVP with target forms, command previews, mock output, run history, and WebDAV/rclone configuration paths.
-- Add opt-in local HTTP helper draft with `/health` and `/run`, loopback-only binding, helper-side allowlist checks, and isolated test coverage.
-- Add GUI `HTTP Helper` mode with a non-executing health check and restricted doctor/isolated-validate execution path.
+- 将 Codex-Backup-toolkit 整理为可发布的 GitHub 开源项目。
+- 增加公开的 `codexbackup`、`codexrestore`、`codexinstallautomation` 和 `codexscheduledbackup` 命令脚本。
+- 支持 local、SMB/NAS、WebDAV 和 rclone 备份目标端。
+- 增加可选 age 归档加密。
+- 增加 local 和 SMB 目标端保留策略。
+- 增加 `codexbackup --doctor`、`--dry-run` 和 `--list-targets`。
+- 增加隔离的 launchd plist 校验能力，用于发布检查。
+- 增加 GitHub Actions CI 和发布文档。
+- 增加 Web GUI MVP，包含目标端表单、命令预览、mock 输出、运行历史和 WebDAV/rclone 配置路径。
+- 增加默认关闭的本地 HTTP helper 草案，包含 `/health`、`/run`、loopback-only 绑定、helper 侧 allowlist 校验和隔离测试。
+- 增加 GUI `HTTP Helper` 模式，可做不执行命令的健康检查，并支持受限的 doctor/隔离 validate 执行路径。

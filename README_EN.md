@@ -33,6 +33,12 @@ Check your environment before a real backup:
 ./scripts/codexbackup.sh --doctor --target local
 ```
 
+Print target-specific setup guidance:
+
+```zsh
+./scripts/codexbackup.sh --config-guide --target webdav
+```
+
 Preview what would be backed up:
 
 ```zsh
@@ -185,9 +191,9 @@ Default local URL:
 http://127.0.0.1:5173
 ```
 
-The current GUI is preview-only: it shows the `codexbackup`, `codexrestore`, and automation validation commands that a future native bridge could run, but it does not execute real backups, restores, or launchd installation from the browser. Automation validation previews use isolated `dev.codexbackup.toolkit.test.*` labels and do not modify any backup job the user has already installed.
+The current GUI focuses on configuration, safety checks, and controlled backup execution. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands through the helper allowlist. Restore, install, uninstall, and status commands are still blocked.
 
-The interface currently supports target forms, `config.env` previews, command copying, latest-restore and archive-restore command previews, mock run output, and run history so the workflow can be validated before a native execution layer is added.
+The interface currently supports target forms, configuration checks, age encryption guidance, `config.env` previews, command copying, latest-restore and archive-restore command previews, mock/helper output, and run history.
 
 The GUI includes two local bridge-related modes:
 
@@ -200,9 +206,9 @@ The local helper is not started by default and does not auto-run with the GUI. F
 node helper/server.mjs
 ```
 
-The current helper only allows two command families: `codexbackup --doctor`, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Backup, restore, install, uninstall, status, and appended shell commands are blocked. See [helper-protocol.md](docs/helper-protocol.md) for the draft protocol.
+The current helper allows `codexbackup --doctor`, real `codexbackup` backup commands, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Restore, install, uninstall, status, and appended shell commands are blocked. Encrypted backup commands must include `CODEX_BACKUP_AGE_RECIPIENT` or `CODEX_BACKUP_AGE_RECIPIENT_FILE`. See [helper-protocol.md](docs/helper-protocol.md) for the draft protocol.
 
-After selecting `HTTP Helper` in the GUI, use `Check Helper` to call `/health` first. This only confirms the helper is online; it does not run backup scripts or modify any scheduled job.
+After selecting `HTTP 助手` in the GUI, use `检查助手` to call `/health` first. This only confirms the helper is online; it does not run backup scripts or modify any scheduled job.
 
 ## Output Files
 

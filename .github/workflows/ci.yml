@@ -20,6 +20,9 @@ jobs:
       - name: Run open-source framework checks
         run: ./tests/test-open-source-framework.sh
 
+      - name: Run config guide checks
+        run: ./tests/test-config-guide.sh
+
       - name: Run local backup e2e
         run: ./tests/test-local-e2e.sh
 

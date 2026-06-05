@@ -288,6 +288,54 @@ button {
   overflow-wrap: anywhere;
 }
 
+.check-list {
+  display: grid;
+  gap: 8px;
+}
+
+.check-list--compact {
+  margin-top: 12px;
+}
+
+.check-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 9px;
+}
+
+.check-item--ok {
+  color: var(--green);
+}
+
+.check-item--warning {
+  color: var(--yellow);
+}
+
+.check-item--error {
+  color: var(--red);
+}
+
+.check-item strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.check-item span {
+  display: block;
+  margin-top: 2px;
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .action-row {
   display: flex;
   flex-wrap: wrap;

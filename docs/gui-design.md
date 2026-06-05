@@ -1,6 +1,6 @@
 # GUI Design Direction
 
-The future GUI should feel like a compact macOS utility, close to the CCSWITCH rhythm: fast to scan, dense enough for daily use, and focused on switching/configuring operational state without a marketing wrapper.
+The GUI should feel like a compact macOS utility, close to the CCSWITCH rhythm: fast to scan, dense enough for daily use, and focused on switching/configuring operational state without a marketing wrapper.
 
 The DESIGN.md reference that best matches this direction is Raycast: dark command-palette chrome, near-black surfaces, fine hairline borders, compact controls, and clear status rows.
 
@@ -16,17 +16,19 @@ The DESIGN.md reference that best matches this direction is Raycast: dark comman
 ## Layout
 
 - Left sidebar: Overview, Targets, Schedule, Restore, Logs, Settings.
-- Main panel: current target, last backup, next eligible backup, storage health, and run-now action.
-- Target setup: segmented control for local, SMB, WebDAV, rclone.
-- Restore screen: archive list, checksum state, safety-backup warning, restore button.
+- Main panel: current target, configuration checks, helper mode, and backup action.
+- Target setup: segmented control for local, SMB, WebDAV, rclone, plus age encryption guidance.
+- Restore screen: latest/archive command preview first; real restore requires a later confirmation design.
 - Logs screen: recent launchd output and stderr with copy/open actions.
 
 ## Interaction Rules
 
-- The GUI shells out to `codexbackup`, `codexrestore`, and `codexinstallautomation`.
+- The GUI shells out only through the local helper allowlist.
 - CLI remains the source of truth for backup behavior.
 - No hidden sync engine in the GUI.
-- Dangerous restore actions require confirmation and show the safety backup path.
+- Real backup execution is allowed through the helper after allowlist checks.
+- Restore, install, uninstall, and status actions stay blocked until a stronger confirmation and audit design exists.
+- Dangerous restore actions will require confirmation and show the safety backup path.
 - Passwords are stored through macOS Keychain, not in app preferences.
 
 ## Not In The First GUI

@@ -36,6 +36,25 @@ function validateRequest() {
   };
 }
 
+function backupRequest(command = [
+  'CODEX_BACKUP_TARGET=local \\',
+  'CODEX_BACKUP_LOCAL_DIR="/tmp/CodexBackups" \\',
+  'CODEX_BACKUP_RETENTION_COUNT=10 \\',
+  'CODEX_BACKUP_RETENTION_DAYS=30 \\',
+  'CODEX_BACKUP_REMOTE_RETENTION=0 \\',
+  'CODEX_BACKUP_ENCRYPT=0 \\',
+  './scripts/codexbackup.sh --target local',
+].join('\n')) {
+  return {
+    schema,
+    version: 1,
+    requestId: 'test-backup-1',
+    createdAt: '2026-06-04T00:00:00.000Z',
+    kind: 'backup',
+    command,
+  };
+}
+
 async function withHelper(executor, callback) {
   const helper = await createHelperServer({ executor, host: '127.0.0.1', port: 0 });
   try {
@@ -209,23 +228,89 @@ test('run accepts isolated validate requests and calls the injected executor', a
   });
 });
 
-test('run rejects backup requests before the executor is called', async () => {
+test('run accepts backup requests and calls the injected executor', async () => {
+  const calls = [];
+  await withHelper(async (request) => {
+    calls.push(request);
+    return { exitCode: 0, stdout: 'backup ok', stderr: '' };
+  }, async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(backupRequest()),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].kind, 'backup');
+    assert.equal(body.status, 'ok');
+    assert.equal(body.stdout, 'backup ok');
+    assert.equal(body.audit.commandKind, 'backup');
+  });
+});
+
+test('run rejects encrypted backup requests without an age recipient before executor is called', async () => {
   let callCount = 0;
   await withHelper(async () => {
     callCount += 1;
     return { exitCode: 0, stdout: 'unexpected', stderr: '' };
   }, async (helper) => {
+    const unsafe = backupRequest([
+      'CODEX_BACKUP_TARGET=local \\',
+      'CODEX_BACKUP_LOCAL_DIR="/tmp/CodexBackups" \\',
+      'CODEX_BACKUP_ENCRYPT=1 \\',
+      './scripts/codexbackup.sh --target local',
+    ].join('\n'));
+
     const { response, body } = await requestJson(helper.origin, '/run', {
       method: 'POST',
-      body: JSON.stringify(doctorRequest('./scripts/codexbackup.sh --target local')),
+      body: JSON.stringify(unsafe),
     });
 
     assert.equal(response.status, 403);
     assert.equal(callCount, 0);
-    assert.equal(body.status, 'error');
     assert.equal(body.errorCode, 'ERR_COMMAND_NOT_ALLOWED');
-    assert.equal(body.audit.decision, 'blocked');
-    assert.equal(body.exitCode, 126);
+  });
+});
+
+test('run rejects backup requests that append extra shell commands', async () => {
+  let callCount = 0;
+  await withHelper(async () => {
+    callCount += 1;
+    return { exitCode: 0, stdout: 'unexpected', stderr: '' };
+  }, async (helper) => {
+    const unsafe = backupRequest(`${backupRequest().command} && ./scripts/codexrestore.sh --latest`);
+
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(unsafe),
+    });
+
+    assert.equal(response.status, 403);
+    assert.equal(callCount, 0);
+    assert.equal(body.errorCode, 'ERR_COMMAND_NOT_ALLOWED');
+  });
+});
+
+test('run rejects backup requests that inject shell operators into environment lines', async () => {
+  let callCount = 0;
+  await withHelper(async () => {
+    callCount += 1;
+    return { exitCode: 0, stdout: 'unexpected', stderr: '' };
+  }, async (helper) => {
+    const unsafe = backupRequest([
+      'CODEX_BACKUP_TARGET=local \\',
+      'CODEX_BACKUP_LOCAL_DIR=/tmp/CodexBackups&&./scripts/codexrestore.sh --latest \\',
+      './scripts/codexbackup.sh --target local',
+    ].join('\n'));
+
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(unsafe),
+    });
+
+    assert.equal(response.status, 403);
+    assert.equal(callCount, 0);
+    assert.equal(body.errorCode, 'ERR_COMMAND_NOT_ALLOWED');
   });
 });
 

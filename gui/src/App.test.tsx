@@ -123,16 +123,71 @@ describe('App', () => {
     });
   });
 
-  it('blocks backup commands in local bridge mode', async () => {
+  it('runs backup commands in local bridge mode', async () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: /本地桥接/i }));
-    fireEvent.click(screen.getByRole('button', { name: /预览备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /执行备份/i }));
     fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/已被 Web 桥接允许列表阻止/)).toBeInTheDocument();
+      expect(screen.getByText(/模拟助手已接受备份执行/)).toBeInTheDocument();
+      expect(screen.getByText(/命令类型: 备份执行/)).toBeInTheDocument();
     });
+  });
+
+  it('shows config checks and encryption guidance for cloud targets', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
+
+    expect(screen.getByText('配置检查')).toBeInTheDocument();
+    expect(screen.getByText(/云端或第三方存储建议开启 age 加密/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('使用 age 加密归档'));
+
+    expect(screen.getByLabelText('age 收件人')).toBeInTheDocument();
+    expect(screen.getByText(/启用加密时必须配置 CODEX_BACKUP_AGE_RECIPIENT/)).toBeInTheDocument();
+  });
+
+  it('sends backup execution requests through the HTTP helper transport', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body));
+
+      return new Response(
+        JSON.stringify({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'Backup written to:\n  /tmp/CodexBackups/codex-backup-mac.tar.gz',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'node-local-helper',
+            startedAt: '2026-06-04T00:00:00.000Z',
+            finishedAt: '2026-06-04T00:00:00.000Z',
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /执行备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
+      expect(screen.getByText(/命令类型: 备份执行/)).toBeInTheDocument();
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).kind).toBe('backup');
   });
 
   it('uses the HTTP helper transport when HTTP helper mode is selected', async () => {
