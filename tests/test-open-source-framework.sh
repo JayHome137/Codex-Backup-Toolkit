@@ -47,6 +47,7 @@ assert_file CHANGELOG.md
 assert_file .github/workflows/ci.yml
 assert_file .github/ISSUE_TEMPLATE/bug_report.yml
 assert_file .github/ISSUE_TEMPLATE/feature_request.yml
+assert_file gui/package.json
 assert_file examples/local.env
 assert_file examples/smb.env
 assert_file examples/webdav.env
@@ -55,6 +56,7 @@ assert_file tests/test-local-e2e.sh
 assert_file tests/test-encryption-e2e.sh
 assert_file tests/test-install-validate.sh
 assert_file tests/test-retention.sh
+assert_file tests/test-remote-latest-restore.sh
 
 assert_executable scripts/codexbackup.sh
 assert_executable scripts/codexrestore.sh
@@ -69,8 +71,11 @@ assert_contains README.md 'CODEX_BACKUP_ENCRYPT'
 assert_contains README.md 'CODEX_BACKUP_RETENTION_COUNT'
 assert_contains README.md 'WebDAV'
 assert_contains README.md 'rclone'
+assert_contains README.md 'codexrestore.sh --latest'
 assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
+assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
+assert_contains gui/package.json '"version": "0\.2\.0"'
 assert_contains docs/gui-design.md 'Raycast'
 assert_contains docs/gui-design.md 'CCSWITCH'
 assert_contains config.example.env 'CODEX_BACKUP_TARGET=(local|smb|webdav|rclone)'
@@ -83,12 +88,17 @@ assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_RETENTION_DAYS'
 assert_contains scripts/codexbackup.sh 'age'
 assert_contains scripts/codexbackup.sh 'webdav'
 assert_contains scripts/codexbackup.sh 'rclone'
+assert_contains scripts/codexrestore.sh 'download_webdav_latest'
+assert_contains scripts/codexrestore.sh 'download_rclone_latest'
+assert_contains docs/restore-guide.md 'CODEX_BACKUP_TARGET=webdav'
+assert_contains docs/restore-guide.md 'CODEX_BACKUP_TARGET=rclone'
 assert_contains scripts/codexinstallautomation.sh 'validate'
 assert_contains .github/workflows/ci.yml 'test-open-source-framework'
 assert_contains .github/workflows/ci.yml 'test-local-e2e'
 assert_contains .github/workflows/ci.yml 'test-encryption-e2e'
 assert_contains .github/workflows/ci.yml 'test-install-validate'
 assert_contains .github/workflows/ci.yml 'test-retention'
+assert_contains .github/workflows/ci.yml 'test-remote-latest-restore'
 
 for file in README.md config.example.env docs/*.md examples/*.env scripts/*.sh; do
   assert_not_contains "$file" '192\.168\.1\.6'

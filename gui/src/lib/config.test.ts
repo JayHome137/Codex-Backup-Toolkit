@@ -4,6 +4,7 @@ import {
   buildDoctorCommand,
   buildEnvFile,
   buildRestoreCommand,
+  buildRestoreLatestCommand,
   buildValidateCommand,
   defaultConfig,
   targetLabels,
@@ -43,6 +44,14 @@ describe('command builders', () => {
 
     expect(command).toContain('./scripts/codexrestore.sh --archive /tmp/codex-backup.tar.gz.age');
     expect(command).toContain('--age-identity /path/to/age-identity.txt');
+  });
+
+  it('builds latest restore command with target environment', () => {
+    const command = buildRestoreLatestCommand({ ...defaultConfig, target: 'rclone' });
+
+    expect(command).toContain('CODEX_BACKUP_TARGET=rclone');
+    expect(command).toContain('CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup"');
+    expect(command).toContain('./scripts/codexrestore.sh --latest');
   });
 
   it('builds a config.env preview without credential secrets', () => {

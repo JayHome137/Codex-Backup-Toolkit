@@ -56,11 +56,16 @@ CODEX_BACKUP_WEBDAV_USER=backup-user
 ./scripts/codexbackup.sh
 ```
 
-`codexrestore --latest` does not fetch remote WebDAV archives yet. Download the archive and matching `.sha256` file first, then restore with:
+Restore latest:
 
 ```zsh
-./scripts/codexrestore.sh --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
+CODEX_BACKUP_TARGET=webdav \
+CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup" \
+CODEX_BACKUP_WEBDAV_USER=backup-user \
+./scripts/codexrestore.sh --latest
 ```
+
+The restore command lists the configured `CODEX_BACKUP_REMOTE_DIR`, downloads the newest `codex-backup-*.tar.gz` or `codex-backup-*.tar.gz.age` file plus the matching `.sha256` when available, and then restores from the temporary local copy.
 
 ## rclone
 
@@ -80,7 +85,15 @@ CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup"
 ./scripts/codexbackup.sh
 ```
 
-`codexrestore --latest` does not fetch rclone archives yet. Pull the archive locally with `rclone copy`, then use `--archive`.
+Restore latest:
+
+```zsh
+CODEX_BACKUP_TARGET=rclone \
+CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup" \
+./scripts/codexrestore.sh --latest
+```
+
+The restore command uses `rclone lsf` to choose the newest archive in `CODEX_BACKUP_REMOTE_DIR`, then `rclone copyto` to download the archive and matching `.sha256` when available.
 
 ## Encryption
 

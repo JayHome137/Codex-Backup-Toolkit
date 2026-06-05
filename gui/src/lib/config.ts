@@ -97,3 +97,7 @@ export function buildRestoreCommand(archivePath: string, encrypted: boolean): st
   const identity = encrypted ? ' --age-identity /path/to/age-identity.txt' : '';
   return `./scripts/codexrestore.sh --archive ${archivePath}${identity}`;
 }
+
+export function buildRestoreLatestCommand(config: BackupConfig): string {
+  return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexrestore.sh --latest`;
+}

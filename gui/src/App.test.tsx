@@ -58,6 +58,29 @@ describe('App', () => {
     expect(screen.getAllByText(/# CODEX_BACKUP_WEBDAV_PASSWORD=/).length).toBeGreaterThan(0);
   });
 
+  it('previews latest restore commands for the selected target', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    fireEvent.click(screen.getByRole('button', { name: /rclone/i }));
+    fireEvent.click(screen.getByRole('button', { name: /恢复/i }));
+
+    expect(screen.getByRole('group', { name: /恢复来源/i })).toBeInTheDocument();
+    expect(screen.getByText('最新备份目标端')).toBeInTheDocument();
+    expect(screen.getAllByText(/CODEX_BACKUP_TARGET=rclone/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --latest/).length).toBeGreaterThan(0);
+  });
+
+  it('can switch restore preview back to a specific archive', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /恢复/i }));
+    fireEvent.click(screen.getByRole('button', { name: /指定归档/i }));
+
+    expect(screen.getByLabelText('归档路径')).toBeInTheDocument();
+    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --archive/).length).toBeGreaterThan(0);
+  });
+
   it('keeps a history of preview runs in Logs', async () => {
     render(<App />);
 

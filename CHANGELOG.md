@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-06-05
+
+- 增加 `codexrestore --latest --target webdav`，可从 WebDAV 目标端选择并下载最新备份归档。
+- 增加 `codexrestore --latest --target rclone`，可通过 rclone remote 选择并下载最新备份归档。
+- 远端 latest 恢复会优先下载匹配的 `.sha256` 校验文件；缺少校验文件时沿用现有警告行为。
+- 增加不触网的 WebDAV/rclone 远端 latest 恢复测试，并接入 CI。
+
 ## 0.1.0 - 2026-06-04
 
 - Prepare Codex-Backup-toolkit as a GitHub-ready open-source project.
