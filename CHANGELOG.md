@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 - 2026-06-06
+
+- GUI 增加 helper 配置加载和保存，可以通过 `/config` 读取/写入持久化配置。
+- GUI 增加 Keychain 密钥面板，支持为 SMB/WebDAV 目标端调用 `/secret` 保存或删除密钥。
+- GUI 日志页增加 helper 真实备份历史读取，可通过 `/history` 展示目标端、状态、退出码、时间和归档路径。
+- 新增 `gui/src/lib/helperApi.ts`，集中封装 `/config`、`/secret`、`/history` 调用和协议校验。
+- 增加 GUI helper API 和界面交互测试。
+- GUI 版本升至 `0.5.0`。
+
 ## 0.4.0 - 2026-06-06
 
 - 增加结构化 helper action：GUI 可以发送 `backup` 和 `restorePlan` 动作，由 helper 服务端生成受控命令。

@@ -520,6 +520,11 @@ input[type="checkbox"] {
   font-size: 12px;
 }
 
+.history-meta {
+  color: var(--ash);
+  font-size: 11px;
+}
+
 .history-item code {
   color: var(--body);
   font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;

@@ -197,7 +197,7 @@ Default local URL:
 http://127.0.0.1:5173
 ```
 
-The current GUI focuses on configuration, safety checks, controlled backup execution, restore planning, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands and `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
+The current GUI focuses on configuration, persisted config, Keychain secret actions, safety checks, controlled backup execution, restore planning, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands and `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
 
 The interface currently supports target forms, configuration checks, age encryption guidance, `config.env` previews, command copying, latest/archive restore plans, mock/helper output, and run history.
 
@@ -216,9 +216,9 @@ The current helper allows `codexbackup --doctor`, real `codexbackup` backup comm
 
 The helper also exposes opt-in product-state endpoints for the GUI:
 
-- `GET /config` and `PUT /config` persist sanitized config at `~/Library/Application Support/CodexBackupToolkit/config.json`.
-- `POST /secret` and `DELETE /secret` write/delete password-like values through macOS Keychain.
-- `GET /history` returns recent backup history recorded by successful helper backup runs.
+- `GET /config` and `PUT /config` persist sanitized config at `~/Library/Application Support/CodexBackupToolkit/config.json`; the GUI can now load and save this config directly.
+- `POST /secret` and `DELETE /secret` write/delete password-like values through macOS Keychain; the GUI can now manage SMB/WebDAV secrets through these endpoints.
+- `GET /history` returns recent backup history recorded by successful helper backup runs; the GUI can now display this history on the logs page.
 
 After selecting `HTTP 助手` in the GUI, use `检查助手` to call `/health` first. This only confirms the helper is online; it does not run backup scripts or modify any scheduled job.
 

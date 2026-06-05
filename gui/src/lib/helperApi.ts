@@ -1,0 +1,122 @@
+import type { BackupConfig } from './config';
+
+export type SecretInput = {
+  account: string;
+  secret: string;
+  service: string;
+};
+
+export type DeleteSecretInput = Omit<SecretInput, 'secret'>;
+
+export type BackupHistoryEntry = {
+  action: 'backup';
+  archivePaths: string[];
+  exitCode: number;
+  finishedAt: string;
+  startedAt: string;
+  status: 'success' | 'error';
+  target: string;
+};
+
+type HelperOkResponse = {
+  schema: 'codex-backup-helper.v1';
+  version: 1;
+  status: 'ok';
+};
+
+const schema = 'codex-backup-helper.v1' as const;
+
+export function createHelperApi(baseUrl = 'http://127.0.0.1:37371', fetcher: typeof fetch = fetch) {
+  const request = async (path: string, init: RequestInit): Promise<unknown> => {
+    let response: Response;
+    try {
+      response = await fetcher(`${baseUrl.replace(/\/$/, '')}${path}`, init);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`ERR_HELPER_UNAVAILABLE: ${message}`);
+    }
+
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`ERR_HELPER_UNAVAILABLE: 助手返回了无效 JSON：${message}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(`ERR_HELPER_FAILED: ${messageFromErrorBody(body)}`);
+    }
+
+    return body;
+  };
+
+  return {
+    async loadConfig(): Promise<BackupConfig> {
+      const body = await request('/config', { method: 'GET' });
+      if (!isConfigResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 配置响应不符合协议。');
+      return body.config;
+    },
+
+    async saveConfig(config: BackupConfig): Promise<BackupConfig> {
+      const body = await request('/config', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      if (!isConfigResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 配置响应不符合协议。');
+      return body.config;
+    },
+
+    async saveSecret(input: SecretInput): Promise<{ status: 'ok' }> {
+      const body = await request('/secret', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!isOkResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: secret 响应不符合协议。');
+      return { status: 'ok' };
+    },
+
+    async deleteSecret(input: DeleteSecretInput): Promise<{ status: 'ok' }> {
+      const body = await request('/secret', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+      if (!isOkResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: secret 响应不符合协议。');
+      return { status: 'ok' };
+    },
+
+    async loadHistory(): Promise<BackupHistoryEntry[]> {
+      const body = await request('/history', { method: 'GET' });
+      if (!isHistoryResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 历史响应不符合协议。');
+      return body.history.entries;
+    },
+  };
+}
+
+function isOkResponse(value: unknown): value is HelperOkResponse {
+  const body = value as Partial<HelperOkResponse>;
+  return !!body && body.schema === schema && body.version === 1 && body.status === 'ok';
+}
+
+function isConfigResponse(value: unknown): value is HelperOkResponse & { config: BackupConfig } {
+  const body = value as Partial<HelperOkResponse> & { config?: unknown };
+  return isOkResponse(value) && !!body.config && typeof body.config === 'object' && typeof (body.config as BackupConfig).target === 'string';
+}
+
+function isHistoryResponse(value: unknown): value is HelperOkResponse & { history: { entries: BackupHistoryEntry[]; version: 1 } } {
+  const body = value as Partial<HelperOkResponse> & { history?: { entries?: unknown } };
+  return isOkResponse(value) && !!body.history && Array.isArray(body.history.entries);
+}
+
+function messageFromErrorBody(value: unknown): string {
+  if (value && typeof value === 'object') {
+    const body = value as { message?: unknown; stderr?: unknown; errorCode?: unknown };
+    if (typeof body.message === 'string') return body.message;
+    if (typeof body.stderr === 'string') return body.stderr;
+    if (typeof body.errorCode === 'string') return body.errorCode;
+  }
+  return 'helper request failed';
+}

@@ -26,6 +26,9 @@ Status: current scope.
 - Helper-side Keychain save/delete interface for secrets. Status: added for 0.4.0.
 - Backup history store exposed through `GET /history`. Status: added for 0.4.0.
 - Restore dry-run through `codexrestore --plan`. Status: added for 0.4.0.
+- GUI load/save for persisted helper config. Status: added for 0.5.0.
+- GUI Keychain secret save/delete for SMB and WebDAV. Status: added for 0.5.0.
+- GUI display of helper backup history. Status: added for 0.5.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
@@ -45,6 +48,6 @@ The default should remain conservative: each profile must document exactly what 
 
 ## Phase C: GUI
 
-The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports configuration checks, encryption guidance, command previews, helper health checks, controlled backup execution, and restore-plan generation. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
+The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, controlled backup execution, restore-plan generation, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
 
 See `docs/gui-design.md` for the visual direction.

@@ -306,4 +306,115 @@ describe('App', () => {
       expect(screen.getByText(/node-local-helper/)).toBeInTheDocument();
     });
   });
+
+  it('loads and saves persisted helper config from the target page', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/config') && init?.method === 'GET') {
+        return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok', config: { ...baseConfigResponse(), target: 'webdav' } });
+      }
+      if (String(input).endsWith('/config') && init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body));
+        return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok', config: body });
+      }
+      throw new Error(`unexpected request ${String(input)}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    fireEvent.click(screen.getByRole('button', { name: /加载配置/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('WebDAV 地址')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    expect(screen.getByText(/已从 helper 加载持久化配置/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /保存配置/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/配置已保存到 helper/)).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'PUT' }));
+  });
+
+  it('saves Keychain secrets for WebDAV through the helper', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toBe('http://127.0.0.1:37371/secret');
+      expect(init?.method).toBe('POST');
+      expect(JSON.parse(String(init?.body))).toMatchObject({ service: 'codexbackup-webdav', secret: 'secret-value' });
+      return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok' });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
+    fireEvent.change(screen.getByLabelText('Secret'), { target: { value: 'secret-value' } });
+    fireEvent.click(screen.getByRole('button', { name: /保存密钥/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/密钥已写入 macOS Keychain/)).toBeInTheDocument();
+    });
+  });
+
+  it('loads helper backup history in Logs', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({
+      schema: 'codex-backup-helper.v1',
+      version: 1,
+      status: 'ok',
+      history: {
+        version: 1,
+        entries: [{
+          action: 'backup',
+          target: 'local',
+          status: 'success',
+          startedAt: '2026-06-06T00:00:00.000Z',
+          finishedAt: '2026-06-06T00:00:01.000Z',
+          exitCode: 0,
+          archivePaths: ['/tmp/CodexBackups/codex-backup-mac.tar.gz'],
+        }],
+      },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/已加载 1 条 helper 备份历史/)).toBeInTheDocument();
+      expect(screen.getByText(/codex-backup-mac\.tar\.gz/)).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
+  });
 });
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+}
+
+function baseConfigResponse() {
+  return {
+    localDir: '$HOME/CodexBackups',
+    smbHost: 'nas.example.local',
+    smbShare: 'CodexBackup',
+    smbUser: 'backup-user',
+    webdavUrl: 'https://webdav.example.com/remote.php/dav/files/user/CodexBackup',
+    webdavUser: 'backup-user',
+    rcloneRemote: 'gdrive:CodexBackup',
+    encrypt: false,
+    ageRecipient: '',
+    ageRecipientFile: '',
+    retentionCount: 10,
+    retentionDays: 30,
+    remoteRetention: false,
+  };
+}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, Play, RotateCcw, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
@@ -7,6 +7,7 @@ import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction
 import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
+import { createHelperApi, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
 import {
@@ -35,6 +36,12 @@ type HistoryEntry = {
   result: CommandResult;
 };
 
+type SecretDraft = {
+  account: string;
+  secret: string;
+  service: string;
+};
+
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
   const [config, setConfig] = useState<BackupConfig>(defaultConfig);
@@ -44,8 +51,11 @@ function App() {
   const [lastResult, setLastResult] = useState<CommandResult | null>(null);
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [helperHistory, setHelperHistory] = useState<BackupHistoryEntry[]>([]);
   const [runnerMode, setRunnerMode] = useState<RunnerMode>('mock');
+  const [secretDraft, setSecretDraft] = useState<SecretDraft>(defaultSecretDraft(defaultConfig));
   const httpHelperRunner = useMemo(() => createLocalBridgeRunner(createHttpHelperTransport()), []);
+  const helperApi = useMemo(() => createHelperApi(), []);
 
   const commands = useMemo(
     () => ({
@@ -66,6 +76,11 @@ function App() {
   );
   const configChecks = useMemo(() => getConfigChecks(config), [config]);
   const blockingChecks = configChecks.filter((check) => check.status === 'error');
+
+  const setConfigAndSecretDefaults = (nextConfig: BackupConfig) => {
+    setConfig(nextConfig);
+    setSecretDraft((draft) => ({ ...defaultSecretDraft(nextConfig), secret: draft.secret }));
+  };
 
   const runPreview = async (command: string, label: string, action?: HelperAction) => {
     setRunningCommand(command);
@@ -97,6 +112,70 @@ function App() {
         status: 'error',
         output: `ERR_HELPER_UNAVAILABLE\n\n${message}`,
       });
+    } finally {
+      setRunningCommand(null);
+    }
+  };
+
+  const loadPersistedConfig = async () => {
+    setRunningCommand('GET http://127.0.0.1:37371/config');
+    try {
+      const nextConfig = await helperApi.loadConfig();
+      setConfigAndSecretDefaults({ ...defaultConfig, ...nextConfig });
+      setLastResult({ status: 'success', output: '已从 helper 加载持久化配置。' });
+    } catch (error) {
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
+    } finally {
+      setRunningCommand(null);
+    }
+  };
+
+  const savePersistedConfig = async () => {
+    setRunningCommand('PUT http://127.0.0.1:37371/config');
+    try {
+      const savedConfig = await helperApi.saveConfig(config);
+      setConfigAndSecretDefaults({ ...defaultConfig, ...savedConfig });
+      setLastResult({ status: 'success', output: '配置已保存到 helper。敏感字段不会写入 config.json。' });
+    } catch (error) {
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
+    } finally {
+      setRunningCommand(null);
+    }
+  };
+
+  const saveSecret = async () => {
+    setRunningCommand('POST http://127.0.0.1:37371/secret');
+    try {
+      await helperApi.saveSecret(secretDraft);
+      setSecretDraft((draft) => ({ ...draft, secret: '' }));
+      setLastResult({ status: 'success', output: `密钥已写入 macOS Keychain。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
+    } catch (error) {
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
+    } finally {
+      setRunningCommand(null);
+    }
+  };
+
+  const deleteSecret = async () => {
+    setRunningCommand('DELETE http://127.0.0.1:37371/secret');
+    try {
+      await helperApi.deleteSecret({ service: secretDraft.service, account: secretDraft.account });
+      setLastResult({ status: 'success', output: `Keychain 密钥已删除。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
+    } catch (error) {
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
+    } finally {
+      setRunningCommand(null);
+    }
+  };
+
+  const loadHelperHistory = async () => {
+    setRunningCommand('GET http://127.0.0.1:37371/history');
+    try {
+      const entries = await helperApi.loadHistory();
+      setHelperHistory(entries);
+      setLastResult({ status: 'success', output: `已加载 ${entries.length} 条 helper 备份历史。` });
+    } catch (error) {
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
     } finally {
       setRunningCommand(null);
     }
@@ -195,8 +274,57 @@ function App() {
                   <span>目标端配置</span>
                 </div>
               </div>
-              <TargetForm config={config} onChange={setConfig} />
+              <TargetForm config={config} onChange={setConfigAndSecretDefaults} />
+              <div className="action-row">
+                <button className="button button--tertiary" onClick={loadPersistedConfig} type="button">
+                  <Activity size={15} aria-hidden="true" />
+                  加载配置
+                </button>
+                <button className="button button--primary" onClick={savePersistedConfig} type="button">
+                  <Save size={15} aria-hidden="true" />
+                  保存配置
+                </button>
+              </div>
             </section>
+            {(config.target === 'smb' || config.target === 'webdav') && (
+              <section className="panel">
+                <div className="panel-header">
+                  <div className="panel-title">
+                    <KeyRound size={16} aria-hidden="true" />
+                    <span>Keychain 密钥</span>
+                  </div>
+                </div>
+                <div className="form-grid">
+                  <label className="field">
+                    <span>Service</span>
+                    <input value={secretDraft.service} onChange={(event) => setSecretDraft({ ...secretDraft, service: event.target.value })} />
+                  </label>
+                  <label className="field">
+                    <span>Account</span>
+                    <input value={secretDraft.account} onChange={(event) => setSecretDraft({ ...secretDraft, account: event.target.value })} />
+                  </label>
+                  <label className="field field--wide">
+                    <span>Secret</span>
+                    <input
+                      autoComplete="off"
+                      type="password"
+                      value={secretDraft.secret}
+                      onChange={(event) => setSecretDraft({ ...secretDraft, secret: event.target.value })}
+                    />
+                  </label>
+                </div>
+                <div className="action-row">
+                  <button className="button button--primary" onClick={saveSecret} type="button">
+                    <KeyRound size={15} aria-hidden="true" />
+                    保存密钥
+                  </button>
+                  <button className="button button--tertiary" onClick={deleteSecret} type="button">
+                    <Trash2 size={15} aria-hidden="true" />
+                    删除密钥
+                  </button>
+                </div>
+              </section>
+            )}
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -317,6 +445,10 @@ function App() {
                   <Activity size={16} aria-hidden="true" />
                   <span>运行历史</span>
                 </div>
+                <button className="button button--tertiary" onClick={loadHelperHistory} type="button">
+                  <Activity size={15} aria-hidden="true" />
+                  刷新历史
+                </button>
               </div>
               <div className="history-list">
                 {history.length === 0 ? (
@@ -334,9 +466,57 @@ function App() {
                 )}
               </div>
             </section>
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <Archive size={16} aria-hidden="true" />
+                  <span>helper 备份历史</span>
+                </div>
+              </div>
+              <div className="history-list">
+                {helperHistory.length === 0 ? (
+                  <p className="muted-copy">还没有从 helper 加载真实备份历史。</p>
+                ) : (
+                  helperHistory.map((entry) => <HelperHistoryItem entry={entry} key={`${entry.startedAt}-${entry.target}-${entry.exitCode}`} />)
+                )}
+              </div>
+            </section>
           </section>
         )}
       </main>
+    </div>
+  );
+}
+
+function defaultSecretDraft(config: BackupConfig): SecretDraft {
+  if (config.target === 'webdav') {
+    return {
+      service: 'codexbackup-webdav',
+      account: `${config.webdavUser}@${config.webdavUrl}`,
+      secret: '',
+    };
+  }
+
+  return {
+    service: 'codexbackup-smb',
+    account: `${config.smbUser}@${config.smbHost}/${config.smbShare}`,
+    secret: '',
+  };
+}
+
+function helperErrorOutput(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function HelperHistoryItem({ entry }: { entry: BackupHistoryEntry }) {
+  return (
+    <div className="history-item">
+      <div>
+        <strong>{targetLabels[entry.target as keyof typeof targetLabels] ?? entry.target}</strong>
+        <span>{entry.status === 'success' ? '成功' : '失败'} / 退出码 {entry.exitCode}</span>
+      </div>
+      <code>{entry.archivePaths.length > 0 ? entry.archivePaths.join('\n') : '没有检测到归档路径'}</code>
+      <span className="history-meta">{entry.startedAt} - {entry.finishedAt}</span>
     </div>
   );
 }

@@ -48,6 +48,7 @@ assert_file .github/workflows/ci.yml
 assert_file .github/ISSUE_TEMPLATE/bug_report.yml
 assert_file .github/ISSUE_TEMPLATE/feature_request.yml
 assert_file gui/package.json
+assert_file gui/src/lib/helperApi.ts
 assert_file examples/local.env
 assert_file examples/smb.env
 assert_file examples/webdav.env
@@ -80,7 +81,7 @@ assert_contains README.md 'codexrestore.sh --plan'
 assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.4\.0"'
+assert_contains gui/package.json '"version": "0\.5\.0"'
 assert_contains docs/gui-design.md 'Raycast'
 assert_contains docs/gui-design.md 'CCSWITCH'
 assert_contains config.example.env 'CODEX_BACKUP_TARGET=(local|smb|webdav|rclone)'
