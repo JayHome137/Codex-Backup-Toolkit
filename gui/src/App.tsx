@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, Play, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, Play, RotateCcw, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
@@ -15,8 +15,10 @@ import {
   buildRestoreCommand,
   buildValidateCommand,
   defaultConfig,
+  getConfigChecks,
   targetLabels,
   type BackupConfig,
+  type ConfigCheck,
 } from './lib/config';
 
 const runner = createMockCommandRunner();
@@ -53,6 +55,8 @@ function App() {
     }),
     [archivePath, config, restoreEncrypted, restoreSource],
   );
+  const configChecks = useMemo(() => getConfigChecks(config), [config]);
+  const blockingChecks = configChecks.filter((check) => check.status === 'error');
 
   const runPreview = async (command: string, label: string) => {
     setRunningCommand(command);
@@ -145,11 +149,12 @@ function App() {
                   </div>
                 </div>
                 <div className="summary-list">
-                  <SummaryRow label="环境检查" value="模拟适配器会校验命令形状" />
+                  <SummaryRow label="配置检查" value={blockingChecks.length === 0 ? '当前配置没有阻断项' : `${blockingChecks.length} 个阻断项`} />
                   <SummaryRow label="最近备份" value="此界面尚未启动任何真实备份" />
                   <SummaryRow label="运行器" value={runnerModeLabel(runnerMode)} />
                   <SummaryRow label="自动化" value="计划校验命令使用隔离测试标识" />
                 </div>
+                <ConfigCheckList checks={configChecks} compact />
                 <div className="action-row">
                   <button className="button button--primary" onClick={() => runPreview(commands.doctor, '环境检查命令')} type="button">
                     <Play size={15} aria-hidden="true" />
@@ -163,7 +168,7 @@ function App() {
                   )}
                   <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令')} type="button">
                     <Archive size={15} aria-hidden="true" />
-                    预览备份
+                    {runnerMode === 'mock' ? '预览备份' : '执行备份'}
                   </button>
                 </div>
               </section>
@@ -182,6 +187,15 @@ function App() {
                 </div>
               </div>
               <TargetForm config={config} onChange={setConfig} />
+            </section>
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  <span>配置检查</span>
+                </div>
+              </div>
+              <ConfigCheckList checks={configChecks} />
             </section>
             <CommandPreview command={commands.envFile} title="config.env 预览" onCopy={copyText} />
             <CommandPreview command={commands.backup} title="生成的备份命令" onCopy={copyText} />
@@ -379,6 +393,25 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     <div className="summary-row">
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function ConfigCheckList({ checks, compact = false }: { checks: ConfigCheck[]; compact?: boolean }) {
+  return (
+    <div className={compact ? 'check-list check-list--compact' : 'check-list'}>
+      {checks.map((check) => {
+        const Icon = check.status === 'ok' ? CheckCircle2 : TriangleAlert;
+        return (
+          <div className={`check-item check-item--${check.status}`} key={check.id}>
+            <Icon size={15} aria-hidden="true" />
+            <div>
+              <strong>{check.label}</strong>
+              <span>{check.detail}</span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

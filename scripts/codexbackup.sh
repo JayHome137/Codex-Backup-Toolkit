@@ -41,6 +41,7 @@ ARCHIVE="${WORK_DIR}/${ARCHIVE_FILE_NAME}"
 DOCTOR=0
 DRY_RUN=0
 LIST_TARGETS=0
+CONFIG_GUIDE=0
 
 cleanup() {
   rm -rf "$WORK_DIR"
@@ -51,6 +52,7 @@ usage() {
   cat <<'EOF'
 Usage: codexbackup [--target local|smb|webdav|rclone] [--local-output DIR]
        codexbackup --doctor
+       codexbackup --config-guide [--target local|smb|webdav|rclone]
        codexbackup --list-targets
 
 Creates a Codex Desktop backup archive and publishes it to the configured
@@ -60,6 +62,7 @@ Options:
   --target TARGET      Override CODEX_BACKUP_TARGET for this run.
   --local-output DIR   Write backup files to a local directory. Alias for --target local.
   --doctor             Check dependencies and target configuration without backing up.
+  --config-guide       Print target setup, safety, and encryption guidance.
   --dry-run            Show what would be backed up and where, without creating files.
   --list-targets       Print supported storage targets.
   -h, --help           Show this help.
@@ -87,6 +90,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --doctor)
       DOCTOR=1
+      shift
+      ;;
+    --config-guide)
+      CONFIG_GUIDE=1
       shift
       ;;
     --dry-run)
@@ -121,6 +128,74 @@ smb
 webdav
 rclone
 EOF
+  exit 0
+fi
+
+print_config_guide() {
+  cat <<EOF
+CodexBackup config guide
+Target: ${TARGET}
+
+Base settings:
+  CODEX_BACKUP_TARGET=${TARGET}
+  CODEX_BACKUP_REMOTE_DIR=${REMOTE_DIR}
+  CODEX_BACKUP_RETENTION_COUNT=${RETENTION_COUNT}
+  CODEX_BACKUP_RETENTION_DAYS=${RETENTION_DAYS}
+  CODEX_BACKUP_REMOTE_RETENTION=${REMOTE_RETENTION}
+
+Target settings:
+EOF
+
+  case "$TARGET" in
+    local)
+      cat <<EOF
+  CODEX_BACKUP_LOCAL_DIR="${LOCAL_DIR}"
+EOF
+      ;;
+    smb)
+      cat <<EOF
+  CODEX_BACKUP_SMB_HOST=${SMB_HOST:-nas.example.local}
+  CODEX_BACKUP_SMB_USER=${SMB_USER:-backup-user}
+  CODEX_BACKUP_SMB_SHARE=${SMB_SHARE}
+  CODEX_BACKUP_PASSWORD should be supplied only for one run, or stored in Keychain.
+EOF
+      ;;
+    webdav)
+      cat <<EOF
+  CODEX_BACKUP_WEBDAV_URL="${WEBDAV_URL:-https://webdav.example.com/remote.php/dav/files/user/CodexBackup}"
+  CODEX_BACKUP_WEBDAV_USER=${WEBDAV_USER:-backup-user}
+  CODEX_BACKUP_WEBDAV_PASSWORD should be supplied only for one run, or stored in Keychain.
+EOF
+      ;;
+    rclone)
+      cat <<EOF
+  CODEX_BACKUP_RCLONE_REMOTE="${RCLONE_REMOTE:-gdrive:CodexBackup}"
+  Run rclone config before using this target.
+EOF
+      ;;
+    *)
+      echo "  Unknown target: ${TARGET}"
+      ;;
+  esac
+
+  cat <<'EOF'
+
+Encryption guidance:
+  CODEX_BACKUP_ENCRYPT=1
+  CODEX_BACKUP_ENCRYPTION=age
+  CODEX_BACKUP_AGE_RECIPIENT=age1...
+  # or:
+  CODEX_BACKUP_AGE_RECIPIENT_FILE=/path/to/recipients.txt
+
+Safety notes:
+  - Passwords are not printed into config.env by the GUI preview.
+  - WebDAV and rclone retention is off unless CODEX_BACKUP_REMOTE_RETENTION=1.
+  - Run --doctor before the first real backup.
+EOF
+}
+
+if [[ "$CONFIG_GUIDE" -eq 1 ]]; then
+  print_config_guide
   exit 0
 fi
 

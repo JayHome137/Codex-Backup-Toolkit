@@ -16,8 +16,8 @@ export function classifyHelperCommand(request) {
     return { allowed: false, reason: 'requestId is required.' };
   }
 
-  if (request.kind !== 'doctor' && request.kind !== 'validate') {
-    return { allowed: false, reason: 'Only doctor and isolated validate requests are allowed.' };
+  if (request.kind !== 'doctor' && request.kind !== 'validate' && request.kind !== 'backup') {
+    return { allowed: false, reason: 'Only doctor, backup, and isolated validate requests are allowed.' };
   }
 
   if (typeof request.command !== 'string' || request.command.trim() === '') {
@@ -28,16 +28,40 @@ export function classifyHelperCommand(request) {
     return classifyDoctorCommand(request.command);
   }
 
+  if (request.kind === 'backup') {
+    return classifyBackupCommand(request.command);
+  }
+
   return classifyValidateCommand(request.command);
 }
 
 function classifyDoctorCommand(command) {
-  const match = command.match(/^\.\/scripts\/codexbackup\.sh --doctor --target ([a-z]+)$/);
-  if (!match || !allowedTargets.has(match[1])) {
+  const lines = parseSafeCommandLines(command);
+  if (!lines.ok) return lines;
+
+  const finalLine = lines.finalLine;
+  const match = finalLine.match(/^\.\/scripts\/codexbackup\.sh --doctor --target ([a-z]+)$/);
+  if (!match || !allowedTargets.has(match[1]) || (lines.env.CODEX_BACKUP_TARGET && lines.env.CODEX_BACKUP_TARGET !== match[1])) {
     return { allowed: false, reason: 'Only codexbackup doctor commands for known targets are allowed.' };
   }
 
   return { allowed: true, kind: 'doctor' };
+}
+
+function classifyBackupCommand(command) {
+  const lines = parseSafeCommandLines(command);
+  if (!lines.ok) return lines;
+
+  const match = lines.finalLine.match(/^\.\/scripts\/codexbackup\.sh --target ([a-z]+)$/);
+  if (!match || !allowedTargets.has(match[1]) || lines.env.CODEX_BACKUP_TARGET !== match[1]) {
+    return { allowed: false, reason: 'Only codexbackup backup commands for known targets are allowed.' };
+  }
+
+  if (lines.env.CODEX_BACKUP_ENCRYPT === '1' && !lines.env.CODEX_BACKUP_AGE_RECIPIENT && !lines.env.CODEX_BACKUP_AGE_RECIPIENT_FILE) {
+    return { allowed: false, reason: 'Encrypted backup commands require CODEX_BACKUP_AGE_RECIPIENT or CODEX_BACKUP_AGE_RECIPIENT_FILE.' };
+  }
+
+  return { allowed: true, kind: 'backup' };
 }
 
 function classifyValidateCommand(command) {
@@ -73,4 +97,33 @@ function classifyValidateCommand(command) {
   }
 
   return { allowed: true, kind: 'validate' };
+}
+
+function parseSafeCommandLines(command) {
+  if (/[;`]|\$\(|&&|\|\|/.test(command)) {
+    return { allowed: false, reason: 'Commands cannot include shell command separators or substitutions.' };
+  }
+
+  const nonEmptyLines = command
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const finalLine = nonEmptyLines.at(-1) ?? '';
+  const envLines = nonEmptyLines.slice(0, -1).map((line) => line.replace(/\\$/, '').trim());
+  const envPattern = /^[A-Z0-9_]+=("[^"]*"|[^\s]+)$/;
+
+  if (!envLines.every((line) => envPattern.test(line))) {
+    return { allowed: false, reason: 'Commands may only contain simple environment assignments.' };
+  }
+
+  return {
+    ok: true,
+    finalLine,
+    env: Object.fromEntries(envLines.map((line) => {
+      const separator = line.indexOf('=');
+      const key = line.slice(0, separator);
+      const rawValue = line.slice(separator + 1);
+      return [key, rawValue.replace(/^"(.*)"$/, '$1')];
+    })),
+  };
 }

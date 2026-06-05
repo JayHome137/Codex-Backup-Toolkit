@@ -10,8 +10,9 @@ describe('helper protocol', () => {
       schema: 'codex-backup-helper.v1',
       version: 1,
       kind: 'doctor',
-      command: './scripts/codexbackup.sh --doctor --target local',
     });
+    expect(request.command).toContain('CODEX_BACKUP_TARGET=local');
+    expect(request.command).toContain('./scripts/codexbackup.sh --doctor --target local');
     expect(request.requestId).toMatch(/^cbt_/);
     expect(request.createdAt).toMatch(/T/);
   });
@@ -23,8 +24,16 @@ describe('helper protocol', () => {
     expect(request.command).toContain('CODEX_BACKUP_LAUNCHD_LABEL=dev.codexbackup.toolkit.test.local');
   });
 
+  it('builds a versioned helper request for backup commands', () => {
+    const request = buildHelperRequest(buildBackupCommand(defaultConfig));
+
+    expect(request.kind).toBe('backup');
+    expect(request.command).toContain('CODEX_BACKUP_TARGET=local');
+    expect(request.command).toContain('./scripts/codexbackup.sh --target local');
+  });
+
   it('throws a typed allowlist error when request creation receives a blocked command', () => {
-    expect(() => buildHelperRequest(buildBackupCommand(defaultConfig))).toThrow('ERR_COMMAND_NOT_ALLOWED');
+    expect(() => buildHelperRequest('./scripts/codexrestore.sh --latest')).toThrow('ERR_COMMAND_NOT_ALLOWED');
   });
 
   it('returns success-shaped output and audit fields from the mock helper', async () => {

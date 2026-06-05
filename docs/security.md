@@ -32,6 +32,16 @@ Set `CODEX_BACKUP_ENCRYPT=1` to encrypt archives with age before they are publis
 
 The manifest remains a small plaintext operational file. It lists included and missing source paths but not file contents.
 
+Use `./scripts/codexbackup.sh --config-guide --target <target>` to print target-specific setup and encryption guidance without creating files, touching the network, or modifying automation.
+
+## GUI And Helper Boundary
+
+The Web GUI can run a real backup only when the local HTTP helper is started manually and the user selects `HTTP 助手`. The helper re-checks an allowlist server-side before running anything.
+
+Allowed helper actions are limited to environment checks, real backup execution, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Restore, install, uninstall, status, and appended shell commands remain blocked.
+
+Encrypted backup commands are blocked unless they include `CODEX_BACKUP_AGE_RECIPIENT` or `CODEX_BACKUP_AGE_RECIPIENT_FILE`.
+
 ## Device-Bound State
 
 macOS Keychain items and browser-encrypted data may not migrate cleanly to another Mac even when files are restored. After restore, Codex or browser-backed integrations may ask you to sign in again. That is expected.

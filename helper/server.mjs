@@ -133,7 +133,7 @@ function buildResponse(request, options) {
     stderr: options.stderr,
     ...(options.errorCode ? { errorCode: options.errorCode } : {}),
     audit: {
-      commandKind: request?.kind === 'validate' ? 'validate' : 'doctor',
+      commandKind: request?.kind === 'validate' || request?.kind === 'backup' ? request.kind : 'doctor',
       decision: options.decision,
       helper: helperName,
       startedAt: options.startedAt,

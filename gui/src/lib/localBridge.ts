@@ -3,7 +3,7 @@ import { createMockHelperTransport, runHelperCommand, type HelperResponse, type 
 
 type AllowedLocalCommand = {
   allowed: true;
-  kind: 'doctor' | 'validate';
+  kind: 'doctor' | 'validate' | 'backup';
 };
 
 type BlockedLocalCommand = {
@@ -13,11 +13,12 @@ type BlockedLocalCommand = {
 
 export type LocalCommandClassification = AllowedLocalCommand | BlockedLocalCommand;
 
-const generalBlockReason = 'Web 桥接原型只允许环境检查和隔离的计划校验。';
+const generalBlockReason = 'Web 桥接只允许环境检查、真实备份和隔离的计划校验。';
 
 const commandKindLabels: Record<AllowedLocalCommand['kind'], string> = {
   doctor: '环境检查',
   validate: '计划校验',
+  backup: '备份执行',
 };
 
 const decisionLabels: Record<HelperResponse['audit']['decision'], string> = {
@@ -26,7 +27,11 @@ const decisionLabels: Record<HelperResponse['audit']['decision'], string> = {
 };
 
 export function classifyLocalCommand(command: string): LocalCommandClassification {
-  if (command.trim() === '' || command.includes('codexrestore.sh') || command.includes('codexbackup.sh --target')) {
+  if (/[;`]|\$\(|&&|\|\|/.test(command)) {
+    return { allowed: false, reason: '命令不能包含 shell 拼接、替换或追加执行符号。' };
+  }
+
+  if (command.trim() === '' || command.includes('codexrestore.sh')) {
     return { allowed: false, reason: generalBlockReason };
   }
 
@@ -41,6 +46,17 @@ export function classifyLocalCommand(command: string): LocalCommandClassificatio
 
   if (command.startsWith('./scripts/codexbackup.sh --doctor --target ')) {
     return { allowed: true, kind: 'doctor' };
+  }
+
+  if (command.includes('./scripts/codexbackup.sh --doctor --target ')) {
+    return { allowed: true, kind: 'doctor' };
+  }
+
+  if (command.includes('./scripts/codexbackup.sh --target ')) {
+    if (command.includes('CODEX_BACKUP_ENCRYPT=1') && !command.includes('CODEX_BACKUP_AGE_RECIPIENT=') && !command.includes('CODEX_BACKUP_AGE_RECIPIENT_FILE=')) {
+      return { allowed: false, reason: '加密备份必须配置 CODEX_BACKUP_AGE_RECIPIENT 或 CODEX_BACKUP_AGE_RECIPIENT_FILE。' };
+    }
+    return { allowed: true, kind: 'backup' };
   }
 
   return { allowed: false, reason: generalBlockReason };

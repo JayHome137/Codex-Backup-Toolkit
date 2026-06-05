@@ -85,6 +85,27 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
           <span>使用 age 加密归档</span>
         </label>
 
+        {config.encrypt && (
+          <>
+            <label className="field field--wide">
+              <span>age 收件人</span>
+              <input
+                placeholder="age1..."
+                value={config.ageRecipient}
+                onChange={(event) => update('ageRecipient', event.target.value)}
+              />
+            </label>
+            <label className="field field--wide">
+              <span>age 收件人文件</span>
+              <input
+                placeholder="/path/to/recipients.txt"
+                value={config.ageRecipientFile}
+                onChange={(event) => update('ageRecipientFile', event.target.value)}
+              />
+            </label>
+          </>
+        )}
+
         <label className="field">
           <span>保留份数</span>
           <input
