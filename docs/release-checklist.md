@@ -34,4 +34,5 @@ git push origin main --tags
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
 - [ ] 说明 GUI 当前仍是保守预览版，不会直接运行真实备份、恢复、安装或卸载。
-- [ ] 说明 WebDAV 和 rclone 已支持 `codexrestore --latest` 拉取最新归档，但远端保留策略仍不会删除云端文件。
+- [ ] 说明 WebDAV 和 rclone 已支持 `codexrestore --latest` 拉取最新归档。
+- [ ] 说明 WebDAV 和 rclone 远端保留策略默认关闭，只有设置 `CODEX_BACKUP_REMOTE_RETENTION=1` 才会删除旧远端归档。

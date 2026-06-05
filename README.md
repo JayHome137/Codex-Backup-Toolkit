@@ -11,7 +11,7 @@
 - 备份 Codex 配置、skills、plugins、memories、sessions、本地 app/browser 状态，以及 `~/Documents/Codex` 工作区。
 - 支持 `local`、`smb`、`webdav`、`rclone` 四类目标端。
 - `--latest` 恢复支持从本地目录、SMB/NAS、WebDAV 和 rclone 目标端拉取最新归档。
-- 支持可选 age 加密和本地/SMB 保留策略。
+- 支持可选 age 加密、本地/SMB 保留策略，以及默认关闭的 WebDAV/rclone 远端保留策略。
 - 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天才真正执行。
 - 提供浏览器版 GUI 原型，用于目标配置、命令预览、mock 输出、运行历史和 helper 健康检查。
 
@@ -156,6 +156,15 @@ CODEX_BACKUP_AGE_RECIPIENT='age1...' \
 CODEX_BACKUP_RETENTION_COUNT=10
 CODEX_BACKUP_RETENTION_DAYS=30
 ```
+
+WebDAV 和 rclone 的远端保留策略必须显式开启，开启后按 `CODEX_BACKUP_RETENTION_COUNT` 保留最新 N 个远端归档：
+
+```zsh
+CODEX_BACKUP_REMOTE_RETENTION=1
+CODEX_BACKUP_RETENTION_COUNT=10
+```
+
+默认 `CODEX_BACKUP_REMOTE_RETENTION=0`，不会删除云端旧文件。
 
 ## 恢复与安全
 

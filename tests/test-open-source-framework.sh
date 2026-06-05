@@ -57,6 +57,7 @@ assert_file tests/test-encryption-e2e.sh
 assert_file tests/test-install-validate.sh
 assert_file tests/test-retention.sh
 assert_file tests/test-remote-latest-restore.sh
+assert_file tests/test-remote-retention.sh
 
 assert_executable scripts/codexbackup.sh
 assert_executable scripts/codexrestore.sh
@@ -69,6 +70,7 @@ assert_contains README.md 'English README'
 assert_contains README.md '--doctor'
 assert_contains README.md 'CODEX_BACKUP_ENCRYPT'
 assert_contains README.md 'CODEX_BACKUP_RETENTION_COUNT'
+assert_contains README.md 'CODEX_BACKUP_REMOTE_RETENTION'
 assert_contains README.md 'WebDAV'
 assert_contains README.md 'rclone'
 assert_contains README.md 'codexrestore.sh --latest'
@@ -79,12 +81,14 @@ assert_contains gui/package.json '"version": "0\.2\.0"'
 assert_contains docs/gui-design.md 'Raycast'
 assert_contains docs/gui-design.md 'CCSWITCH'
 assert_contains config.example.env 'CODEX_BACKUP_TARGET=(local|smb|webdav|rclone)'
+assert_contains config.example.env 'CODEX_BACKUP_REMOTE_RETENTION=0'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_TARGET'
 assert_contains scripts/codexbackup.sh '--doctor'
 assert_contains scripts/codexbackup.sh '--list-targets'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_ENCRYPT'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_RETENTION_COUNT'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_RETENTION_DAYS'
+assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_REMOTE_RETENTION'
 assert_contains scripts/codexbackup.sh 'age'
 assert_contains scripts/codexbackup.sh 'webdav'
 assert_contains scripts/codexbackup.sh 'rclone'
@@ -99,6 +103,7 @@ assert_contains .github/workflows/ci.yml 'test-encryption-e2e'
 assert_contains .github/workflows/ci.yml 'test-install-validate'
 assert_contains .github/workflows/ci.yml 'test-retention'
 assert_contains .github/workflows/ci.yml 'test-remote-latest-restore'
+assert_contains .github/workflows/ci.yml 'test-remote-retention'
 
 for file in README.md config.example.env docs/*.md examples/*.env scripts/*.sh; do
   assert_not_contains "$file" '192\.168\.1\.6'

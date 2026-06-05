@@ -101,4 +101,13 @@ Every target can receive encrypted archives when `CODEX_BACKUP_ENCRYPT=1` and ag
 
 ## Retention
 
-`CODEX_BACKUP_RETENTION_COUNT` and `CODEX_BACKUP_RETENTION_DAYS` currently apply to local and SMB targets. WebDAV and rclone retention are deferred so the first release does not risk deleting remote cloud files unexpectedly.
+`CODEX_BACKUP_RETENTION_COUNT` and `CODEX_BACKUP_RETENTION_DAYS` apply to local and SMB targets.
+
+WebDAV and rclone remote retention is opt-in. Set:
+
+```zsh
+CODEX_BACKUP_REMOTE_RETENTION=1
+CODEX_BACKUP_RETENTION_COUNT=10
+```
+
+When enabled, WebDAV and rclone keep the newest N remote archives and delete older archive, `.sha256`, and manifest artifacts. `CODEX_BACKUP_RETENTION_DAYS` is intentionally not applied to WebDAV or rclone yet because remote providers expose timestamps differently. The default `CODEX_BACKUP_REMOTE_RETENTION=0` never deletes remote cloud files.

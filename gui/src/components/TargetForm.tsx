@@ -73,6 +73,13 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
           </label>
         )}
 
+        {(config.target === 'webdav' || config.target === 'rclone') && (
+          <label className="toggle-row field--wide">
+            <input checked={config.remoteRetention} onChange={(event) => update('remoteRetention', event.target.checked)} type="checkbox" />
+            <span>启用远端保留策略</span>
+          </label>
+        )}
+
         <label className="toggle-row field--wide">
           <input checked={config.encrypt} onChange={(event) => update('encrypt', event.target.checked)} type="checkbox" />
           <span>使用 age 加密归档</span>

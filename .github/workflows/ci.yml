@@ -38,6 +38,9 @@ jobs:
       - name: Run remote latest restore check
         run: ./tests/test-remote-latest-restore.sh
 
+      - name: Run remote retention check
+        run: ./tests/test-remote-retention.sh
+
       - name: Run local helper tests
         run: node --test helper/server.test.mjs
 

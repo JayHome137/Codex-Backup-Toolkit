@@ -17,7 +17,8 @@ Status: current scope.
 ## Phase A.1: Release Hardening
 
 - Remote latest restore for WebDAV and rclone. Status: added for 0.2.0.
-- Retention policy for WebDAV and rclone once deletion semantics are documented.
+- Opt-in count-based retention for WebDAV and rclone. Status: added for 0.2.0.
+- Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
 

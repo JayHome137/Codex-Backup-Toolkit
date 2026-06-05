@@ -58,6 +58,20 @@ describe('App', () => {
     expect(screen.getAllByText(/# CODEX_BACKUP_WEBDAV_PASSWORD=/).length).toBeGreaterThan(0);
   });
 
+  it('previews opt-in remote retention for cloud targets', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
+
+    expect(screen.getByLabelText('启用远端保留策略')).toBeInTheDocument();
+    expect(screen.getAllByText(/CODEX_BACKUP_REMOTE_RETENTION=0/).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByLabelText('启用远端保留策略'));
+
+    expect(screen.getAllByText(/CODEX_BACKUP_REMOTE_RETENTION=1/).length).toBeGreaterThan(0);
+  });
+
   it('previews latest restore commands for the selected target', () => {
     render(<App />);
 

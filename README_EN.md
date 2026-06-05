@@ -127,6 +127,8 @@ CODEX_BACKUP_RETENTION_DAYS=30
 
 `CODEX_BACKUP_RETENTION_COUNT` keeps the newest N backup archives. `CODEX_BACKUP_RETENTION_DAYS` removes backup artifacts older than N days. Both default to `0`, which disables cleanup.
 
+WebDAV and rclone remote retention is opt-in. Set `CODEX_BACKUP_REMOTE_RETENTION=1` to keep the newest `CODEX_BACKUP_RETENTION_COUNT` remote archives and delete older remote artifacts. The default is `CODEX_BACKUP_REMOTE_RETENTION=0`, so cloud targets are not cleaned up unless explicitly enabled.
+
 ## Automatic Backups
 
 Install a macOS `launchd` job:
