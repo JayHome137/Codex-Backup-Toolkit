@@ -11,6 +11,7 @@ import {
   buildBackupCommand,
   buildDoctorCommand,
   buildEnvFile,
+  buildRestoreLatestCommand,
   buildRestoreCommand,
   buildValidateCommand,
   defaultConfig,
@@ -22,6 +23,7 @@ const runner = createMockCommandRunner();
 const localBridgeRunner = createLocalBridgeRunner();
 
 type RunnerMode = 'mock' | 'localBridge' | 'httpHelper';
+type RestoreSource = 'latest' | 'archive';
 
 type HistoryEntry = {
   command: string;
@@ -32,6 +34,7 @@ type HistoryEntry = {
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
   const [config, setConfig] = useState<BackupConfig>(defaultConfig);
+  const [restoreSource, setRestoreSource] = useState<RestoreSource>('latest');
   const [archivePath, setArchivePath] = useState('/path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz');
   const [restoreEncrypted, setRestoreEncrypted] = useState(false);
   const [lastResult, setLastResult] = useState<CommandResult | null>(null);
@@ -46,9 +49,9 @@ function App() {
       backup: buildBackupCommand(config),
       envFile: buildEnvFile(config),
       validate: buildValidateCommand(config),
-      restore: buildRestoreCommand(archivePath, restoreEncrypted),
+      restore: restoreSource === 'latest' ? buildRestoreLatestCommand(config) : buildRestoreCommand(archivePath, restoreEncrypted),
     }),
-    [archivePath, config, restoreEncrypted],
+    [archivePath, config, restoreEncrypted, restoreSource],
   );
 
   const runPreview = async (command: string, label: string) => {
@@ -218,17 +221,42 @@ function App() {
                   <span>恢复预览</span>
                 </div>
               </div>
-              <div className="form-grid">
-                <label className="field field--wide">
-                  <span>归档路径</span>
-                  <input value={archivePath} onChange={(event) => setArchivePath(event.target.value)} />
-                </label>
-                <label className="toggle-row field--wide">
-                  <input checked={restoreEncrypted} onChange={(event) => setRestoreEncrypted(event.target.checked)} type="checkbox" />
-                  <span>加密归档</span>
-                </label>
+              <div className="segmented-control" role="group" aria-label="恢复来源">
+                <button
+                  className={restoreSource === 'latest' ? 'segment segment--active' : 'segment'}
+                  onClick={() => setRestoreSource('latest')}
+                  type="button"
+                >
+                  最新备份
+                </button>
+                <button
+                  className={restoreSource === 'archive' ? 'segment segment--active' : 'segment'}
+                  onClick={() => setRestoreSource('archive')}
+                  type="button"
+                >
+                  指定归档
+                </button>
               </div>
-              <p className="muted-copy">当前浏览器版只预览恢复命令。后续接入原生执行层时才会开放真实恢复。</p>
+              <div className="form-grid">
+                {restoreSource === 'latest' ? (
+                  <div className="field field--wide">
+                    <span>最新备份目标端</span>
+                    <strong>{targetLabels[config.target]}</strong>
+                  </div>
+                ) : (
+                  <>
+                    <label className="field field--wide">
+                      <span>归档路径</span>
+                      <input value={archivePath} onChange={(event) => setArchivePath(event.target.value)} />
+                    </label>
+                    <label className="toggle-row field--wide">
+                      <input checked={restoreEncrypted} onChange={(event) => setRestoreEncrypted(event.target.checked)} type="checkbox" />
+                      <span>加密归档</span>
+                    </label>
+                  </>
+                )}
+              </div>
+              <p className="muted-copy">当前浏览器版只预览恢复命令。最新备份会使用当前目标端配置生成 `codexrestore --latest`。</p>
               <div className="action-row">
                 <button className="button button--tertiary" onClick={() => runPreview(commands.restore, '恢复命令')} type="button">
                   <RotateCcw size={15} aria-hidden="true" />

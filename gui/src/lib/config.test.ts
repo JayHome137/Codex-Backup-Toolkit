@@ -4,6 +4,7 @@ import {
   buildDoctorCommand,
   buildEnvFile,
   buildRestoreCommand,
+  buildRestoreLatestCommand,
   buildValidateCommand,
   defaultConfig,
   targetLabels,
@@ -45,6 +46,14 @@ describe('command builders', () => {
     expect(command).toContain('--age-identity /path/to/age-identity.txt');
   });
 
+  it('builds latest restore command with target environment', () => {
+    const command = buildRestoreLatestCommand({ ...defaultConfig, target: 'rclone' });
+
+    expect(command).toContain('CODEX_BACKUP_TARGET=rclone');
+    expect(command).toContain('CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup"');
+    expect(command).toContain('./scripts/codexrestore.sh --latest');
+  });
+
   it('builds a config.env preview without credential secrets', () => {
     const envFile = buildEnvFile({ ...defaultConfig, target: 'webdav', encrypt: true });
 
@@ -52,7 +61,15 @@ describe('command builders', () => {
     expect(envFile).toContain('CODEX_BACKUP_TARGET=webdav');
     expect(envFile).toContain('CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup"');
     expect(envFile).toContain('CODEX_BACKUP_ENCRYPT=1');
+    expect(envFile).toContain('CODEX_BACKUP_REMOTE_RETENTION=0');
     expect(envFile).toContain('# CODEX_BACKUP_WEBDAV_PASSWORD=');
     expect(envFile).not.toContain('PASSWORD=backup-user');
+  });
+
+  it('includes opt-in remote retention in command previews', () => {
+    const command = buildBackupCommand({ ...defaultConfig, target: 'rclone', remoteRetention: true });
+
+    expect(command).toContain('CODEX_BACKUP_REMOTE_RETENTION=1');
+    expect(command).toContain('CODEX_BACKUP_RETENTION_COUNT=10');
   });
 });

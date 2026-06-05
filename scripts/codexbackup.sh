@@ -13,6 +13,7 @@ AGE_RECIPIENT="${CODEX_BACKUP_AGE_RECIPIENT:-}"
 AGE_RECIPIENT_FILE="${CODEX_BACKUP_AGE_RECIPIENT_FILE:-}"
 RETENTION_COUNT="${CODEX_BACKUP_RETENTION_COUNT:-0}"
 RETENTION_DAYS="${CODEX_BACKUP_RETENTION_DAYS:-0}"
+REMOTE_RETENTION="${CODEX_BACKUP_REMOTE_RETENTION:-0}"
 SMB_HOST="${CODEX_BACKUP_SMB_HOST:-${CODEX_BACKUP_HOST:-}}"
 SMB_USER="${CODEX_BACKUP_SMB_USER:-${CODEX_BACKUP_USER:-}}"
 SMB_SHARE="${CODEX_BACKUP_SMB_SHARE:-${CODEX_BACKUP_SHARE:-CodexBackup}}"
@@ -234,6 +235,7 @@ Archive: ${ARCHIVE_FILE_NAME}
 Encrypt: ${ENCRYPT}
 Retention count: ${RETENTION_COUNT}
 Retention days: ${RETENTION_DAYS}
+Remote retention: ${REMOTE_RETENTION}
 Would inspect:
   ${HOME}/.codex
   ${HOME}/Library/Application Support/Codex
@@ -363,6 +365,27 @@ webdav_upload() {
   curl -fsS -u "${user}:${password}" -T "$src" "$url/$(basename "$src")"
 }
 
+webdav_list_file_names() {
+  local url="$1"
+  local user="$2"
+  local password="$3"
+  local href basename
+  curl -fsS -u "${user}:${password}" -X PROPFIND -H 'Depth: 1' "${url%/}/" |
+    sed -nE 's/.*<[^>]*href[^>]*>([^<]+)<\/[^>]*href>.*/\1/p' |
+    while IFS= read -r href; do
+      basename="${href:t}"
+      [[ -n "$basename" ]] && print -r -- "$basename"
+    done
+}
+
+webdav_delete_file() {
+  local url="$1"
+  local user="$2"
+  local password="$3"
+  local file_name="$4"
+  curl -fsS -u "${user}:${password}" -X DELETE "${url%/}/${file_name}" >/dev/null
+}
+
 publish_to_webdav() {
   [[ -n "$WEBDAV_URL" ]] || { echo "CODEX_BACKUP_WEBDAV_URL is required for webdav target." >&2; exit 2; }
   [[ -n "$WEBDAV_USER" ]] || { echo "CODEX_BACKUP_WEBDAV_USER is required for webdav target." >&2; exit 2; }
@@ -380,6 +403,7 @@ publish_to_webdav() {
   for file in "$@"; do
     webdav_upload "${SPOOL_DIR}/$(basename "$file")" "$backup_url" "$WEBDAV_USER" "$password"
   done
+  apply_webdav_retention "$backup_url" "$WEBDAV_USER" "$password"
   webdav_upload "${TOOLKIT_DIR}/README.md" "$toolkit_url" "$WEBDAV_USER" "$password"
   webdav_upload "${TOOLKIT_DIR}/scripts/codexbackup.sh" "$scripts_url" "$WEBDAV_USER" "$password"
   webdav_upload "${TOOLKIT_DIR}/scripts/codexscheduledbackup.sh" "$scripts_url" "$WEBDAV_USER" "$password"
@@ -399,6 +423,7 @@ publish_to_rclone() {
     include_args+=(--include "$(basename "$file")")
   done
   rclone copy "$SPOOL_DIR" "$backup_dest" "${include_args[@]}" --exclude '*'
+  apply_rclone_retention "$backup_dest"
   rclone copy "${TOOLKIT_DIR}/README.md" "$toolkit_dest"
   rclone copy "${TOOLKIT_DIR}/scripts" "${toolkit_dest}/scripts" --include 'codexbackup.sh' --include 'codexscheduledbackup.sh' --include 'codexrestore.sh' --include 'codexinstallautomation.sh' --exclude '*'
   print -r -- "$backup_dest"
@@ -472,6 +497,67 @@ apply_local_retention() {
   fi
 
   return 0
+}
+
+remote_retention_enabled() {
+  case "$REMOTE_RETENTION" in
+    1|true|yes) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+remote_retention_count_enabled() {
+  remote_retention_enabled || return 1
+  [[ "$RETENTION_COUNT" =~ '^[0-9]+$' ]] && (( RETENTION_COUNT > 0 ))
+}
+
+archive_manifest_name() {
+  local archive_name="$1"
+  if [[ "$archive_name" == *.tar.gz.age ]]; then
+    print -r -- "${archive_name%.tar.gz.age}.manifest.txt"
+  else
+    print -r -- "${archive_name%.tar.gz}.manifest.txt"
+  fi
+}
+
+select_remote_archives_to_delete() {
+  local matches
+  matches="$(grep -E '^codex-backup-.*\.tar\.gz(\.age)?$' || true)"
+  [[ -n "$matches" ]] || return 0
+  print -r -- "$matches" | sort -r | tail -n +$((RETENTION_COUNT + 1))
+}
+
+remote_artifacts_for_archive() {
+  local archive_name="$1"
+  print -r -- "$archive_name"
+  print -r -- "${archive_name}.sha256"
+  print -r -- "$(archive_manifest_name "$archive_name")"
+}
+
+apply_webdav_retention() {
+  local backup_url="$1"
+  local user="$2"
+  local password="$3"
+  remote_retention_count_enabled || return 0
+
+  local old_archive artifact
+  webdav_list_file_names "$backup_url" "$user" "$password" | select_remote_archives_to_delete | while IFS= read -r old_archive; do
+    remote_artifacts_for_archive "$old_archive" | while IFS= read -r artifact; do
+      webdav_delete_file "$backup_url" "$user" "$password" "$artifact" || true
+    done
+  done
+}
+
+apply_rclone_retention() {
+  local backup_dest="$1"
+  remote_retention_count_enabled || return 0
+
+  local old_archive artifact
+  rclone lsf "$backup_dest" --files-only | select_remote_archives_to_delete | while IFS= read -r old_archive; do
+    remote_artifacts_for_archive "$old_archive" | while IFS= read -r artifact; do
+      rclone deletefile "${backup_dest}/${artifact}" || true
+    done
+  done
 }
 
 print_backup_result() {

@@ -2,7 +2,7 @@
 
 `codexbackup` is a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote.
 
-The first public version is intentionally Codex-only. The project structure leaves room for more AI developer-tool profiles later, but the current promise is narrow: reliable Codex backup, restore, and automation.
+The current public scope is intentionally Codex-only. The project structure leaves room for more AI developer-tool profiles later, but the current promise is narrow: reliable Codex backup, restore, and automation.
 
 ## What It Backs Up
 
@@ -47,6 +47,19 @@ CODEX_BACKUP_LOCAL_DIR="$HOME/CodexBackups" \
 ./scripts/codexrestore.sh --latest
 ```
 
+Restore the latest WebDAV or rclone backup:
+
+```zsh
+CODEX_BACKUP_TARGET=webdav \
+CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup" \
+CODEX_BACKUP_WEBDAV_USER=backup-user \
+./scripts/codexrestore.sh --latest
+
+CODEX_BACKUP_TARGET=rclone \
+CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup" \
+./scripts/codexrestore.sh --latest
+```
+
 Restore a specific archive:
 
 ```zsh
@@ -67,8 +80,8 @@ Supported `CODEX_BACKUP_TARGET` values:
 
 - `local`: write archives to a folder on this Mac.
 - `smb`: mount an SMB/NAS share with `mount_smbfs`.
-- `webdav`: upload archives with `curl` to a WebDAV server.
-- `rclone`: upload archives with `rclone copy` to any configured rclone remote.
+- `webdav`: upload and download archives with `curl` through a WebDAV server.
+- `rclone`: upload and download archives with `rclone copy` and `rclone copyto` through any configured rclone remote.
 
 See [storage-targets.md](docs/storage-targets.md) and the files in [examples](examples) for target-specific configuration.
 
@@ -113,6 +126,8 @@ CODEX_BACKUP_RETENTION_DAYS=30
 ```
 
 `CODEX_BACKUP_RETENTION_COUNT` keeps the newest N backup archives. `CODEX_BACKUP_RETENTION_DAYS` removes backup artifacts older than N days. Both default to `0`, which disables cleanup.
+
+WebDAV and rclone remote retention is opt-in. Set `CODEX_BACKUP_REMOTE_RETENTION=1` to keep the newest `CODEX_BACKUP_RETENTION_COUNT` remote archives and delete older remote artifacts. The default is `CODEX_BACKUP_REMOTE_RETENTION=0`, so cloud targets are not cleaned up unless explicitly enabled.
 
 ## Automatic Backups
 
@@ -172,7 +187,7 @@ http://127.0.0.1:5173
 
 The current GUI is preview-only: it shows the `codexbackup`, `codexrestore`, and automation validation commands that a future native bridge could run, but it does not execute real backups, restores, or launchd installation from the browser. Automation validation previews use isolated `dev.codexbackup.toolkit.test.*` labels and do not modify any backup job the user has already installed.
 
-The interface currently supports target forms, `config.env` previews, command copying, mock run output, and run history so the workflow can be validated before a native execution layer is added.
+The interface currently supports target forms, `config.env` previews, command copying, latest-restore and archive-restore command previews, mock run output, and run history so the workflow can be validated before a native execution layer is added.
 
 The GUI includes two local bridge-related modes:
 

@@ -4,13 +4,14 @@
 
 `codexbackup` 是一个面向 macOS 的 Codex Desktop 备份与恢复工具。它会把 Codex 本机状态打包成归档，并发布到本地目录、SMB/NAS、WebDAV 或 rclone 远端。
 
-当前第一版只聚焦 Codex Desktop：备份、恢复、定时自动化、Web GUI 预览和一个默认关闭的本地 helper 草案。
+当前版本只聚焦 Codex Desktop：备份、恢复、定时自动化、Web GUI 预览和一个默认关闭的本地 helper 草案。
 
 ## 功能概览
 
 - 备份 Codex 配置、skills、plugins、memories、sessions、本地 app/browser 状态，以及 `~/Documents/Codex` 工作区。
 - 支持 `local`、`smb`、`webdav`、`rclone` 四类目标端。
-- 支持可选 age 加密和本地/SMB 保留策略。
+- `--latest` 恢复支持从本地目录、SMB/NAS、WebDAV 和 rclone 目标端拉取最新归档。
+- 支持可选 age 加密、本地/SMB 保留策略，以及默认关闭的 WebDAV/rclone 远端保留策略。
 - 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天才真正执行。
 - 提供浏览器版 GUI 原型，用于目标配置、命令预览、mock 输出、运行历史和 helper 健康检查。
 
@@ -42,6 +43,19 @@ CODEX_BACKUP_LOCAL_DIR="$HOME/CodexBackups" \
 ./scripts/codexrestore.sh --latest
 ```
 
+恢复最新 WebDAV 或 rclone 备份：
+
+```zsh
+CODEX_BACKUP_TARGET=webdav \
+CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup" \
+CODEX_BACKUP_WEBDAV_USER=backup-user \
+./scripts/codexrestore.sh --latest
+
+CODEX_BACKUP_TARGET=rclone \
+CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup" \
+./scripts/codexrestore.sh --latest
+```
+
 恢复指定归档：
 
 ```zsh
@@ -62,8 +76,8 @@ source ./config.env
 
 - `local`：写入本机目录。
 - `smb`：使用 `mount_smbfs` 挂载 SMB/NAS 共享。
-- `webdav`：使用 `curl` 上传到 WebDAV 服务。
-- `rclone`：使用 `rclone copy` 上传到任意已配置的 rclone remote。
+- `webdav`：使用 `curl` 上传和下载 WebDAV 备份。
+- `rclone`：使用 `rclone copy` 上传和下载任意已配置的 rclone remote。
 
 更多配置见 [storage-targets.md](docs/storage-targets.md) 和 [examples](examples)。
 
@@ -109,7 +123,7 @@ npm run dev
 
 默认地址：`http://127.0.0.1:5173`
 
-GUI 目前以预览和安全验证为主：它会生成命令、复制配置、展示 mock/bridge 输出，但不会直接执行真实备份、恢复、安装或卸载。
+GUI 目前以预览和安全验证为主：它会生成命令、复制配置、展示 mock/bridge 输出，并可预览最新备份恢复或指定归档恢复命令，但不会直接执行真实备份、恢复、安装或卸载。
 
 本地 helper 需要手动启动，默认只监听 `127.0.0.1:37371`：
 
@@ -142,6 +156,15 @@ CODEX_BACKUP_AGE_RECIPIENT='age1...' \
 CODEX_BACKUP_RETENTION_COUNT=10
 CODEX_BACKUP_RETENTION_DAYS=30
 ```
+
+WebDAV 和 rclone 的远端保留策略必须显式开启，开启后按 `CODEX_BACKUP_RETENTION_COUNT` 保留最新 N 个远端归档：
+
+```zsh
+CODEX_BACKUP_REMOTE_RETENTION=1
+CODEX_BACKUP_RETENTION_COUNT=10
+```
+
+默认 `CODEX_BACKUP_REMOTE_RETENTION=0`，不会删除云端旧文件。
 
 ## 恢复与安全
 

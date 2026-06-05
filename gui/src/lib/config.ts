@@ -12,6 +12,7 @@ export type BackupConfig = {
   encrypt: boolean;
   retentionCount: number;
   retentionDays: number;
+  remoteRetention: boolean;
 };
 
 export const targetLabels: Record<BackupTarget, string> = {
@@ -33,6 +34,7 @@ export const defaultConfig: BackupConfig = {
   encrypt: false,
   retentionCount: 10,
   retentionDays: 30,
+  remoteRetention: false,
 };
 
 const quoteEnv = (value: string) => `"${value}"`;
@@ -49,6 +51,7 @@ export function buildEnvLines(config: BackupConfig): string[] {
     `CODEX_BACKUP_TARGET=${config.target}`,
     `CODEX_BACKUP_RETENTION_COUNT=${config.retentionCount}`,
     `CODEX_BACKUP_RETENTION_DAYS=${config.retentionDays}`,
+    `CODEX_BACKUP_REMOTE_RETENTION=${config.remoteRetention ? 1 : 0}`,
     `CODEX_BACKUP_ENCRYPT=${config.encrypt ? 1 : 0}`,
   ];
 
@@ -96,4 +99,8 @@ export function buildValidateCommand(config: BackupConfig): string {
 export function buildRestoreCommand(archivePath: string, encrypted: boolean): string {
   const identity = encrypted ? ' --age-identity /path/to/age-identity.txt' : '';
   return `./scripts/codexrestore.sh --archive ${archivePath}${identity}`;
+}
+
+export function buildRestoreLatestCommand(config: BackupConfig): string {
+  return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexrestore.sh --latest`;
 }

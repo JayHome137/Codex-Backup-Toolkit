@@ -54,4 +54,21 @@ Keep that file until you have opened Codex Desktop and confirmed the restored st
 
 ## WebDAV And rclone Restore
 
-The first public version supports publishing backups to WebDAV and rclone. Automatic `--latest` restore from those remote targets is intentionally deferred. Download the archive and checksum first, then restore with `--archive`.
+Restore latest from WebDAV:
+
+```zsh
+CODEX_BACKUP_TARGET=webdav \
+CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup" \
+CODEX_BACKUP_WEBDAV_USER=backup-user \
+./scripts/codexrestore.sh --latest
+```
+
+Restore latest from rclone:
+
+```zsh
+CODEX_BACKUP_TARGET=rclone \
+CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup" \
+./scripts/codexrestore.sh --latest
+```
+
+For WebDAV, `codexrestore` uses `curl PROPFIND` to list `CODEX_BACKUP_REMOTE_DIR`, then downloads the newest archive and matching `.sha256` file when available. For rclone, it uses `rclone lsf` and `rclone copyto` for the same flow. If the remote checksum is missing, restore continues with a warning, matching the local `--archive` behavior.
