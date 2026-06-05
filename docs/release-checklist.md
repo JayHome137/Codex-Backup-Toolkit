@@ -9,6 +9,8 @@
 - [ ] 运行 `./tests/test-encryption-e2e.sh`。
 - [ ] 运行 `./tests/test-install-validate.sh`。
 - [ ] 运行 `./tests/test-retention.sh`。
+- [ ] 运行 `./tests/test-remote-latest-restore.sh`。
+- [ ] 运行 `./tests/test-remote-retention.sh`。
 - [ ] 运行 `node --test helper/server.test.mjs`。
 - [ ] 运行 `cd gui && npm test`。
 - [ ] 运行 `cd gui && npm run build`。

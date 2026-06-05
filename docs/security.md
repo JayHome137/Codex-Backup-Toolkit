@@ -30,7 +30,7 @@ Avoid committing `config.env` or shell history containing passwords. Use `config
 
 Set `CODEX_BACKUP_ENCRYPT=1` to encrypt archives with age before they are published to the target. Store the age identity file somewhere separate from the backup destination. If you lose the identity, encrypted backups cannot be restored.
 
-The manifest remains a small plaintext operational file in the first release. It lists included and missing source paths but not file contents.
+The manifest remains a small plaintext operational file. It lists included and missing source paths but not file contents.
 
 ## Device-Bound State
 
