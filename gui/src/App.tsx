@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
@@ -46,6 +46,10 @@ type HelperConnectionStatus = 'unknown' | 'checking' | 'online' | 'offline';
 
 type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret-delete' | 'history-load' | null;
 
+type RunPreviewOptions = {
+  refreshHelperHistory?: boolean;
+};
+
 const helperActionLabels: Record<Exclude<HelperActionState, null>, string> = {
   'config-load': '加载配置',
   'config-save': '保存配置',
@@ -69,6 +73,7 @@ function App() {
   const [helperStatus, setHelperStatus] = useState<HelperConnectionStatus>('unknown');
   const [helperAction, setHelperAction] = useState<HelperActionState>(null);
   const [helperMessage, setHelperMessage] = useState('尚未检查本地 helper。需要加载配置、保存密钥或读取真实历史时，请先确认 helper 已启动。');
+  const [backupConfirmed, setBackupConfirmed] = useState(false);
   const httpHelperRunner = useMemo(() => createLocalBridgeRunner(createHttpHelperTransport()), []);
   const helperApi = useMemo(() => createHelperApi(), []);
 
@@ -92,6 +97,7 @@ function App() {
   const configChecks = useMemo(() => getConfigChecks(config), [config]);
   const blockingChecks = configChecks.filter((check) => check.status === 'error');
   const helperBusy = helperStatus === 'checking' || helperAction !== null;
+  const realBackupDisabled = runnerMode === 'httpHelper' && (!backupConfirmed || blockingChecks.length > 0 || helperBusy || helperStatus === 'offline');
   const helperActionsDisabled = helperStatus === 'offline' || helperBusy;
   const helperActionLabel = helperAction ? helperActionLabels[helperAction] : null;
   const helperBannerMessage = helperActionLabel ? `${helperActionLabel}中...` : helperMessage;
@@ -99,15 +105,24 @@ function App() {
   const setConfigAndSecretDefaults = (nextConfig: BackupConfig) => {
     setConfig(nextConfig);
     setSecretDraft((draft) => ({ ...defaultSecretDraft(nextConfig), secret: draft.secret }));
+    setBackupConfirmed(false);
   };
 
-  const runPreview = async (command: string, label: string, action?: HelperAction) => {
+  const runPreview = async (command: string, label: string, action?: HelperAction, options: RunPreviewOptions = {}) => {
     setRunningCommand(command);
     const activeRunner = runnerMode === 'httpHelper' ? httpHelperRunner : runnerMode === 'localBridge' ? localBridgeRunner : runner;
     const result = await activeRunner.run(command, action);
     setLastResult(result);
     setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
+    if (options.refreshHelperHistory && result.status === 'success') {
+      await refreshHelperHistoryAfterBackup();
+    }
     setRunningCommand(null);
+  };
+
+  const runConfirmedBackup = async () => {
+    await runPreview(commands.backup, '真实备份', actions.backup, { refreshHelperHistory: true });
+    setBackupConfirmed(false);
   };
 
   const checkHelper = async () => {
@@ -231,6 +246,20 @@ function App() {
     }
   };
 
+  const refreshHelperHistoryAfterBackup = async () => {
+    try {
+      const entries = await helperApi.loadHistory();
+      setHelperHistory(entries);
+      setHelperStatus('online');
+      setHelperMessage(`真实备份完成，已自动刷新 ${entries.length} 条 helper 备份历史。`);
+    } catch (error) {
+      updateHelperFailureState(error);
+      setLastResult((result) => result
+        ? { ...result, output: `${result.output}\n\n备份已完成，但自动刷新 helper 历史失败：\n${helperErrorOutput(error)}` }
+        : { status: 'warning', output: helperErrorOutput(error) });
+    }
+  };
+
   const updateHelperFailureState = (error: unknown) => {
     const output = helperErrorOutput(error);
     if (output.includes('ERR_HELPER_UNAVAILABLE')) {
@@ -323,12 +352,41 @@ function App() {
                       检查助手
                     </button>
                   )}
-                  <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令', actions.backup)} type="button">
-                    <Archive size={15} aria-hidden="true" />
-                    {runnerMode === 'mock' ? '预览备份' : '执行备份'}
-                  </button>
+                  {runnerMode !== 'httpHelper' && (
+                    <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令', actions.backup)} type="button">
+                      <Archive size={15} aria-hidden="true" />
+                      {runnerMode === 'mock' ? '预览备份' : '执行备份'}
+                    </button>
+                  )}
                 </div>
               </section>
+              {runnerMode === 'httpHelper' && (
+                <section className="panel real-backup-panel">
+                  <div className="panel-header">
+                    <div className="panel-title">
+                      <UnlockKeyhole size={16} aria-hidden="true" />
+                      <span>真实备份确认</span>
+                    </div>
+                  </div>
+                  <div className="summary-list">
+                    <SummaryRow label="目标端" value={targetLabels[config.target]} />
+                    <SummaryRow label="加密" value={config.encrypt ? '已开启 age 加密' : '未开启 age 加密'} />
+                    <SummaryRow label="保留策略" value={`${config.retentionCount} 份 / ${config.retentionDays} 天${config.remoteRetention ? ' / 远端清理开启' : ''}`} />
+                    <SummaryRow label="helper" value={helperStatusLabel(helperStatus)} />
+                  </div>
+                  <p className="muted-copy">确认后只会通过本地 helper 执行一次结构化 backup action。不会执行恢复、安装、卸载或修改已有定时任务。</p>
+                  <div className="action-row">
+                    <button className="button button--tertiary" disabled={blockingChecks.length > 0 || helperBusy} onClick={() => setBackupConfirmed(true)} type="button">
+                      <CheckCircle2 size={15} aria-hidden="true" />
+                      确认真实备份
+                    </button>
+                    <button className="button button--primary" disabled={realBackupDisabled} onClick={runConfirmedBackup} type="button">
+                      <Archive size={15} aria-hidden="true" />
+                      执行真实备份
+                    </button>
+                  </div>
+                </section>
+              )}
               <CommandPreview command={commands.backup} title="备份命令" onCopy={copyText} />
             </div>
           </section>

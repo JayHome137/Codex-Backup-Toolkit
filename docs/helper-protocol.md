@@ -11,7 +11,7 @@ helper 采用 allowlist-first 设计。当前允许的能力是：
 - `doctor`: `./scripts/codexbackup.sh --doctor --target <target>`
 - `backup`: `./scripts/codexbackup.sh --target <target>`
 - `restorePlan`: `./scripts/codexrestore.sh --plan --latest` 或 `./scripts/codexrestore.sh --plan --archive <file>`
-- `validate`: `./scripts/codexinstallautomation.sh validate` with `CODEX_BACKUP_LAUNCHD_LABEL=dev.codexbackup.toolkit.test.<target>`
+- `validate`: 带有 `CODEX_BACKUP_LAUNCHD_LABEL=dev.codexbackup.toolkit.test.<target>` 的 `./scripts/codexinstallautomation.sh validate`
 
 GUI 和 helper 都会阻止真实恢复、安装、卸载、status 和 allowlist 之外的命令。隔离 validate label 是刻意设计的：它让 GUI 验证计划任务配置时不会触碰用户已经安装的真实备份任务。
 
@@ -37,7 +37,7 @@ CODEX_BACKUP_HELPER_PORT=37372 node helper/server.mjs
 
 GUI 选择 `HTTP 助手` 时默认连接 `http://127.0.0.1:37371`。
 
-GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。0.6.0 起，GUI 会把 `/health` 结果显示为顶部 helper 状态；当 helper 离线时，配置、Keychain 和真实历史相关按钮会暂时禁用，直到后续健康检查恢复在线。
+GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。0.6.0 起，GUI 会把 `/health` 结果显示为顶部 helper 状态；当 helper 离线时，配置、Keychain 和真实历史相关按钮会暂时禁用，直到后续健康检查恢复在线。0.7.0 起，GUI 的真实备份入口需要先确认目标端、加密状态、保留策略和 helper 状态摘要，确认后才会向 `/run` 发送结构化 `backup` action；成功后会自动读取 `/history`。
 
 ### `GET /health`
 

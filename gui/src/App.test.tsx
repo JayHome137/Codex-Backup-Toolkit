@@ -152,7 +152,16 @@ describe('App', () => {
   });
 
   it('sends backup execution requests through the HTTP helper transport', async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/history')) {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          history: { version: 1, entries: [] },
+        });
+      }
+
       const request = JSON.parse(String(init?.body));
 
       return new Response(
@@ -180,17 +189,94 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /执行备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /确认真实备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /执行真实备份/i }));
     fireEvent.click(screen.getByRole('button', { name: /日志/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
       expect(screen.getByText(/命令类型: 备份执行/)).toBeInTheDocument();
     });
-    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const runCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/run'));
+    expect(runCall).toBeTruthy();
+    const request = JSON.parse(String(runCall?.[1]?.body));
     expect(request.kind).toBe('backup');
     expect(request.command).toBeUndefined();
     expect(request.action).toMatchObject({ type: 'backup', target: 'local' });
+  });
+
+  it('requires confirmation before running a real backup and refreshes helper history after success', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.endsWith('/run')) {
+        const request = JSON.parse(String(init?.body));
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'Backup written to:\n  /tmp/CodexBackups/codex-backup-mac.tar.gz',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'node-local-helper',
+            startedAt: '2026-06-06T00:00:00.000Z',
+            finishedAt: '2026-06-06T00:00:01.000Z',
+          },
+        });
+      }
+
+      if (url.endsWith('/history')) {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          history: {
+            version: 1,
+            entries: [{
+              action: 'backup',
+              target: 'local',
+              status: 'success',
+              startedAt: '2026-06-06T00:00:00.000Z',
+              finishedAt: '2026-06-06T00:00:01.000Z',
+              exitCode: 0,
+              archivePaths: ['/tmp/CodexBackups/codex-backup-mac.tar.gz'],
+            }],
+          },
+        });
+      }
+
+      throw new Error(`unexpected request ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+
+    expect(screen.getByText('真实备份确认')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /确认真实备份/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /确认真实备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /执行真实备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
+      expect(screen.getAllByText(/codex-backup-mac\.tar\.gz/).length).toBeGreaterThan(0);
+    });
+
+    const runCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/run'));
+    expect(runCall).toBeTruthy();
+    const request = JSON.parse(String(runCall?.[1]?.body));
+    expect(request.kind).toBe('backup');
+    expect(request.command).toBeUndefined();
+    expect(request.action).toMatchObject({ type: 'backup', target: 'local' });
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
   });
 
   it('uses the HTTP helper transport when HTTP helper mode is selected', async () => {
