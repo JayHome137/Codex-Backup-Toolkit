@@ -37,7 +37,7 @@ CODEX_BACKUP_HELPER_PORT=37372 node helper/server.mjs
 
 GUI 选择 `HTTP 助手` 时默认连接 `http://127.0.0.1:37371`。
 
-GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。
+GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。0.6.0 起，GUI 会把 `/health` 结果显示为顶部 helper 状态；当 helper 离线时，配置、Keychain 和真实历史相关按钮会暂时禁用，直到后续健康检查恢复在线。
 
 ### `GET /health`
 

@@ -12,7 +12,7 @@
 - 支持 `codexrestore --plan` 生成恢复预案，不改文件、不创建安全备份。
 - 支持可选 age 加密、本地/SMB 保留策略，以及默认关闭的 WebDAV/rclone 远端保留策略。
 - 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天执行一次真实备份。
-- 提供浏览器版 GUI 和手动启动的本地 helper，用于配置检查、配置保存、Keychain 密钥管理、备份执行、恢复预案、备份历史和安全边界验证。
+- 提供浏览器版 GUI 和手动启动的本地 helper，用于配置检查、helper 状态确认、配置保存、Keychain 密钥管理、备份执行、恢复预案、备份历史和安全边界验证。
 
 ## 快速开始
 
@@ -118,7 +118,7 @@ npm run dev
 node helper/server.mjs
 ```
 
-helper 默认只监听 `127.0.0.1:37371`。GUI 选择 `HTTP 助手` 后，可以执行环境检查、加载/保存配置、保存/删除 Keychain 密钥、读取真实备份历史、真实备份、恢复预案和隔离的计划校验。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
+helper 默认只监听 `127.0.0.1:37371`。GUI 顶部会显示 helper 未确认、检查中、在线或离线状态；helper 离线时，加载/保存配置、Keychain 密钥和真实历史按钮会暂时禁用，避免误操作。GUI 选择 `HTTP 助手` 后，可以执行环境检查、加载/保存配置、保存/删除 Keychain 密钥、读取真实备份历史、真实备份、恢复预案和隔离的计划校验。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
 
 helper 仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。备份历史会保存到 `~/Library/Application Support/CodexBackupToolkit/history.json`。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
 

@@ -1,67 +1,73 @@
-# Security Notes
+# 安全说明
 
-Codex-Backup-toolkit copies local Codex state exactly enough to make restore useful. That means a backup may contain sensitive material.
+Codex-Backup-toolkit 会复制足够完整的本地 Codex 状态，目的是让恢复真正可用。这也意味着备份归档可能包含敏感内容。
 
-Backups can include:
+备份可能包含：
 
-- Codex config and local credentials stored on disk.
-- Plugin, skill, MCP, and connector state.
-- Browser-backed session files that are present in Codex app data.
-- Memories, transcripts, prompts, generated files, and workspace content.
-- Project workspaces under `~/Documents/Codex`.
+- Codex 配置和保存在磁盘上的本地凭据。
+- plugin、skill、MCP 和 connector 状态。
+- Codex app 数据中存在的浏览器会话文件。
+- memories、transcripts、prompts、生成文件和工作区内容。
+- `~/Documents/Codex` 下的项目工作区。
 
-Treat every archive as private.
+请把每一个备份归档都当作私密文件处理。
 
-## Recommendations
+## 建议
 
-- Store archives in a private folder or bucket.
-- Restrict SMB, WebDAV, and cloud-drive permissions to trusted users only.
-- Do not publish archives in GitHub issues, releases, public buckets, or shared folders.
-- Consider encrypting archives before uploading them to third-party cloud storage.
-- Rotate credentials if an archive was exposed.
+- 将归档保存在私有文件夹、私有 bucket 或受控网盘目录中。
+- 只把 SMB、WebDAV 和云盘权限授予可信用户。
+- 不要把归档上传到 GitHub issue、release、公开 bucket 或公开共享目录。
+- 上传到第三方云盘前，建议先启用归档加密。
+- 如果归档曾经暴露，请轮换相关凭据。
 
-## Password Handling
+## 密码处理
 
-SMB and WebDAV passwords can be passed for one run through environment variables, typed interactively, or stored in macOS Keychain by `codexinstallautomation`.
+SMB 和 WebDAV 密码可以通过环境变量传入单次运行、交互式输入，或由 `codexinstallautomation` 保存到 macOS Keychain。
 
-Avoid committing `config.env` or shell history containing passwords. Use `config.example.env` and the files under `examples/` as templates only.
+避免提交包含密码的 `config.env`，也避免让 shell history 留下密码。`config.example.env` 和 `examples/` 下的文件只作为模板使用。
 
-0.4.0 adds a helper-side Keychain interface for the GUI. The helper exposes `POST /secret` and `DELETE /secret`, implemented with the macOS `security` command. It stores or deletes secrets, but does not return secret values to the GUI.
+helper 为 GUI 提供 Keychain 接口：`POST /secret` 和 `DELETE /secret` 通过 macOS `security` 命令保存或删除 secret。helper 不会把 secret 值回传给 GUI。
 
-Persistent GUI config is stored at:
+持久化 GUI 配置保存在：
 
 ```text
 ~/Library/Application Support/CodexBackupToolkit/config.json
 ```
 
-Before writing config, the helper recursively removes fields whose names include `password`, `secret`, `token`, or `credential`. Keep passwords in Keychain rather than in config JSON.
+写入配置前，helper 会递归移除字段名包含 `password`、`secret`、`token` 或 `credential` 的内容。密码类信息应放在 Keychain，不应写进配置 JSON。
 
-## Archive Encryption
+## 归档加密
 
-Set `CODEX_BACKUP_ENCRYPT=1` to encrypt archives with age before they are published to the target. Store the age identity file somewhere separate from the backup destination. If you lose the identity, encrypted backups cannot be restored.
+设置 `CODEX_BACKUP_ENCRYPT=1` 后，归档会先用 age 加密，再发布到目标端。age identity 文件应保存在备份目标端之外；如果 identity 丢失，加密备份将无法恢复。
 
-The manifest remains a small plaintext operational file. It lists included and missing source paths but not file contents.
+manifest 是一个小型明文运维文件。它列出已纳入和缺失的源路径，但不包含文件内容。
 
-Use `./scripts/codexbackup.sh --config-guide --target <target>` to print target-specific setup and encryption guidance without creating files, touching the network, or modifying automation.
+可以运行下面的只读命令查看目标端配置和加密建议；它不会创建文件、访问网络或修改自动化：
 
-## GUI And Helper Boundary
+```zsh
+./scripts/codexbackup.sh --config-guide --target <target>
+```
 
-The Web GUI can run a real backup only when the local HTTP helper is started manually and the user selects `HTTP 助手`. The helper re-checks an allowlist server-side before running anything.
+## GUI 和 helper 边界
 
-Allowed helper actions are limited to environment checks, real backup execution, restore-plan generation, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Real restore, install, uninstall, status, and appended shell commands remain blocked.
+Web GUI 只有在用户手动启动本地 HTTP helper，并主动选择 `HTTP 助手` 模式后，才可以运行真实备份。helper 会在服务端重新检查 allowlist。
 
-Restore-plan generation runs `codexrestore --plan`. It reports what would happen but does not prompt, extract archives, create safety backups, delete files, or copy files.
+允许的 helper 动作仅限环境检查、真实备份执行、恢复预案生成，以及使用 `dev.codexbackup.toolkit.test.*` 隔离 label 的 `codexinstallautomation validate`。真实恢复、安装、卸载、status 和拼接额外 shell 命令仍会被阻止。
 
-Successful helper backup runs are recorded in:
+恢复预案通过 `codexrestore --plan` 生成。它只报告将要发生什么，不会提示确认、解压归档、创建安全备份、删除文件或复制文件。
+
+GUI 顶部会显示 helper 未确认、检查中、在线或离线状态。helper 离线时，配置加载/保存、Keychain 密钥操作和真实历史刷新按钮会禁用；后续健康检查成功后，这些按钮会恢复可用。
+
+成功的 helper 备份运行会记录在：
 
 ```text
 ~/Library/Application Support/CodexBackupToolkit/history.json
 ```
 
-History entries include status, timestamps, target, exit code, and detected archive paths. They should not include passwords.
+历史记录包含状态、时间戳、目标端、退出码和检测到的归档路径，不应包含密码。
 
-Encrypted backup commands are blocked unless they include `CODEX_BACKUP_AGE_RECIPIENT` or `CODEX_BACKUP_AGE_RECIPIENT_FILE`.
+加密备份命令如果没有包含 `CODEX_BACKUP_AGE_RECIPIENT` 或 `CODEX_BACKUP_AGE_RECIPIENT_FILE`，会被 helper 阻止。
 
-## Device-Bound State
+## 设备绑定状态
 
-macOS Keychain items and browser-encrypted data may not migrate cleanly to another Mac even when files are restored. After restore, Codex or browser-backed integrations may ask you to sign in again. That is expected.
+macOS Keychain 项和浏览器加密数据可能无法仅靠文件复制迁移到另一台 Mac。恢复后，Codex 或浏览器相关集成可能要求重新登录，这是预期行为。

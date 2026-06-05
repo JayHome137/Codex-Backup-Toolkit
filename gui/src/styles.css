@@ -180,6 +180,61 @@ button {
   background: var(--red-soft);
 }
 
+.helper-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 10px 12px;
+}
+
+.helper-banner--online {
+  border-color: rgba(89, 212, 153, 0.28);
+  background: rgba(89, 212, 153, 0.08);
+}
+
+.helper-banner--offline {
+  border-color: rgba(255, 97, 97, 0.28);
+  background: rgba(255, 97, 97, 0.08);
+}
+
+.helper-banner--checking {
+  border-color: rgba(87, 193, 255, 0.28);
+  background: rgba(87, 193, 255, 0.08);
+}
+
+.helper-banner__status {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.helper-banner__status strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.helper-banner__status span {
+  display: block;
+  margin-top: 2px;
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -561,6 +616,11 @@ input[type="checkbox"] {
 
   .topbar {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .helper-banner {
+    align-items: stretch;
     flex-direction: column;
   }
 }

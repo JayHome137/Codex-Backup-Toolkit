@@ -303,8 +303,63 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/助手在线/)).toBeInTheDocument();
-      expect(screen.getByText(/node-local-helper/)).toBeInTheDocument();
+      expect(screen.getAllByText(/node-local-helper/).length).toBeGreaterThan(0);
+      expect(screen.getByText('helper 在线')).toBeInTheDocument();
     });
+  });
+
+  it('disables helper actions after helper health check fails', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error('connect ECONNREFUSED 127.0.0.1:37371');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('helper 离线')).toBeInTheDocument();
+      expect(screen.getByText(/请先在本机启动 helper/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+
+    expect(screen.getByRole('button', { name: /加载配置/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /保存配置/i })).toBeDisabled();
+  });
+
+  it('re-enables helper actions after a later helper health check succeeds', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('connect ECONNREFUSED 127.0.0.1:37371'))
+      .mockResolvedValueOnce(jsonResponse({
+        schema: 'codex-backup-helper.v1',
+        version: 1,
+        status: 'ok',
+        helper: 'node-local-helper',
+        host: '127.0.0.1',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('helper 离线')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('helper 在线')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+
+    expect(screen.getByRole('button', { name: /加载配置/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /保存配置/i })).not.toBeDisabled();
   });
 
   it('loads and saves persisted helper config from the target page', async () => {

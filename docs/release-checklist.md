@@ -30,20 +30,21 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.5.0
+git tag v0.6.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.5.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.6.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
 - [ ] 说明 GUI 通过手动启动的 HTTP helper 可以执行真实备份，但仍不会执行恢复、安装或卸载。
 - [ ] 说明 `codexrestore --plan` 可以生成恢复预案，不会修改文件。
 - [ ] 说明 helper 增加结构化 action、配置持久化、Keychain secret 接口和备份历史。
 - [ ] 说明 GUI 已接入配置保存、Keychain 密钥操作和 helper 备份历史读取。
+- [ ] 说明 GUI 增加 helper 在线/离线状态、离线禁用动作和更清楚的加载/错误反馈。
 - [ ] 说明 `codexbackup --config-guide` 是只读配置引导，不会创建备份或修改自动化。
 - [ ] 说明 WebDAV 和 rclone 已支持 `codexrestore --latest` 拉取最新归档。
 - [ ] 说明 WebDAV 和 rclone 远端保留策略默认关闭，只有设置 `CODEX_BACKUP_REMOTE_RETENTION=1` 才会删除旧远端归档。

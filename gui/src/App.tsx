@@ -42,6 +42,18 @@ type SecretDraft = {
   service: string;
 };
 
+type HelperConnectionStatus = 'unknown' | 'checking' | 'online' | 'offline';
+
+type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret-delete' | 'history-load' | null;
+
+const helperActionLabels: Record<Exclude<HelperActionState, null>, string> = {
+  'config-load': '加载配置',
+  'config-save': '保存配置',
+  'secret-save': '保存密钥',
+  'secret-delete': '删除密钥',
+  'history-load': '刷新历史',
+};
+
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
   const [config, setConfig] = useState<BackupConfig>(defaultConfig);
@@ -54,6 +66,9 @@ function App() {
   const [helperHistory, setHelperHistory] = useState<BackupHistoryEntry[]>([]);
   const [runnerMode, setRunnerMode] = useState<RunnerMode>('mock');
   const [secretDraft, setSecretDraft] = useState<SecretDraft>(defaultSecretDraft(defaultConfig));
+  const [helperStatus, setHelperStatus] = useState<HelperConnectionStatus>('unknown');
+  const [helperAction, setHelperAction] = useState<HelperActionState>(null);
+  const [helperMessage, setHelperMessage] = useState('尚未检查本地 helper。需要加载配置、保存密钥或读取真实历史时，请先确认 helper 已启动。');
   const httpHelperRunner = useMemo(() => createLocalBridgeRunner(createHttpHelperTransport()), []);
   const helperApi = useMemo(() => createHelperApi(), []);
 
@@ -76,6 +91,10 @@ function App() {
   );
   const configChecks = useMemo(() => getConfigChecks(config), [config]);
   const blockingChecks = configChecks.filter((check) => check.status === 'error');
+  const helperBusy = helperStatus === 'checking' || helperAction !== null;
+  const helperActionsDisabled = helperStatus === 'offline' || helperBusy;
+  const helperActionLabel = helperAction ? helperActionLabels[helperAction] : null;
+  const helperBannerMessage = helperActionLabel ? `${helperActionLabel}中...` : helperMessage;
 
   const setConfigAndSecretDefaults = (nextConfig: BackupConfig) => {
     setConfig(nextConfig);
@@ -92,9 +111,13 @@ function App() {
   };
 
   const checkHelper = async () => {
+    setHelperStatus('checking');
+    setHelperMessage('正在连接 127.0.0.1:37371 的本地 helper...');
     setRunningCommand('GET http://127.0.0.1:37371/health');
     try {
       const health = await checkHelperHealth();
+      setHelperStatus('online');
+      setHelperMessage(`helper 在线：${health.helper} / ${health.host}`);
       setLastResult({
         status: 'success',
         output: [
@@ -108,9 +131,11 @@ function App() {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      setHelperStatus('offline');
+      setHelperMessage('helper 离线。请先在本机启动 helper，然后重新检查连接。');
       setLastResult({
         status: 'error',
-        output: `ERR_HELPER_UNAVAILABLE\n\n${message}`,
+        output: helperErrorOutput(message),
       });
     } finally {
       setRunningCommand(null);
@@ -118,67 +143,104 @@ function App() {
   };
 
   const loadPersistedConfig = async () => {
+    setHelperAction('config-load');
     setRunningCommand('GET http://127.0.0.1:37371/config');
     try {
       const nextConfig = await helperApi.loadConfig();
       setConfigAndSecretDefaults({ ...defaultConfig, ...nextConfig });
+      setHelperStatus('online');
+      setHelperMessage('helper 在线，已成功加载持久化配置。');
       setLastResult({ status: 'success', output: '已从 helper 加载持久化配置。' });
     } catch (error) {
+      updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
     } finally {
+      setHelperAction(null);
       setRunningCommand(null);
     }
   };
 
   const savePersistedConfig = async () => {
+    setHelperAction('config-save');
     setRunningCommand('PUT http://127.0.0.1:37371/config');
     try {
       const savedConfig = await helperApi.saveConfig(config);
       setConfigAndSecretDefaults({ ...defaultConfig, ...savedConfig });
+      setHelperStatus('online');
+      setHelperMessage('helper 在线，配置已保存。');
       setLastResult({ status: 'success', output: '配置已保存到 helper。敏感字段不会写入 config.json。' });
     } catch (error) {
+      updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
     } finally {
+      setHelperAction(null);
       setRunningCommand(null);
     }
   };
 
   const saveSecret = async () => {
+    setHelperAction('secret-save');
     setRunningCommand('POST http://127.0.0.1:37371/secret');
     try {
       await helperApi.saveSecret(secretDraft);
       setSecretDraft((draft) => ({ ...draft, secret: '' }));
+      setHelperStatus('online');
+      setHelperMessage('helper 在线，密钥已写入 Keychain。');
       setLastResult({ status: 'success', output: `密钥已写入 macOS Keychain。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
     } catch (error) {
+      updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
     } finally {
+      setHelperAction(null);
       setRunningCommand(null);
     }
   };
 
   const deleteSecret = async () => {
+    setHelperAction('secret-delete');
     setRunningCommand('DELETE http://127.0.0.1:37371/secret');
     try {
       await helperApi.deleteSecret({ service: secretDraft.service, account: secretDraft.account });
+      setHelperStatus('online');
+      setHelperMessage('helper 在线，Keychain 密钥已删除。');
       setLastResult({ status: 'success', output: `Keychain 密钥已删除。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
     } catch (error) {
+      updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
     } finally {
+      setHelperAction(null);
       setRunningCommand(null);
     }
   };
 
   const loadHelperHistory = async () => {
+    setHelperAction('history-load');
     setRunningCommand('GET http://127.0.0.1:37371/history');
     try {
       const entries = await helperApi.loadHistory();
       setHelperHistory(entries);
+      setHelperStatus('online');
+      setHelperMessage(`helper 在线，已读取 ${entries.length} 条备份历史。`);
       setLastResult({ status: 'success', output: `已加载 ${entries.length} 条 helper 备份历史。` });
     } catch (error) {
+      updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
     } finally {
+      setHelperAction(null);
       setRunningCommand(null);
     }
+  };
+
+  const updateHelperFailureState = (error: unknown) => {
+    const output = helperErrorOutput(error);
+    if (output.includes('ERR_HELPER_UNAVAILABLE')) {
+      setHelperStatus('offline');
+      setHelperMessage('helper 离线。请先在本机启动 helper，然后重新检查连接。');
+      return;
+    }
+
+    setHelperStatus('online');
+    setHelperMessage('helper 已响应，但本次操作失败。请查看日志里的错误详情。');
   };
 
   const copyText = async (text: string) => {
@@ -219,6 +281,13 @@ function App() {
             <StatusBadge status={status} label={statusLabel(status)} />
           </div>
         </header>
+
+        <HelperConnectionBanner
+          disabled={helperBusy}
+          message={helperBannerMessage}
+          onCheck={checkHelper}
+          status={helperStatus}
+        />
 
         {activeSection === 'overview' && (
           <section className="view-stack">
@@ -276,13 +345,13 @@ function App() {
               </div>
               <TargetForm config={config} onChange={setConfigAndSecretDefaults} />
               <div className="action-row">
-                <button className="button button--tertiary" onClick={loadPersistedConfig} type="button">
+                <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={loadPersistedConfig} type="button">
                   <Activity size={15} aria-hidden="true" />
-                  加载配置
+                  {helperAction === 'config-load' ? '加载中' : '加载配置'}
                 </button>
-                <button className="button button--primary" onClick={savePersistedConfig} type="button">
+                <button className="button button--primary" disabled={helperActionsDisabled} onClick={savePersistedConfig} type="button">
                   <Save size={15} aria-hidden="true" />
-                  保存配置
+                  {helperAction === 'config-save' ? '保存中' : '保存配置'}
                 </button>
               </div>
             </section>
@@ -314,13 +383,13 @@ function App() {
                   </label>
                 </div>
                 <div className="action-row">
-                  <button className="button button--primary" onClick={saveSecret} type="button">
+                  <button className="button button--primary" disabled={helperActionsDisabled || secretDraft.secret.length === 0} onClick={saveSecret} type="button">
                     <KeyRound size={15} aria-hidden="true" />
-                    保存密钥
+                    {helperAction === 'secret-save' ? '保存中' : '保存密钥'}
                   </button>
-                  <button className="button button--tertiary" onClick={deleteSecret} type="button">
+                  <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={deleteSecret} type="button">
                     <Trash2 size={15} aria-hidden="true" />
-                    删除密钥
+                    {helperAction === 'secret-delete' ? '删除中' : '删除密钥'}
                   </button>
                 </div>
               </section>
@@ -429,7 +498,7 @@ function App() {
                 </div>
               </div>
               <pre className="log-output">
-                <code>{runningCommand ? '正在运行预览命令...' : lastResult?.output ?? '还没有运行任何预览命令。'}</code>
+                <code>{runningCommand ? `${helperActionLabel ?? '命令'}正在运行...` : lastResult?.output ?? '还没有运行任何预览命令。'}</code>
               </pre>
             </section>
             <section className="panel panel--compact">
@@ -445,9 +514,9 @@ function App() {
                   <Activity size={16} aria-hidden="true" />
                   <span>运行历史</span>
                 </div>
-                <button className="button button--tertiary" onClick={loadHelperHistory} type="button">
+                <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={loadHelperHistory} type="button">
                   <Activity size={15} aria-hidden="true" />
-                  刷新历史
+                  {helperAction === 'history-load' ? '刷新中' : '刷新历史'}
                 </button>
               </div>
               <div className="history-list">
@@ -505,7 +574,70 @@ function defaultSecretDraft(config: BackupConfig): SecretDraft {
 }
 
 function helperErrorOutput(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.includes('ERR_HELPER_UNAVAILABLE')) {
+    return [
+      'ERR_HELPER_UNAVAILABLE',
+      '',
+      '本地 helper 当前不可用。',
+      '请先在仓库根目录运行 `node helper/server.mjs`，再回到 GUI 点击“重新检查”。',
+      '',
+      message,
+    ].join('\n');
+  }
+
+  if (message.includes('ERR_HELPER_FAILED')) {
+    return [
+      'ERR_HELPER_FAILED',
+      '',
+      'helper 已响应，但本次操作没有成功。',
+      '请根据下方错误信息检查配置、权限或 Keychain 输入。',
+      '',
+      message,
+    ].join('\n');
+  }
+
+  return message;
+}
+
+function HelperConnectionBanner({
+  disabled,
+  message,
+  onCheck,
+  status,
+}: {
+  disabled: boolean;
+  message: string;
+  onCheck: () => void;
+  status: HelperConnectionStatus;
+}) {
+  const Icon = status === 'online' ? CheckCircle2 : status === 'offline' ? TriangleAlert : Activity;
+
+  return (
+    <section className={`helper-banner helper-banner--${status}`}>
+      <div className="helper-banner__status">
+        <Icon size={16} aria-hidden="true" />
+        <div>
+          <strong>{helperStatusLabel(status)}</strong>
+          <span>{message}</span>
+        </div>
+      </div>
+      <button className="button button--tertiary" disabled={disabled} onClick={onCheck} type="button">
+        <Activity size={15} aria-hidden="true" />
+        {status === 'checking' ? '检查中' : '重新检查'}
+      </button>
+    </section>
+  );
+}
+
+function helperStatusLabel(status: HelperConnectionStatus): string {
+  return {
+    unknown: 'helper 未确认',
+    checking: 'helper 检查中',
+    online: 'helper 在线',
+    offline: 'helper 离线',
+  }[status];
 }
 
 function HelperHistoryItem({ entry }: { entry: BackupHistoryEntry }) {
