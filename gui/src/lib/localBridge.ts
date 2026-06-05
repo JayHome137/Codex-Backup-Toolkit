@@ -1,9 +1,10 @@
 import type { CommandResult, CommandRunner } from './commands';
-import { createMockHelperTransport, runHelperCommand, type HelperResponse, type HelperTransport } from './helperProtocol';
+import type { HelperAction } from './actions';
+import { createMockHelperTransport, runHelperAction, runHelperCommand, type HelperResponse, type HelperTransport } from './helperProtocol';
 
 type AllowedLocalCommand = {
   allowed: true;
-  kind: 'doctor' | 'validate' | 'backup';
+  kind: 'doctor' | 'validate' | 'backup' | 'restorePlan';
 };
 
 type BlockedLocalCommand = {
@@ -19,6 +20,7 @@ const commandKindLabels: Record<AllowedLocalCommand['kind'], string> = {
   doctor: '环境检查',
   validate: '计划校验',
   backup: '备份执行',
+  restorePlan: '恢复预案',
 };
 
 const decisionLabels: Record<HelperResponse['audit']['decision'], string> = {
@@ -31,8 +33,14 @@ export function classifyLocalCommand(command: string): LocalCommandClassificatio
     return { allowed: false, reason: '命令不能包含 shell 拼接、替换或追加执行符号。' };
   }
 
-  if (command.trim() === '' || command.includes('codexrestore.sh')) {
+  if (command.trim() === '') {
     return { allowed: false, reason: generalBlockReason };
+  }
+
+  if (command.includes('codexrestore.sh')) {
+    return command.includes('./scripts/codexrestore.sh --plan')
+      ? { allowed: true, kind: 'restorePlan' }
+      : { allowed: false, reason: generalBlockReason };
   }
 
   if (command.includes('codexinstallautomation.sh')) {
@@ -78,7 +86,7 @@ function formatHelperResponse(response: HelperResponse): string {
 
 export function createLocalBridgeRunner(transport: HelperTransport = createMockHelperTransport()): CommandRunner {
   return {
-    async run(command: string): Promise<CommandResult> {
+    async run(command: string, action?: HelperAction): Promise<CommandResult> {
       const classification = classifyLocalCommand(command);
 
       if (!classification.allowed) {
@@ -89,7 +97,7 @@ export function createLocalBridgeRunner(transport: HelperTransport = createMockH
       }
 
       try {
-        const response = await runHelperCommand(command, transport);
+        const response = action ? await runHelperAction(action, transport) : await runHelperCommand(command, transport);
 
         return {
           status: response.status === 'ok' ? 'success' : 'error',

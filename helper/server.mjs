@@ -1,19 +1,29 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { classifyHelperCommand, schema } from './allowlist.mjs';
+import { createConfigStore } from './config-store.mjs';
 import { createShellExecutor } from './executor.mjs';
+import { buildBackupHistoryEntry, createHistoryStore } from './history-store.mjs';
+import { createKeychain } from './keychain.mjs';
 
 const helperName = 'node-local-helper';
 const defaultHost = '127.0.0.1';
 const defaultPort = 37371;
 
-export async function createHelperServer({ executor = createShellExecutor(), host = defaultHost, port = defaultPort } = {}) {
+export async function createHelperServer({
+  executor = createShellExecutor(),
+  host = defaultHost,
+  port = defaultPort,
+  configStore = createConfigStore(),
+  historyStore = createHistoryStore(),
+  keychain = createKeychain({ executor }),
+} = {}) {
   if (host !== defaultHost) {
     throw new Error('Helper host must be 127.0.0.1.');
   }
 
   const server = http.createServer((request, response) => {
-    void handleRequest({ executor, request, response, host });
+    void handleRequest({ configStore, executor, historyStore, keychain, request, response, host });
   });
 
   await new Promise((resolve, reject) => {
@@ -38,7 +48,7 @@ export async function createHelperServer({ executor = createShellExecutor(), hos
   };
 }
 
-async function handleRequest({ executor, request, response, host }) {
+async function handleRequest({ configStore, executor, historyStore, keychain, request, response, host }) {
   setCommonHeaders(response, request.headers.origin);
 
   if (request.method === 'OPTIONS') {
@@ -62,6 +72,70 @@ async function handleRequest({ executor, request, response, host }) {
       helper: helperName,
       host,
     });
+    return;
+  }
+
+  if (url.pathname === '/config') {
+    if (request.method === 'GET') {
+      try {
+        writeJson(response, 200, { schema, version: 1, status: 'ok', config: await configStore.read() });
+      } catch (error) {
+        writeError(response, 500, 'ERR_HELPER_FAILED', error instanceof Error ? error.message : String(error));
+      }
+      return;
+    }
+
+    if (request.method === 'PUT') {
+      const body = await readJsonBody(request);
+      if (!body.ok) {
+        writeError(response, 400, 'ERR_HELPER_FAILED', body.error);
+        return;
+      }
+      try {
+        writeJson(response, 200, { schema, version: 1, status: 'ok', config: await configStore.write(body.value) });
+      } catch (error) {
+        writeError(response, 500, 'ERR_HELPER_FAILED', error instanceof Error ? error.message : String(error));
+      }
+      return;
+    }
+
+    writeError(response, 405, 'ERR_HELPER_FAILED', 'Method not allowed.');
+    return;
+  }
+
+  if (url.pathname === '/history') {
+    if (request.method !== 'GET') {
+      writeError(response, 405, 'ERR_HELPER_FAILED', 'Method not allowed.');
+      return;
+    }
+    try {
+      writeJson(response, 200, { schema, version: 1, status: 'ok', history: await historyStore.read() });
+    } catch (error) {
+      writeError(response, 500, 'ERR_HELPER_FAILED', error instanceof Error ? error.message : String(error));
+    }
+    return;
+  }
+
+  if (url.pathname === '/secret') {
+    if (request.method !== 'POST' && request.method !== 'DELETE') {
+      writeError(response, 405, 'ERR_HELPER_FAILED', 'Method not allowed.');
+      return;
+    }
+
+    const body = await readJsonBody(request);
+    if (!body.ok) {
+      writeError(response, 400, 'ERR_HELPER_FAILED', body.error);
+      return;
+    }
+
+    try {
+      const result = request.method === 'POST'
+        ? await keychain.saveSecret(body.value)
+        : await keychain.deleteSecret(body.value);
+      writeJson(response, result.status === 'ok' ? 200 : 500, { schema, version: 1, ...result });
+    } catch (error) {
+      writeError(response, 400, 'ERR_HELPER_FAILED', error instanceof Error ? error.message : String(error));
+    }
     return;
   }
 
@@ -94,10 +168,16 @@ async function handleRequest({ executor, request, response, host }) {
     }
 
     try {
-      const result = await executor(body.value);
+      const executableRequest = classification.command ? { ...body.value, kind: classification.kind, command: classification.command } : body.value;
+      const result = await executor(executableRequest);
       const exitCode = Number.isInteger(result.exitCode) ? result.exitCode : 1;
-      writeJson(response, 200, buildResponse(body.value, {
+      const finishedAt = new Date().toISOString();
+      if (executableRequest.kind === 'backup') {
+        await historyStore.append(buildBackupHistoryEntry({ request: executableRequest, result: { ...result, exitCode }, startedAt, finishedAt }));
+      }
+      writeJson(response, 200, buildResponse(executableRequest, {
         startedAt,
+        finishedAt,
         exitCode,
         stdout: String(result.stdout ?? ''),
         stderr: String(result.stderr ?? ''),
@@ -133,11 +213,11 @@ function buildResponse(request, options) {
     stderr: options.stderr,
     ...(options.errorCode ? { errorCode: options.errorCode } : {}),
     audit: {
-      commandKind: request?.kind === 'validate' || request?.kind === 'backup' ? request.kind : 'doctor',
+      commandKind: ['doctor', 'validate', 'backup', 'restorePlan'].includes(request?.kind) ? request.kind : 'doctor',
       decision: options.decision,
       helper: helperName,
       startedAt: options.startedAt,
-      finishedAt: new Date().toISOString(),
+      finishedAt: options.finishedAt ?? new Date().toISOString(),
     },
   };
 }
@@ -155,7 +235,7 @@ function writeError(response, statusCode, errorCode, message) {
 function setCommonHeaders(response, origin) {
   response.setHeader('content-type', 'application/json; charset=utf-8');
   response.setHeader('cache-control', 'no-store');
-  response.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
+  response.setHeader('access-control-allow-methods', 'GET, PUT, POST, DELETE, OPTIONS');
   response.setHeader('access-control-allow-headers', 'content-type');
 
   if (isAllowedOrigin(origin)) {

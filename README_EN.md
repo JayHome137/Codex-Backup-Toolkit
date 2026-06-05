@@ -2,7 +2,7 @@
 
 `codexbackup` is a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote.
 
-The current public scope is intentionally Codex-only. The project structure leaves room for more AI developer-tool profiles later, but the current promise is narrow: reliable Codex backup, restore, and automation.
+The current public scope is Codex Desktop backup, restore, automation, and the browser GUI/helper foundation.
 
 ## What It Backs Up
 
@@ -70,6 +70,12 @@ Restore a specific archive:
 
 ```zsh
 ./scripts/codexrestore.sh --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
+```
+
+Print a restore plan without changing files:
+
+```zsh
+./scripts/codexrestore.sh --plan --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
 ```
 
 ## Configure A Target
@@ -191,9 +197,9 @@ Default local URL:
 http://127.0.0.1:5173
 ```
 
-The current GUI focuses on configuration, safety checks, and controlled backup execution. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands through the helper allowlist. Restore, install, uninstall, and status commands are still blocked.
+The current GUI focuses on configuration, safety checks, controlled backup execution, restore planning, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands and `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
 
-The interface currently supports target forms, configuration checks, age encryption guidance, `config.env` previews, command copying, latest-restore and archive-restore command previews, mock/helper output, and run history.
+The interface currently supports target forms, configuration checks, age encryption guidance, `config.env` previews, command copying, latest/archive restore plans, mock/helper output, and run history.
 
 The GUI includes two local bridge-related modes:
 
@@ -206,7 +212,13 @@ The local helper is not started by default and does not auto-run with the GUI. F
 node helper/server.mjs
 ```
 
-The current helper allows `codexbackup --doctor`, real `codexbackup` backup commands, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Restore, install, uninstall, status, and appended shell commands are blocked. Encrypted backup commands must include `CODEX_BACKUP_AGE_RECIPIENT` or `CODEX_BACKUP_AGE_RECIPIENT_FILE`. See [helper-protocol.md](docs/helper-protocol.md) for the draft protocol.
+The current helper allows `codexbackup --doctor`, real `codexbackup` backup commands, `codexrestore --plan` restore-plan commands, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Real restore, install, uninstall, status, and appended shell commands are blocked. Encrypted backup commands must include `CODEX_BACKUP_AGE_RECIPIENT` or `CODEX_BACKUP_AGE_RECIPIENT_FILE`. See [helper-protocol.md](docs/helper-protocol.md) for the protocol.
+
+The helper also exposes opt-in product-state endpoints for the GUI:
+
+- `GET /config` and `PUT /config` persist sanitized config at `~/Library/Application Support/CodexBackupToolkit/config.json`.
+- `POST /secret` and `DELETE /secret` write/delete password-like values through macOS Keychain.
+- `GET /history` returns recent backup history recorded by successful helper backup runs.
 
 After selecting `HTTP 助手` in the GUI, use `检查助手` to call `/health` first. This only confirms the helper is online; it does not run backup scripts or modify any scheduled job.
 

@@ -3,6 +3,8 @@ import { Activity, Archive, CalendarCheck2, CheckCircle2, Play, RotateCcw, Shiel
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
+import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction } from './lib/actions';
+import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
@@ -55,13 +57,20 @@ function App() {
     }),
     [archivePath, config, restoreEncrypted, restoreSource],
   );
+  const actions = useMemo(
+    () => ({
+      backup: buildBackupAction(config),
+      restorePlan: restoreSource === 'archive' ? buildRestorePlanAction(archivePath, restoreEncrypted) : buildLatestRestorePlanAction(config),
+    }),
+    [archivePath, config, restoreEncrypted, restoreSource],
+  );
   const configChecks = useMemo(() => getConfigChecks(config), [config]);
   const blockingChecks = configChecks.filter((check) => check.status === 'error');
 
-  const runPreview = async (command: string, label: string) => {
+  const runPreview = async (command: string, label: string, action?: HelperAction) => {
     setRunningCommand(command);
     const activeRunner = runnerMode === 'httpHelper' ? httpHelperRunner : runnerMode === 'localBridge' ? localBridgeRunner : runner;
-    const result = await activeRunner.run(command);
+    const result = await activeRunner.run(command, action);
     setLastResult(result);
     setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
     setRunningCommand(null);
@@ -166,7 +175,7 @@ function App() {
                       检查助手
                     </button>
                   )}
-                  <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令')} type="button">
+                  <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令', actions.backup)} type="button">
                     <Archive size={15} aria-hidden="true" />
                     {runnerMode === 'mock' ? '预览备份' : '执行备份'}
                   </button>
@@ -270,15 +279,15 @@ function App() {
                   </>
                 )}
               </div>
-              <p className="muted-copy">当前浏览器版只预览恢复命令。最新备份会使用当前目标端配置生成 `codexrestore --latest`。</p>
+              <p className="muted-copy">当前浏览器版只生成恢复预案，不执行真实恢复。最新备份会使用当前目标端配置生成 `codexrestore --plan --latest`。</p>
               <div className="action-row">
-                <button className="button button--tertiary" onClick={() => runPreview(commands.restore, '恢复命令')} type="button">
+                <button className="button button--tertiary" onClick={() => runPreview(commands.restore, '恢复预案', actions.restorePlan)} type="button">
                   <RotateCcw size={15} aria-hidden="true" />
-                  预览恢复
+                  生成预案
                 </button>
               </div>
             </section>
-            <CommandPreview command={commands.restore} title="恢复命令" onCopy={copyText} />
+            <CommandPreview command={commands.restore} title="恢复预案命令" onCopy={copyText} />
           </section>
         )}
 

@@ -82,7 +82,7 @@ describe('App', () => {
     expect(screen.getByRole('group', { name: /恢复来源/i })).toBeInTheDocument();
     expect(screen.getByText('最新备份目标端')).toBeInTheDocument();
     expect(screen.getAllByText(/CODEX_BACKUP_TARGET=rclone/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --latest/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --plan --latest/).length).toBeGreaterThan(0);
   });
 
   it('can switch restore preview back to a specific archive', () => {
@@ -92,7 +92,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /指定归档/i }));
 
     expect(screen.getByLabelText('归档路径')).toBeInTheDocument();
-    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --archive/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --plan --archive/).length).toBeGreaterThan(0);
   });
 
   it('keeps a history of preview runs in Logs', async () => {
@@ -187,7 +187,10 @@ describe('App', () => {
       expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
       expect(screen.getByText(/命令类型: 备份执行/)).toBeInTheDocument();
     });
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).kind).toBe('backup');
+    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(request.kind).toBe('backup');
+    expect(request.command).toBeUndefined();
+    expect(request.action).toMatchObject({ type: 'backup', target: 'local' });
   });
 
   it('uses the HTTP helper transport when HTTP helper mode is selected', async () => {
@@ -230,6 +233,50 @@ describe('App', () => {
       'http://127.0.0.1:37371/run',
       expect.objectContaining({ method: 'POST' }),
     );
+  });
+
+  it('sends restore plan requests through the HTTP helper without a raw restore command', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const request = JSON.parse(String(init?.body));
+
+      return new Response(
+        JSON.stringify({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'Codex restore plan\nNo files were changed.',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'node-local-helper',
+            startedAt: '2026-06-04T00:00:00.000Z',
+            finishedAt: '2026-06-04T00:00:00.000Z',
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /恢复/i }));
+    fireEvent.click(screen.getByRole('button', { name: /指定归档/i }));
+    fireEvent.click(screen.getByRole('button', { name: /生成预案/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Codex restore plan/)).toBeInTheDocument();
+      expect(screen.getByText(/命令类型: 恢复预案/)).toBeInTheDocument();
+    });
+    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(request.kind).toBe('restorePlan');
+    expect(request.command).toBeUndefined();
+    expect(request.action).toMatchObject({ type: 'restorePlan', source: 'archive' });
   });
 
   it('checks helper health without running a command', async () => {

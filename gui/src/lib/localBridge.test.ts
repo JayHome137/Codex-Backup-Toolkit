@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBackupCommand, buildDoctorCommand, buildRestoreCommand, buildValidateCommand, defaultConfig } from './config';
+import { buildBackupCommand, buildDoctorCommand, buildRestoreCommand, buildRestoreLatestCommand, buildValidateCommand, defaultConfig } from './config';
 import { classifyLocalCommand, createLocalBridgeRunner } from './localBridge';
 
 describe('local bridge command allowlist', () => {
@@ -23,10 +23,15 @@ describe('local bridge command allowlist', () => {
   });
 
   it('blocks restore commands', () => {
-    expect(classifyLocalCommand(buildRestoreCommand('/tmp/archive.tar.gz', false))).toEqual({
+    expect(classifyLocalCommand('./scripts/codexrestore.sh --archive /tmp/archive.tar.gz')).toEqual({
       allowed: false,
       reason: 'Web 桥接只允许环境检查、真实备份和隔离的计划校验。',
     });
+  });
+
+  it('allows restore plan commands without allowing real restore execution', () => {
+    expect(classifyLocalCommand(buildRestoreCommand('/tmp/archive.tar.gz', false))).toEqual({ allowed: true, kind: 'restorePlan' });
+    expect(classifyLocalCommand(buildRestoreLatestCommand(defaultConfig))).toEqual({ allowed: true, kind: 'restorePlan' });
   });
 
   it('blocks shell command chaining before a helper request is created', () => {
@@ -45,7 +50,7 @@ describe('local bridge command allowlist', () => {
 
   it('returns warning output when a blocked command is run', async () => {
     const runner = createLocalBridgeRunner();
-    const result = await runner.run(buildRestoreCommand('/tmp/archive.tar.gz', false));
+    const result = await runner.run('./scripts/codexrestore.sh --archive /tmp/archive.tar.gz');
 
     expect(result.status).toBe('warning');
     expect(result.output).toContain('已被 Web 桥接允许列表阻止');

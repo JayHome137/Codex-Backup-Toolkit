@@ -34,6 +34,22 @@ Restore a specific local archive:
 ./scripts/codexrestore.sh --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
 ```
 
+Print a restore plan before changing anything:
+
+```zsh
+./scripts/codexrestore.sh --plan --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
+```
+
+For latest restore, `--plan` works with every target as well:
+
+```zsh
+CODEX_BACKUP_TARGET=local \
+CODEX_BACKUP_LOCAL_DIR="$HOME/CodexBackups" \
+./scripts/codexrestore.sh --plan --latest
+```
+
+Restore plans show the archive, target home, safety-backup location, checksum/decryption intent, and the paths that would be restored. They do not prompt, extract, create safety backups, delete files, or copy files.
+
 Restore an encrypted archive:
 
 ```zsh
@@ -61,6 +77,15 @@ CODEX_BACKUP_TARGET=webdav \
 CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup" \
 CODEX_BACKUP_WEBDAV_USER=backup-user \
 ./scripts/codexrestore.sh --latest
+```
+
+Preview the same WebDAV restore first:
+
+```zsh
+CODEX_BACKUP_TARGET=webdav \
+CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup" \
+CODEX_BACKUP_WEBDAV_USER=backup-user \
+./scripts/codexrestore.sh --plan --latest
 ```
 
 Restore latest from rclone:

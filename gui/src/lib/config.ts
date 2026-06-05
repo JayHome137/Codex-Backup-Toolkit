@@ -119,11 +119,11 @@ export function buildValidateCommand(config: BackupConfig): string {
 
 export function buildRestoreCommand(archivePath: string, encrypted: boolean): string {
   const identity = encrypted ? ' --age-identity /path/to/age-identity.txt' : '';
-  return `./scripts/codexrestore.sh --archive ${archivePath}${identity}`;
+  return `./scripts/codexrestore.sh --plan --archive ${archivePath}${identity}`;
 }
 
 export function buildRestoreLatestCommand(config: BackupConfig): string {
-  return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexrestore.sh --latest`;
+  return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexrestore.sh --plan --latest`;
 }
 
 export function getConfigChecks(config: BackupConfig): ConfigCheck[] {

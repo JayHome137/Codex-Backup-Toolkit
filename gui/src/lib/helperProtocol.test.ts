@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildBackupAction, buildRestorePlanAction } from './actions';
 import { buildBackupCommand, buildDoctorCommand, buildValidateCommand, defaultConfig } from './config';
 import { checkHelperHealth, buildHelperRequest, createHttpHelperTransport, createMockHelperTransport, runHelperCommand } from './helperProtocol';
 
@@ -30,6 +31,24 @@ describe('helper protocol', () => {
     expect(request.kind).toBe('backup');
     expect(request.command).toContain('CODEX_BACKUP_TARGET=local');
     expect(request.command).toContain('./scripts/codexbackup.sh --target local');
+  });
+
+  it('builds helper requests from structured actions without requiring a command string', () => {
+    const action = buildBackupAction(defaultConfig);
+    const request = buildHelperRequest(action);
+
+    expect(request.kind).toBe('backup');
+    expect(request.action).toEqual(action);
+    expect(request.command).toBeUndefined();
+  });
+
+  it('builds helper requests for structured restore plan actions', () => {
+    const action = buildRestorePlanAction('/tmp/codex-backup.tar.gz', false);
+    const request = buildHelperRequest(action);
+
+    expect(request.kind).toBe('restorePlan');
+    expect(request.action).toEqual(action);
+    expect(request.command).toBeUndefined();
   });
 
   it('throws a typed allowlist error when request creation receives a blocked command', () => {

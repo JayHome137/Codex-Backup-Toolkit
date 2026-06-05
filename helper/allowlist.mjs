@@ -1,5 +1,6 @@
 const schema = 'codex-backup-helper.v1';
 const allowedTargets = new Set(['local', 'smb', 'webdav', 'rclone']);
+import { buildCommandFromAction, classifyAction } from './actions.mjs';
 
 export { schema };
 
@@ -14,6 +15,15 @@ export function classifyHelperCommand(request) {
 
   if (typeof request.requestId !== 'string' || request.requestId.trim() === '') {
     return { allowed: false, reason: 'requestId is required.' };
+  }
+
+  if (request.action !== undefined) {
+    const classification = classifyAction(request.action);
+    if (!classification.allowed) return classification;
+    if (request.kind !== classification.kind) {
+      return { allowed: false, reason: 'Request kind does not match structured action kind.' };
+    }
+    return { ...classification, command: buildCommandFromAction(request.action) };
   }
 
   if (request.kind !== 'doctor' && request.kind !== 'validate' && request.kind !== 'backup') {

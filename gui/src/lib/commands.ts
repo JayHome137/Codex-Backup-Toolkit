@@ -6,7 +6,7 @@ export type CommandResult = {
 };
 
 export type CommandRunner = {
-  run(command: string): Promise<CommandResult>;
+  run(command: string, action?: HelperAction): Promise<CommandResult>;
 };
 
 export function createMockCommandRunner(): CommandRunner {
@@ -47,3 +47,4 @@ export function createMockCommandRunner(): CommandRunner {
     },
   };
 }
+import type { HelperAction } from './actions';

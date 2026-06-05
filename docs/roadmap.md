@@ -21,6 +21,11 @@ Status: current scope.
 - GUI configuration checks and age encryption guidance. Status: added for 0.3.0.
 - Opt-in HTTP helper real backup execution with restore/install/uninstall still blocked. Status: added for 0.3.0.
 - Read-only `codexbackup --config-guide` target setup guide. Status: added for 0.3.0.
+- Structured helper actions for backup and restore planning. Status: added for 0.4.0.
+- Persistent sanitized GUI config store. Status: added for 0.4.0.
+- Helper-side Keychain save/delete interface for secrets. Status: added for 0.4.0.
+- Backup history store exposed through `GET /history`. Status: added for 0.4.0.
+- Restore dry-run through `codexrestore --plan`. Status: added for 0.4.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
@@ -40,6 +45,6 @@ The default should remain conservative: each profile must document exactly what 
 
 ## Phase C: GUI
 
-The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports configuration checks, encryption guidance, command previews, helper health checks, and controlled backup execution. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
+The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports configuration checks, encryption guidance, command previews, helper health checks, controlled backup execution, and restore-plan generation. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
 
 See `docs/gui-design.md` for the visual direction.

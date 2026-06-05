@@ -23,6 +23,9 @@ jobs:
       - name: Run config guide checks
         run: ./tests/test-config-guide.sh
 
+      - name: Run restore plan check
+        run: ./tests/test-restore-plan.sh
+
       - name: Run local backup e2e
         run: ./tests/test-local-e2e.sh
 
@@ -45,7 +48,7 @@ jobs:
         run: ./tests/test-remote-retention.sh
 
       - name: Run local helper tests
-        run: node --test helper/server.test.mjs
+        run: node --test helper/*.test.mjs
 
       - name: Install GUI dependencies
         working-directory: gui

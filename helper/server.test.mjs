@@ -55,8 +55,47 @@ function backupRequest(command = [
   };
 }
 
-async function withHelper(executor, callback) {
-  const helper = await createHelperServer({ executor, host: '127.0.0.1', port: 0 });
+function backupActionRequest() {
+  return {
+    schema,
+    version: 1,
+    requestId: 'test-backup-action-1',
+    createdAt: '2026-06-04T00:00:00.000Z',
+    kind: 'backup',
+    action: {
+      type: 'backup',
+      target: 'local',
+      config: {
+        localDir: '/tmp/CodexBackups',
+        retentionCount: 10,
+        retentionDays: 30,
+        remoteRetention: false,
+        encrypt: false,
+      },
+    },
+  };
+}
+
+function restorePlanActionRequest() {
+  return {
+    schema,
+    version: 1,
+    requestId: 'test-restore-plan-action-1',
+    createdAt: '2026-06-04T00:00:00.000Z',
+    kind: 'restorePlan',
+    action: {
+      type: 'restorePlan',
+      source: 'latest',
+      target: 'local',
+      config: {
+        localDir: '/tmp/CodexBackups',
+      },
+    },
+  };
+}
+
+async function withHelper(executor, callback, options = {}) {
+  const helper = await createHelperServer({ executor, host: '127.0.0.1', port: 0, ...options });
   try {
     return await callback(helper);
   } finally {
@@ -130,6 +169,66 @@ test('health reports helper status and binds to loopback only', async () => {
       host: '127.0.0.1',
     });
   });
+});
+
+test('config endpoint reads and writes sanitized persistent config', async () => {
+  let stored = { version: 1, target: 'local' };
+  const configStore = {
+    read: async () => stored,
+    write: async (config) => {
+      stored = { ...config };
+      delete stored.password;
+      return stored;
+    },
+  };
+
+  await withHelper(async () => ({ exitCode: 0, stdout: '', stderr: '' }), async (helper) => {
+    const initial = await requestJson(helper.origin, '/config');
+    assert.equal(initial.response.status, 200);
+    assert.deepEqual(initial.body.config, { version: 1, target: 'local' });
+
+    const saved = await requestJson(helper.origin, '/config', {
+      method: 'PUT',
+      body: JSON.stringify({ target: 'webdav', webdavUser: 'backup-user', password: 'secret' }),
+    });
+    assert.equal(saved.response.status, 200);
+    assert.deepEqual(saved.body.config, { target: 'webdav', webdavUser: 'backup-user' });
+  }, { configStore });
+});
+
+test('secret endpoint saves and deletes Keychain secrets through injected keychain', async () => {
+  const calls = [];
+  const keychain = {
+    saveSecret: async (input) => {
+      calls.push(['save', input]);
+      return { status: 'ok' };
+    },
+    deleteSecret: async (input) => {
+      calls.push(['delete', input]);
+      return { status: 'ok' };
+    },
+  };
+
+  await withHelper(async () => ({ exitCode: 0, stdout: '', stderr: '' }), async (helper) => {
+    const saved = await requestJson(helper.origin, '/secret', {
+      method: 'POST',
+      body: JSON.stringify({ service: 'codexbackup-webdav', account: 'backup-user@example', secret: 'super-secret' }),
+    });
+    assert.equal(saved.response.status, 200);
+    assert.deepEqual(saved.body, { schema, version: 1, status: 'ok' });
+
+    const deleted = await requestJson(helper.origin, '/secret', {
+      method: 'DELETE',
+      body: JSON.stringify({ service: 'codexbackup-webdav', account: 'backup-user@example' }),
+    });
+    assert.equal(deleted.response.status, 200);
+    assert.deepEqual(deleted.body, { schema, version: 1, status: 'ok' });
+  }, { keychain });
+
+  assert.deepEqual(calls, [
+    ['save', { service: 'codexbackup-webdav', account: 'backup-user@example', secret: 'super-secret' }],
+    ['delete', { service: 'codexbackup-webdav', account: 'backup-user@example' }],
+  ]);
 });
 
 test('server module starts as a CLI even when the repository path contains spaces', async () => {
@@ -246,6 +345,80 @@ test('run accepts backup requests and calls the injected executor', async () => 
     assert.equal(body.stdout, 'backup ok');
     assert.equal(body.audit.commandKind, 'backup');
   });
+});
+
+test('run builds commands from structured backup actions before calling the executor', async () => {
+  const calls = [];
+  await withHelper(async (request) => {
+    calls.push(request);
+    return { exitCode: 0, stdout: 'backup action ok', stderr: '' };
+  }, async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(backupActionRequest()),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].kind, 'backup');
+    assert.match(calls[0].command, /CODEX_BACKUP_TARGET=local/);
+    assert.match(calls[0].command, /\.\/scripts\/codexbackup\.sh --target local/);
+    assert.equal(body.status, 'ok');
+    assert.equal(body.stdout, 'backup action ok');
+    assert.equal(body.audit.commandKind, 'backup');
+  });
+});
+
+test('run records backup history and exposes it through history endpoint', async () => {
+  const entries = [];
+  const historyStore = {
+    append: async (entry) => entries.push(entry),
+    read: async () => ({ version: 1, entries }),
+  };
+
+  await withHelper(async () => ({
+    exitCode: 0,
+    stdout: 'Backup written to:\n  /tmp/CodexBackups/codex-backup-mac.tar.gz\n',
+    stderr: '',
+  }), async (helper) => {
+    await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(backupActionRequest()),
+    });
+
+    const history = await requestJson(helper.origin, '/history');
+    assert.equal(history.response.status, 200);
+    assert.equal(history.body.history.entries.length, 1);
+    assert.deepEqual(history.body.history.entries[0].archivePaths, ['/tmp/CodexBackups/codex-backup-mac.tar.gz']);
+    assert.equal(history.body.history.entries[0].status, 'success');
+  }, { historyStore });
+});
+
+test('run builds commands from structured restore plan actions without recording backup history', async () => {
+  const calls = [];
+  const entries = [];
+  const historyStore = {
+    append: async (entry) => entries.push(entry),
+    read: async () => ({ version: 1, entries }),
+  };
+
+  await withHelper(async (request) => {
+    calls.push(request);
+    return { exitCode: 0, stdout: 'Codex restore plan\nNo files were changed.\n', stderr: '' };
+  }, async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(restorePlanActionRequest()),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].kind, 'restorePlan');
+    assert.match(calls[0].command, /\.\/scripts\/codexrestore\.sh --plan --latest/);
+    assert.equal(body.status, 'ok');
+    assert.equal(body.audit.commandKind, 'restorePlan');
+    assert.equal(entries.length, 0);
+  }, { historyStore });
 });
 
 test('run rejects encrypted backup requests without an age recipient before executor is called', async () => {

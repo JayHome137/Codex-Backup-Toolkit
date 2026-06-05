@@ -46,7 +46,7 @@ describe('command builders', () => {
   it('builds restore preview command for encrypted archive', () => {
     const command = buildRestoreCommand('/tmp/codex-backup.tar.gz.age', true);
 
-    expect(command).toContain('./scripts/codexrestore.sh --archive /tmp/codex-backup.tar.gz.age');
+    expect(command).toContain('./scripts/codexrestore.sh --plan --archive /tmp/codex-backup.tar.gz.age');
     expect(command).toContain('--age-identity /path/to/age-identity.txt');
   });
 
@@ -55,7 +55,7 @@ describe('command builders', () => {
 
     expect(command).toContain('CODEX_BACKUP_TARGET=rclone');
     expect(command).toContain('CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup"');
-    expect(command).toContain('./scripts/codexrestore.sh --latest');
+    expect(command).toContain('./scripts/codexrestore.sh --plan --latest');
   });
 
   it('builds a config.env preview without credential secrets', () => {

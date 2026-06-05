@@ -33,6 +33,8 @@ usage() {
   cat <<'EOF'
 Usage: codexrestore --latest [--target local|smb|webdav|rclone]
        codexrestore --archive /path/to/codex-backup-*.tar.gz[.age]
+       codexrestore --plan --latest [--target local|smb|webdav|rclone]
+       codexrestore --plan --archive /path/to/codex-backup-*.tar.gz[.age]
 
 Restores a Codex backup. The script first creates a local safety backup of any
 existing Codex files before replacing them.
@@ -42,6 +44,7 @@ Options:
   --archive FILE    Restore a specific local archive.
   --target TARGET   Override CODEX_BACKUP_TARGET for --latest.
   --age-identity    Path to age identity file for encrypted .age archives.
+  --plan            Print a restore plan without changing files.
   --yes             Do not ask for final confirmation.
 EOF
 }
@@ -49,6 +52,7 @@ EOF
 ARCHIVE=""
 USE_LATEST=0
 ASSUME_YES=0
+PLAN=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --latest)
@@ -69,6 +73,10 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || { echo "Missing value for --age-identity" >&2; exit 2; }
       AGE_IDENTITY="$2"
       shift 2
+      ;;
+    --plan)
+      PLAN=1
+      shift
       ;;
     --yes)
       ASSUME_YES=1
@@ -248,6 +256,30 @@ restore_if_present() {
   fi
 }
 
+print_restore_plan() {
+  local checksum_state="no"
+  [[ -f "${ARCHIVE}.sha256" ]] && checksum_state="yes"
+  local decrypt_state="no"
+  [[ "$ARCHIVE" == *.age ]] && decrypt_state="yes"
+
+  cat <<EOF
+Codex restore plan
+Archive: ${ARCHIVE}
+Target home: ${HOME}
+Will create safety backup under:
+  ${SAFETY_DIR}/codex-before-restore-${TIMESTAMP}.tar.gz
+Would verify checksum: ${checksum_state}
+Would decrypt: ${decrypt_state}
+Would restore if present:
+  ~/.codex -> ${HOME}/.codex
+  ~/Library/Application Support/Codex -> ${HOME}/Library/Application Support/Codex
+  ~/Library/Application Support/OpenAI -> ${HOME}/Library/Application Support/OpenAI
+  ~/Library/Application Support/com.openai.codex -> ${HOME}/Library/Application Support/com.openai.codex
+  ~/Documents/Codex -> ${HOME}/Documents/Codex
+No files were changed.
+EOF
+}
+
 if [[ "$USE_LATEST" -eq 1 ]]; then
   case "$TARGET" in
     local)
@@ -279,6 +311,10 @@ if [[ "$USE_LATEST" -eq 1 ]]; then
 fi
 
 [[ -f "$ARCHIVE" ]] || { echo "Archive not found: $ARCHIVE" >&2; exit 1; }
+if [[ "$PLAN" -eq 1 ]]; then
+  print_restore_plan
+  exit 0
+fi
 SHA_FILE="${ARCHIVE}.sha256"
 if [[ -f "$SHA_FILE" ]]; then
   (cd "$(dirname "$ARCHIVE")" && shasum -a 256 -c "$(basename "$SHA_FILE")")

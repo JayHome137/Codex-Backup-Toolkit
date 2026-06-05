@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 - 2026-06-06
+
+- 增加结构化 helper action：GUI 可以发送 `backup` 和 `restorePlan` 动作，由 helper 服务端生成受控命令。
+- 增加 `codexrestore --plan`，可生成恢复预案并明确输出不会修改文件。
+- GUI 的恢复页改为生成恢复预案，HTTP helper 可运行 `codexrestore --plan`，但仍阻止真实恢复。
+- 增加持久化配置存储，默认写入 `~/Library/Application Support/CodexBackupToolkit/config.json`，写入前过滤敏感字段。
+- 增加 helper 侧 Keychain secret 保存和删除接口，用于后续 GUI 管理密码类信息。
+- 增加备份历史存储和 `GET /history`，记录 helper 备份执行状态、时间、目标端、退出码和归档路径。
+- CI 增加恢复预案测试，并改为运行 helper 全量测试。
+- GUI 版本升至 `0.4.0`。
+
 ## 0.3.0 - 2026-06-05
 
 - 增加 `codexbackup --config-guide`，可按目标端输出配置、安全和 age 加密引导，不创建文件、不访问网络、不修改自动化。

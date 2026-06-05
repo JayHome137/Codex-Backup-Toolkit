@@ -2,29 +2,27 @@
 
 [English README](README_EN.md)
 
-`codexbackup` 是一个面向 macOS 的 Codex Desktop 备份与恢复工具。它会把 Codex 本机状态打包成归档，并发布到本地目录、SMB/NAS、WebDAV 或 rclone 远端。
+`codexbackup` 是一个面向 macOS 的 Codex Desktop 备份、恢复和自动化工具。它可以把 Codex 本机状态打包成归档，并发布到本地目录、SMB/NAS、WebDAV 或 rclone 远端。
 
-当前版本只聚焦 Codex Desktop：备份、恢复、定时自动化、Web GUI、配置检查和本地 helper。
+## 主要能力
 
-## 功能概览
-
-- 备份 Codex 配置、skills、plugins、memories、sessions、本地 app/browser 状态，以及 `~/Documents/Codex` 工作区。
+- 备份 `~/.codex`、Codex app/browser 状态、skills、plugins、memories、sessions，以及 `~/Documents/Codex`。
 - 支持 `local`、`smb`、`webdav`、`rclone` 四类目标端。
-- `--latest` 恢复支持从本地目录、SMB/NAS、WebDAV 和 rclone 目标端拉取最新归档。
+- 支持 `codexrestore --latest` 从本地、SMB、WebDAV、rclone 拉取最新备份。
+- 支持 `codexrestore --plan` 生成恢复预案，不改文件、不创建安全备份。
 - 支持可选 age 加密、本地/SMB 保留策略，以及默认关闭的 WebDAV/rclone 远端保留策略。
-- 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天才真正执行。
-- 提供浏览器版 GUI，用于目标配置、配置检查、加密引导、命令预览、运行历史和 helper 健康检查。
-- 本地 HTTP helper 已允许从 GUI 执行真实备份；恢复、安装、卸载仍被阻止。
+- 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天执行一次真实备份。
+- 提供浏览器版 GUI 和手动启动的本地 helper，用于配置检查、备份执行、恢复预案、备份历史和安全边界验证。
 
 ## 快速开始
 
-真实备份前先检查环境：
+环境检查：
 
 ```zsh
 ./scripts/codexbackup.sh --doctor --target local
 ```
 
-查看某个目标端需要怎么配置：
+查看目标端配置说明：
 
 ```zsh
 ./scripts/codexbackup.sh --config-guide --target webdav
@@ -36,10 +34,10 @@
 ./scripts/codexbackup.sh --target local --local-output "$HOME/CodexBackups"
 ```
 
-预览备份内容：
+生成恢复预案：
 
 ```zsh
-./scripts/codexbackup.sh --dry-run
+./scripts/codexrestore.sh --plan --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
 ```
 
 恢复最新本地备份：
@@ -63,15 +61,9 @@ CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup" \
 ./scripts/codexrestore.sh --latest
 ```
 
-恢复指定归档：
+## 配置
 
-```zsh
-./scripts/codexrestore.sh --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
-```
-
-## 配置目标端
-
-复制示例配置并编辑：
+复制示例配置：
 
 ```zsh
 cp config.example.env config.env
@@ -79,18 +71,18 @@ $EDITOR config.env
 source ./config.env
 ```
 
-支持的目标端：
+支持目标端：
 
 - `local`：写入本机目录。
-- `smb`：使用 `mount_smbfs` 挂载 SMB/NAS 共享。
-- `webdav`：使用 `curl` 上传和下载 WebDAV 备份。
-- `rclone`：使用 `rclone copy` 上传和下载任意已配置的 rclone remote。
+- `smb`：通过 `mount_smbfs` 使用 SMB/NAS 共享。
+- `webdav`：通过 `curl` 上传和下载 WebDAV 备份。
+- `rclone`：通过已配置的 rclone remote 上传和下载。
 
-更多配置见 [storage-targets.md](docs/storage-targets.md) 和 [examples](examples)。
+更多说明见 [storage-targets.md](docs/storage-targets.md) 和 [examples](examples)。
 
 ## 自动备份
 
-安装 `launchd` 定时任务：
+安装定时任务：
 
 ```zsh
 source ./config.env
@@ -105,20 +97,10 @@ source ./config.env
 ./scripts/codexinstallautomation.sh uninstall
 ```
 
-安装路径：
+默认安装路径：`~/Library/Application Support/CodexBackupToolkit/`
+日志路径：`~/Library/Logs/CodexBackup/`
 
-```text
-~/Library/Application Support/CodexBackupToolkit/
-```
-
-日志路径：
-
-```text
-~/Library/Logs/CodexBackup/backup.out.log
-~/Library/Logs/CodexBackup/backup.err.log
-```
-
-## Web GUI 原型
+## Web GUI 和本地 helper
 
 启动 GUI：
 
@@ -130,25 +112,17 @@ npm run dev
 
 默认地址：`http://127.0.0.1:5173`
 
-GUI 目前以配置、安全验证和备份执行为主：它会生成命令、复制配置、展示配置检查、引导 age 加密，并可预览最新备份恢复或指定归档恢复命令。
-
-本地 helper 需要手动启动，默认只监听 `127.0.0.1:37371`：
+手动启动本地 helper：
 
 ```zsh
 node helper/server.mjs
 ```
 
-选择 `HTTP 助手` 后，可以先点 `检查助手` 调用 `/health`。这个动作只确认 helper 在线，不运行备份脚本，也不会修改任何定时任务。
+helper 默认只监听 `127.0.0.1:37371`。GUI 选择 `HTTP 助手` 后，可以执行环境检查、真实备份、恢复预案和隔离的计划校验。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
 
-当前 helper 只允许：
+helper 仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
 
-- `./scripts/codexbackup.sh --doctor --target <target>`
-- `./scripts/codexbackup.sh --target <target>` 真实备份命令
-- 使用 `dev.codexbackup.toolkit.test.*` label 的隔离 `./scripts/codexinstallautomation.sh validate`
-
-恢复、安装、卸载、status 和拼接额外 shell 命令都会被阻止。加密备份必须配置 `CODEX_BACKUP_AGE_RECIPIENT` 或 `CODEX_BACKUP_AGE_RECIPIENT_FILE` 才会放行。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
-
-## 加密与保留
+## 加密与安全
 
 启用 age 加密：
 
@@ -158,37 +132,43 @@ CODEX_BACKUP_AGE_RECIPIENT='age1...' \
 ./scripts/codexbackup.sh --target local --local-output "$HOME/CodexBackups"
 ```
 
-本地和 SMB 目标支持保留策略：
+Codex 备份可能包含认证文件、cookies、sessions、memory、插件状态和项目文件。上传到第三方云盘前建议启用加密，并阅读 [security.md](docs/security.md)。
+
+## 保留策略
+
+本地和 SMB 目标端支持按份数和天数清理：
 
 ```zsh
 CODEX_BACKUP_RETENTION_COUNT=10
 CODEX_BACKUP_RETENTION_DAYS=30
 ```
 
-WebDAV 和 rclone 的远端保留策略必须显式开启，开启后按 `CODEX_BACKUP_RETENTION_COUNT` 保留最新 N 个远端归档：
+WebDAV 和 rclone 的远端保留策略默认关闭。只有显式设置下面的变量后，才会删除旧远端归档：
 
 ```zsh
 CODEX_BACKUP_REMOTE_RETENTION=1
-CODEX_BACKUP_RETENTION_COUNT=10
 ```
 
-默认 `CODEX_BACKUP_REMOTE_RETENTION=0`，不会删除云端旧文件。
+## 恢复安全
 
-## 恢复与安全
-
-`codexrestore` 覆盖文件前会先创建安全备份：
+真实恢复前，`codexrestore` 会创建安全备份：
 
 ```text
 ~/CodexRestoreSafetyBackups/codex-before-restore-<timestamp>.tar.gz
 ```
 
-Codex 备份可能包含认证文件、cookies、sessions、plugin 状态、memory 和项目文件。请把备份目标保持为私有；上传到第三方云盘前建议启用加密。
+恢复前建议先运行 `--plan`。完整流程见 [restore-guide.md](docs/restore-guide.md)。
 
-更多说明：
+## 开发验证
 
-- [restore-guide.md](docs/restore-guide.md)
-- [security.md](docs/security.md)
-- [release-checklist.md](docs/release-checklist.md)
+常用检查：
+
+```zsh
+./tests/test-open-source-framework.sh
+./tests/test-restore-plan.sh
+node --test helper/*.test.mjs
+cd gui && npm test && npm run build
+```
 
 ## 许可证
 

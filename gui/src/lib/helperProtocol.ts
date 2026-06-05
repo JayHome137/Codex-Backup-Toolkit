@@ -1,6 +1,7 @@
 import { classifyLocalCommand } from './localBridge';
+import type { HelperAction } from './actions';
 
-export type HelperCommandKind = 'doctor' | 'validate' | 'backup';
+export type HelperCommandKind = 'doctor' | 'validate' | 'backup' | 'restorePlan';
 export type HelperErrorCode = 'ERR_COMMAND_NOT_ALLOWED' | 'ERR_HELPER_UNAVAILABLE' | 'ERR_HELPER_FAILED';
 
 export type HelperRequest = {
@@ -9,7 +10,8 @@ export type HelperRequest = {
   requestId: string;
   createdAt: string;
   kind: HelperCommandKind;
-  command: string;
+  command?: string;
+  action?: HelperAction;
 };
 
 export type HelperResponse = {
@@ -48,7 +50,19 @@ function createRequestId(): string {
   return `cbt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function buildHelperRequest(command: string): HelperRequest {
+export function buildHelperRequest(commandOrAction: string | HelperAction): HelperRequest {
+  if (typeof commandOrAction !== 'string') {
+    return {
+      schema,
+      version: 1,
+      requestId: createRequestId(),
+      createdAt: new Date().toISOString(),
+      kind: helperActionKind(commandOrAction),
+      action: commandOrAction,
+    };
+  }
+
+  const command = commandOrAction;
   const classification = classifyLocalCommand(command);
 
   if (!classification.allowed) {
@@ -67,6 +81,10 @@ export function buildHelperRequest(command: string): HelperRequest {
 
 export async function runHelperCommand(command: string, transport: HelperTransport): Promise<HelperResponse> {
   return transport.send(buildHelperRequest(command));
+}
+
+export async function runHelperAction(action: HelperAction, transport: HelperTransport): Promise<HelperResponse> {
+  return transport.send(buildHelperRequest(action));
 }
 
 export function createMockHelperTransport(): HelperTransport {
@@ -99,7 +117,13 @@ function helperKindLabel(kind: HelperCommandKind): string {
     doctor: '环境检查',
     validate: '计划校验',
     backup: '备份执行',
+    restorePlan: '恢复预案',
   }[kind];
+}
+
+function helperActionKind(action: HelperAction): HelperCommandKind {
+  if (action.type === 'backup') return 'backup';
+  return 'restorePlan';
 }
 
 export function createHttpHelperTransport(
