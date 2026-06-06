@@ -222,6 +222,12 @@ Build unsigned desktop artifacts:
 npm run desktop:build
 ```
 
+Generate the DMG checksum file:
+
+```zsh
+npm run desktop:checksum
+```
+
 Smoke-check the built desktop artifacts and bundled resources:
 
 ```zsh

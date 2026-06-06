@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.2 - 2026-06-06
+
+- 新增 `npm run desktop:checksum`，为当前版本 `.dmg` 生成 `.sha256` 文件并立即反向校验。
+- `npm run desktop:smoke` 现在会检查 `.sha256` 是否存在且与当前 `.dmg` 匹配。
+- 发布流程补充上传 `.dmg.sha256`，方便下载后校验桌面安装包完整性。
+- 发布检查清单更新补丁版本流程和 tag 示例。
+- GUI/Tauri 版本升至 `0.9.2`。
+
 ## 0.9.1 - 2026-06-06
 
 - 设置页新增 `内置 toolkit` 状态，显示 toolkit 来源、根目录、helper 路径和脚本路径。

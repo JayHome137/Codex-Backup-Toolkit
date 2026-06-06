@@ -20,6 +20,7 @@
 - [ ] 运行 `cd gui && npm run build`。
 - [ ] 运行 `cd gui && npm run desktop:doctor`。
 - [ ] 运行 `cd gui && npm run desktop:build`；如果本机缺少 Rust 或 Tauri 依赖，确认错误信息能清楚说明缺失环境。
+- [ ] 运行 `cd gui && npm run desktop:checksum`。
 - [ ] 运行 `cd gui && npm run desktop:smoke`。
 - [ ] 确认 `.app` Resources 中包含 `toolkit/helper/server.mjs` 和 `toolkit/scripts/codexbackup.sh`。
 - [ ] 运行 `./scripts/codexbackup.sh --doctor --target local`。
@@ -44,14 +45,15 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.8.0
+git tag v0.9.2
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.8.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.9.2` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
 - [ ] 说明 0.9.0 桌面产物内置 helper/scripts toolkit 资源，本机可构建未签名 `.app`，环境支持时生成 `.dmg`。

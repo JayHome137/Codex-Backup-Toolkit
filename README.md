@@ -137,6 +137,12 @@ npm run desktop:dev
 npm run desktop:build
 ```
 
+生成 DMG 校验文件：
+
+```zsh
+npm run desktop:checksum
+```
+
 检查已构建桌面产物的内置资源：
 
 ```zsh

@@ -1,10 +1,12 @@
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const version = process.env.npm_package_version ?? '0.9.1';
 const appRoot = join('src-tauri', 'target', 'release', 'bundle', 'macos', 'CodexBackup.app');
 const resourceRoot = join(appRoot, 'Contents', 'Resources', 'toolkit');
 const dmgPath = join('src-tauri', 'target', 'release', 'bundle', 'dmg', `CodexBackup_${version}_aarch64.dmg`);
+const checksumPath = `${dmgPath}.sha256`;
 
 const requiredFiles = [
   join(resourceRoot, 'helper', 'server.mjs'),
@@ -19,6 +21,7 @@ const requiredFiles = [
   join(resourceRoot, 'config.example.env'),
   join(resourceRoot, 'examples', 'local.env'),
   dmgPath,
+  checksumPath,
 ];
 
 const missing = requiredFiles.filter((file) => !existsSync(file));
@@ -41,6 +44,14 @@ if (statSync(dmgPath).size === 0) {
   process.exit(1);
 }
 
+const expectedDigest = createHash('sha256').update(readFileSync(dmgPath)).digest('hex');
+const [actualDigest, actualName] = readFileSync(checksumPath, 'utf8').trim().split(/\s+/);
+if (actualDigest !== expectedDigest || actualName !== `CodexBackup_${version}_aarch64.dmg`) {
+  console.error('桌面 DMG sha256 文件与当前产物不匹配。');
+  process.exit(1);
+}
+
 console.log('桌面产物 smoke 检查通过。');
 console.log(`App: ${appRoot}`);
 console.log(`DMG: ${dmgPath}`);
+console.log(`SHA256: ${checksumPath}`);
