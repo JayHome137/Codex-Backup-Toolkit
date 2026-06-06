@@ -23,7 +23,7 @@
 - [ ] 运行 `cd gui && npm run desktop:doctor`。
 - [ ] 运行 `cd gui && npm run desktop:build`；如果本机缺少 Rust 或 Tauri 依赖，确认错误信息能清楚说明缺失环境。
 - [ ] 运行 `cd gui && npm run desktop:checksum`。
-- [ ] 运行 `cd gui && npm run desktop:smoke`。
+- [ ] 运行 `cd gui && npm run desktop:smoke`；必须在 checksum 生成完成后再运行，避免并行检查时误报缺少 `.sha256`。
 - [ ] 确认 `.app` Resources 中包含 `toolkit/helper/server.mjs` 和 `toolkit/scripts/codexbackup.sh`。
 - [ ] 确认 `.app` Resources 中包含 `icon.icns`，且 `gui/src-tauri/icons/` 中多尺寸图标齐全。
 - [ ] 运行 `./scripts/codexbackup.sh --doctor --target local`。
@@ -38,6 +38,8 @@
 - [ ] 确认 `只读检查` 不创建新备份，`本地为准生成备份` 只在 local/SMB 目标端可用。
 - [ ] 在 GUI 健康页确认可以看到健康度评分、检查项、最近备份摘要、归档路径和建议动作。
 - [ ] 在 GUI 健康页确认 `刷新健康状态` 只读取 helper 历史和自动化状态，不执行备份、恢复、安装、卸载或修改任务。
+- [ ] 在 GUI 引导页确认可以看到桌面环境、目标端、环境检查、helper 健康、备份证明和恢复安全边界步骤。
+- [ ] 在 GUI 引导页确认 `运行环境检查` 和 `刷新健康状态` 只调用已有安全动作，`查看真实备份确认` 不会绕过概览页确认按钮。
 - [ ] 确认未设置 `CODEX_BACKUP_SYNC_ENABLED=1` 时，定时脚本仍执行普通备份，不改变既有定时任务行为。
 - [ ] 打开桌面 App，确认 helper 可以自动启动或在 `设置` 页一键启动。
 - [ ] 确认 `设置` 页 `刷新诊断` 能显示 helper、toolkit、配置、历史、日志和版本信息。
@@ -58,14 +60,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.15.0
+git tag v0.16.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.15.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.16.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -79,6 +81,7 @@ git push origin main --tags
 - [ ] 说明 GUI 增加只读自动化状态页，可查看 launchd label、加载状态、plist、安装路径和日志路径，但不会安装、卸载、加载或修改已有任务。
 - [ ] 说明新增本地为准一致性检查，默认关闭，频率可选，不会从备份回写本机，不会覆盖旧归档。
 - [ ] 说明 GUI 新增只读健康页，可查看健康度评分、最近备份摘要、归档路径、检查项和建议动作。
+- [ ] 说明 GUI 新增首启引导页，串联桌面环境、目标端、doctor、helper 健康、备份证明和恢复边界。
 - [ ] 说明 GUI 通过 HTTP helper 或桌面 helper 可以执行真实备份，但仍不会执行恢复、安装或卸载。
 - [ ] 说明 `codexrestore --plan` 可以生成恢复预案，不会修改文件。
 - [ ] 说明 helper 增加结构化 action、配置持久化、Keychain secret 接口和备份历史。

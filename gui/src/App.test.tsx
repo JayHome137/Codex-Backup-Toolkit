@@ -62,6 +62,74 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /打开目标端/i })).toBeInTheDocument();
   });
 
+  it('guides first-run validation without exposing install, uninstall, or real restore actions', async () => {
+    const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      const path = new URL(String(_url)).pathname;
+      if (method === 'GET' && path === '/history') {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          history: { version: 1, entries: [] },
+        });
+      }
+      if (method === 'GET' && path === '/automation') {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          automation: {
+            label: 'dev.codexbackup.toolkit',
+            loaded: false,
+            plistExists: true,
+            installDirExists: true,
+            scheduledScriptExists: true,
+            plistPath: '/Users/test/Library/LaunchAgents/dev.codexbackup.toolkit.plist',
+            installDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+            scheduledScriptPath: '/Users/test/Library/Application Support/CodexBackupToolkit/scripts/codexscheduledbackup.sh',
+            stdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+            stderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+            schedule: '03:00 / 每 3 天',
+          },
+        });
+      }
+      return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok' });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /引导/i }));
+
+    expect(screen.getByText('首启验证流程')).toBeInTheDocument();
+    expect(screen.getByText('恢复安全边界')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /安装/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /卸载/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /运行环境检查/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('目标端检查')).toBeInTheDocument();
+      expect(screen.getAllByText('4 项检查，0 个失败，0 个警告。').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /引导/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /刷新健康状态/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/已刷新健康状态/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /查看真实备份确认/i })[0]);
+
+    expect(screen.getByText('真实备份确认')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
+  });
+
   it('refreshes backup health by reading helper history and automation status', async () => {
     const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
@@ -704,7 +772,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.15.0')).toBeInTheDocument();
+    expect(screen.getByText('0.16.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, Compass, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
@@ -7,6 +7,7 @@ import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction
 import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
 import { buildBackupHealth, type BackupHealth } from './lib/backupHealth';
+import { buildFirstRunJourney, type FirstRunJourney, type FirstRunJourneyStep } from './lib/firstRunJourney';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type AutomationStatus, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
@@ -84,7 +85,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.15.0';
+const appVersion = '0.16.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -171,6 +172,15 @@ function App() {
     history: helperHistory,
     now: new Date(),
   }), [automationStatus, blockingChecks.length, config, desktopHelperStatus.online, helperHistory, helperStatus]);
+  const firstRunJourney = useMemo(() => buildFirstRunJourney({
+    config,
+    configErrorCount: blockingChecks.length,
+    doctorReport,
+    health: backupHealth,
+    helperOnline: helperStatus === 'online' || desktopHelperStatus.online,
+    isDesktop: desktopBridge.isDesktop,
+    toolkitAvailable: desktopToolkitStatus.available,
+  }), [backupHealth, blockingChecks.length, config, desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, doctorReport, helperStatus]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -685,6 +695,23 @@ function App() {
               </section>
               <CommandPreview command={commands.backup} title="备份命令" onCopy={copyText} />
             </div>
+          </section>
+        )}
+
+        {activeSection === 'guide' && (
+          <section className="view-stack">
+            <FirstRunJourneyPanel
+              journey={firstRunJourney}
+              onOpenOverview={() => setActiveSection('overview')}
+              onOpenRestore={() => setActiveSection('restore')}
+              onOpenSettings={() => setActiveSection('settings')}
+              onOpenTargets={() => setActiveSection('targets')}
+              onRefreshHealth={refreshBackupHealth}
+              onRunDoctor={() => runPreview(commands.doctor, '环境检查命令')}
+              refreshing={healthBusy}
+              runningDoctor={runningCommand === commands.doctor}
+            />
+            <TargetDoctorPanel report={doctorReport} />
           </section>
         )}
 
@@ -1261,6 +1288,122 @@ function DesktopReadinessPanel({
   );
 }
 
+function FirstRunJourneyPanel({
+  journey,
+  onOpenOverview,
+  onOpenRestore,
+  onOpenSettings,
+  onOpenTargets,
+  onRefreshHealth,
+  onRunDoctor,
+  refreshing,
+  runningDoctor,
+}: {
+  journey: FirstRunJourney;
+  onOpenOverview: () => void;
+  onOpenRestore: () => void;
+  onOpenSettings: () => void;
+  onOpenTargets: () => void;
+  onRefreshHealth: () => Promise<void>;
+  onRunDoctor: () => Promise<void>;
+  refreshing: boolean;
+  runningDoctor: boolean;
+}) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Compass size={16} aria-hidden="true" />
+          <span>首启验证流程</span>
+        </div>
+        <StatusBadge status={journey.level === 'ready' ? 'success' : journey.level === 'blocked' ? 'error' : 'warning'} label={`${journey.readyCount}/${journey.steps.length} 已完成`} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="状态" value={firstRunJourneyLevelLabel(journey.level)} />
+          <SummaryRow label="摘要" value={journey.summary} />
+          <SummaryRow label="安全边界" value="不执行真实恢复，不安装或卸载定时任务" />
+          <SummaryRow label="备份验证" value="真实备份仍需在概览页手动确认" />
+        </div>
+        <div className="readiness-copy">
+          <strong>从打开 App 到完成验证</strong>
+          <p>按顺序完成桌面环境、目标端、doctor、helper 健康、备份证明和恢复边界确认。这里不会绕过真实备份确认，也不会修改已有自动化任务。</p>
+          <div className="action-row">
+            <button className="button button--primary" disabled={runningDoctor} onClick={onRunDoctor} type="button">
+              <ShieldCheck size={15} aria-hidden="true" />
+              {runningDoctor ? '检查中' : '运行环境检查'}
+            </button>
+            <button className="button button--tertiary" disabled={refreshing} onClick={() => void onRefreshHealth()} type="button">
+              <RotateCcw size={15} aria-hidden="true" />
+              {refreshing ? '刷新中' : '刷新健康状态'}
+            </button>
+            <button className="button button--tertiary" onClick={onOpenOverview} type="button">查看真实备份确认</button>
+          </div>
+        </div>
+      </div>
+      <div className="check-list check-list--grid">
+        {journey.steps.map((step) => (
+          <FirstRunJourneyStepItem
+            key={step.id}
+            onAction={firstRunJourneyStepAction(step, {
+              onOpenOverview,
+              onOpenRestore,
+              onOpenSettings,
+              onOpenTargets,
+              onRefreshHealth,
+              onRunDoctor,
+            })}
+            step={step}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FirstRunJourneyStepItem({ onAction, step }: { onAction: () => void; step: FirstRunJourneyStep }) {
+  const Icon = step.status === 'ready' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${step.status === 'blocked' ? 'error' : step.status === 'ready' ? 'ok' : 'warning'}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{step.label}</strong>
+        <span>{step.detail}</span>
+        <button className="inline-action" onClick={onAction} type="button">{step.actionLabel}</button>
+      </div>
+    </div>
+  );
+}
+
+function firstRunJourneyStepAction(
+  step: FirstRunJourneyStep,
+  actions: {
+    onOpenOverview: () => void;
+    onOpenRestore: () => void;
+    onOpenSettings: () => void;
+    onOpenTargets: () => void;
+    onRefreshHealth: () => Promise<void>;
+    onRunDoctor: () => Promise<void>;
+  },
+): () => void {
+  return {
+    desktop: actions.onOpenSettings,
+    target: actions.onOpenTargets,
+    doctor: () => void actions.onRunDoctor(),
+    'helper-health': () => void actions.onRefreshHealth(),
+    'backup-proof': actions.onOpenOverview,
+    'restore-boundary': actions.onOpenRestore,
+  }[step.id];
+}
+
+function firstRunJourneyLevelLabel(level: FirstRunJourney['level']): string {
+  return {
+    blocked: '有阻断项',
+    'needs-action': '待验证',
+    ready: '已就绪',
+  }[level];
+}
+
 function FirstLaunchChecklist({
   helperStatus,
   isDesktop,
@@ -1550,6 +1693,7 @@ function ArtifactRow({
 function sectionTitle(section: SectionId): string {
   return {
     overview: '概览',
+    guide: '首启引导',
     health: '备份健康',
     targets: '目标端',
     schedule: '计划校验',

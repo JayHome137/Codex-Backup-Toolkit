@@ -259,6 +259,8 @@ Since 0.14.0, the overview and target screens include local-authoritative consis
 
 Since 0.15.0, the GUI includes a `Health` screen. It combines helper status, config checks, backup history, read-only automation status, and consistency-check settings into a backup health score with check items and suggested next actions. The screen is read-only apart from navigation; it does not run real restore, install, uninstall, or scheduled-task mutation commands.
 
+Since 0.16.0, the GUI includes a `Guide` screen for the first-run validation path. It connects desktop runtime checks, target configuration, doctor checks, helper health, backup proof, and the restore safety boundary into one workflow. It only calls existing safe actions or navigates to existing screens; it does not bypass real-backup confirmation, run real restore, install, uninstall, or mutate scheduled jobs.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:
