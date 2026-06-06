@@ -86,6 +86,35 @@ test('builds a latest restore plan command with target config', () => {
   ].join('\n'));
 });
 
+test('builds a local authoritative sync command with frequency controls', () => {
+  const action = {
+    type: 'syncLocalAuthoritative',
+    target: 'local',
+    config: {
+      localDir: '/tmp/CodexBackups',
+      retentionCount: 5,
+      retentionDays: 14,
+      remoteRetention: false,
+      checkIntervalHours: 12,
+      minBackupIntervalHours: 24,
+      encrypt: false,
+    },
+  };
+
+  assert.deepEqual(classifyAction(action), { allowed: true, kind: 'sync' });
+  assert.equal(buildCommandFromAction(action), [
+    'CODEX_BACKUP_TARGET=local \\',
+    'CODEX_BACKUP_RETENTION_COUNT=5 \\',
+    'CODEX_BACKUP_RETENTION_DAYS=14 \\',
+    'CODEX_BACKUP_REMOTE_RETENTION=0 \\',
+    'CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=12 \\',
+    'CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=24 \\',
+    'CODEX_BACKUP_ENCRYPT=0 \\',
+    'CODEX_BACKUP_LOCAL_DIR="/tmp/CodexBackups" \\',
+    './scripts/codexbackup.sh --sync-local-authoritative --target local',
+  ].join('\n'));
+});
+
 test('rejects unsupported structured actions', () => {
   assert.deepEqual(classifyAction({ type: 'installAutomation' }), {
     allowed: false,

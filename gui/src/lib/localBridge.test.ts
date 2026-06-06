@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBackupCommand, buildDoctorCommand, buildRestoreCommand, buildRestoreLatestCommand, buildValidateCommand, defaultConfig } from './config';
+import { buildBackupCommand, buildDoctorCommand, buildRestoreCommand, buildRestoreLatestCommand, buildSyncCheckCommand, buildSyncLocalAuthoritativeCommand, buildValidateCommand, defaultConfig } from './config';
 import { classifyLocalCommand, createLocalBridgeRunner } from './localBridge';
 
 describe('local bridge command allowlist', () => {
@@ -15,6 +15,11 @@ describe('local bridge command allowlist', () => {
     expect(classifyLocalCommand(buildBackupCommand(defaultConfig))).toEqual({ allowed: true, kind: 'backup' });
   });
 
+  it('allows local authoritative sync commands', () => {
+    expect(classifyLocalCommand(buildSyncCheckCommand(defaultConfig))).toEqual({ allowed: true, kind: 'sync' });
+    expect(classifyLocalCommand(buildSyncLocalAuthoritativeCommand(defaultConfig))).toEqual({ allowed: true, kind: 'sync' });
+  });
+
   it('blocks encrypted backup commands without an age recipient', () => {
     expect(classifyLocalCommand(buildBackupCommand({ ...defaultConfig, encrypt: true, ageRecipient: '', ageRecipientFile: '' }))).toEqual({
       allowed: false,
@@ -25,7 +30,7 @@ describe('local bridge command allowlist', () => {
   it('blocks restore commands', () => {
     expect(classifyLocalCommand('./scripts/codexrestore.sh --archive /tmp/archive.tar.gz')).toEqual({
       allowed: false,
-      reason: 'Web 桥接只允许环境检查、真实备份和隔离的计划校验。',
+      reason: 'Web 桥接只允许环境检查、真实备份、一致性同步、恢复预案和隔离的计划校验。',
     });
   });
 
@@ -113,6 +118,35 @@ describe('local bridge command allowlist', () => {
     expect(result.status).toBe('success');
     expect(result.output).toContain('Backup written to:');
     expect(result.output).toContain('命令类型: 备份执行');
+  });
+
+  it('formats sync helper responses as executable output', async () => {
+    const runner = createLocalBridgeRunner({
+      async send(request) {
+        return {
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'Sync status: consistent\nSync action: already-consistent',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'unit-test-helper',
+            startedAt: '2026-06-04T00:00:00.000Z',
+            finishedAt: '2026-06-04T00:00:00.000Z',
+          },
+        };
+      },
+    });
+
+    const result = await runner.run(buildSyncLocalAuthoritativeCommand(defaultConfig));
+
+    expect(result.status).toBe('success');
+    expect(result.output).toContain('Sync status: consistent');
+    expect(result.output).toContain('命令类型: 一致性同步');
   });
 
   it('returns an error when helper transport fails', async () => {

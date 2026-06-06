@@ -47,6 +47,12 @@ jobs:
       - name: Run remote retention check
         run: ./tests/test-remote-retention.sh
 
+      - name: Run local authoritative sync check
+        run: ./tests/test-sync-local-authoritative.sh
+
+      - name: Run scheduled sync mode check
+        run: ./tests/test-scheduled-sync-mode.sh
+
       - name: Run local helper tests
         run: node --test helper/*.test.mjs
 

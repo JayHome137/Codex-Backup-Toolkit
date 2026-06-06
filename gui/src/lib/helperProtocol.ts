@@ -1,7 +1,7 @@
 import { classifyLocalCommand } from './localBridge';
 import type { HelperAction } from './actions';
 
-export type HelperCommandKind = 'doctor' | 'validate' | 'backup' | 'restorePlan';
+export type HelperCommandKind = 'doctor' | 'validate' | 'backup' | 'restorePlan' | 'sync';
 export type HelperErrorCode = 'ERR_COMMAND_NOT_ALLOWED' | 'ERR_HELPER_UNAVAILABLE' | 'ERR_HELPER_FAILED';
 
 export type HelperRequest = {
@@ -118,11 +118,13 @@ function helperKindLabel(kind: HelperCommandKind): string {
     validate: '计划校验',
     backup: '备份执行',
     restorePlan: '恢复预案',
+    sync: '一致性同步',
   }[kind];
 }
 
 function helperActionKind(action: HelperAction): HelperCommandKind {
   if (action.type === 'backup') return 'backup';
+  if (action.type === 'syncLocalAuthoritative') return 'sync';
   return 'restorePlan';
 }
 

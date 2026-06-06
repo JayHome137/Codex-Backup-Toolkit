@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction } from './actions';
+import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction, buildSyncLocalAuthoritativeAction } from './actions';
 import { defaultConfig } from './config';
 
 describe('structured helper actions', () => {
@@ -38,6 +38,30 @@ describe('structured helper actions', () => {
         rcloneRemote: 'gdrive:CodexBackup',
       },
       encrypted: false,
+    });
+  });
+
+  it('builds local authoritative sync actions with retention and frequency controls', () => {
+    expect(buildSyncLocalAuthoritativeAction({
+      ...defaultConfig,
+      retentionCount: 5,
+      retentionDays: 14,
+      syncCheckIntervalHours: 12,
+      syncMinBackupIntervalHours: 24,
+    })).toEqual({
+      type: 'syncLocalAuthoritative',
+      target: 'local',
+      config: {
+        localDir: '$HOME/CodexBackups',
+        retentionCount: 5,
+        retentionDays: 14,
+        remoteRetention: false,
+        checkIntervalHours: 12,
+        minBackupIntervalHours: 24,
+        encrypt: false,
+        ageRecipient: '',
+        ageRecipientFile: '',
+      },
     });
   });
 });

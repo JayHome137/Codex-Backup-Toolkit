@@ -292,6 +292,73 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
   });
 
+  it('sends local authoritative sync requests through the HTTP helper transport', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url.endsWith('/run')) {
+        const request = JSON.parse(String(init?.body));
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          requestId: request.requestId,
+          status: 'ok',
+          exitCode: 0,
+          stdout: 'Sync status: drift\nSync action: backup-created\nBackup written to:\n  /tmp/CodexBackups/codex-backup-sync.tar.gz',
+          stderr: '',
+          audit: {
+            commandKind: request.kind,
+            decision: 'allowed',
+            helper: 'node-local-helper',
+            startedAt: '2026-06-06T00:00:00.000Z',
+            finishedAt: '2026-06-06T00:00:01.000Z',
+          },
+        });
+      }
+
+      if (url.endsWith('/history')) {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          history: {
+            version: 1,
+            entries: [{
+              action: 'syncLocalAuthoritative',
+              target: 'local',
+              status: 'success',
+              startedAt: '2026-06-06T00:00:00.000Z',
+              finishedAt: '2026-06-06T00:00:01.000Z',
+              exitCode: 0,
+              archivePaths: ['/tmp/CodexBackups/codex-backup-sync.tar.gz'],
+            }],
+          },
+        });
+      }
+
+      throw new Error(`unexpected request ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /本地为准生成备份/i }));
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Sync action: backup-created/)).toBeInTheDocument();
+      expect(screen.getByText('一致性备份')).toBeInTheDocument();
+      expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-sync.tar.gz').length).toBeGreaterThan(0);
+    });
+
+    const runCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/run'));
+    const request = JSON.parse(String(runCall?.[1]?.body));
+    expect(request.kind).toBe('sync');
+    expect(request.command).toBeUndefined();
+    expect(request.action).toMatchObject({ type: 'syncLocalAuthoritative', target: 'local' });
+  });
+
   it('uses the HTTP helper transport when HTTP helper mode is selected', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
       const request = JSON.parse(String(init?.body));
@@ -561,7 +628,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.13.0')).toBeInTheDocument();
+    expect(screen.getByText('0.14.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {

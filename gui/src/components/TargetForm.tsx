@@ -124,6 +124,30 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
             onChange={(event) => update('retentionDays', Number(event.target.value))}
           />
         </label>
+
+        <label className="toggle-row field--wide">
+          <input checked={config.syncEnabled} onChange={(event) => update('syncEnabled', event.target.checked)} type="checkbox" />
+          <span>启用定时一致性检查</span>
+        </label>
+
+        <label className="field">
+          <span>检查频率（小时）</span>
+          <input
+            min="1"
+            type="number"
+            value={config.syncCheckIntervalHours}
+            onChange={(event) => update('syncCheckIntervalHours', Number(event.target.value))}
+          />
+        </label>
+        <label className="field">
+          <span>最小备份间隔（小时）</span>
+          <input
+            min="1"
+            type="number"
+            value={config.syncMinBackupIntervalHours}
+            onChange={(event) => update('syncMinBackupIntervalHours', Number(event.target.value))}
+          />
+        </label>
       </div>
     </div>
   );

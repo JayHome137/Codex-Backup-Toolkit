@@ -15,6 +15,8 @@
 - [ ] 运行 `./tests/test-retention.sh`。
 - [ ] 运行 `./tests/test-remote-latest-restore.sh`。
 - [ ] 运行 `./tests/test-remote-retention.sh`。
+- [ ] 运行 `./tests/test-sync-local-authoritative.sh`。
+- [ ] 运行 `./tests/test-scheduled-sync-mode.sh`。
 - [ ] 运行 `node --test helper/*.test.mjs`。
 - [ ] 运行 `cd gui && npm test`。
 - [ ] 运行 `cd gui && npm run build`。
@@ -32,6 +34,9 @@
 - [ ] 在 GUI 日志页确认真实备份历史刷新后可以看到 `最新备份结果`、归档路径、sha256 路径和 manifest 路径。
 - [ ] 在 GUI 计划页确认可以刷新 `自动化状态`，能看到 label、加载状态、plist、安装路径、执行脚本、日志路径和计划信息。
 - [ ] 确认 `自动化状态` 只读展示，不提供安装任务、卸载任务、加载任务或修改任务按钮。
+- [ ] 在 GUI 概览页确认 `一致性统一` 显示本地为准、检查频率、最小备份间隔和保留策略说明。
+- [ ] 确认 `只读检查` 不创建新备份，`本地为准生成备份` 只在 local/SMB 目标端可用。
+- [ ] 确认未设置 `CODEX_BACKUP_SYNC_ENABLED=1` 时，定时脚本仍执行普通备份，不改变既有定时任务行为。
 - [ ] 打开桌面 App，确认 helper 可以自动启动或在 `设置` 页一键启动。
 - [ ] 确认 `设置` 页 `刷新诊断` 能显示 helper、toolkit、配置、历史、日志和版本信息。
 - [ ] 确认 App 托管 helper 的输出写入 `desktop-helper.out.log` 和 `desktop-helper.err.log`。
@@ -51,14 +56,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.13.0
+git tag v0.14.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.13.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.14.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -70,6 +75,7 @@ git push origin main --tags
 - [ ] 说明桌面 App 增加首次启动核对和概览页桌面就绪检查，便于确认 helper、toolkit、路径和未签名状态。
 - [ ] 说明 GUI 增加目标端检查结构化结果，并可从备份历史生成恢复预案。
 - [ ] 说明 GUI 增加只读自动化状态页，可查看 launchd label、加载状态、plist、安装路径和日志路径，但不会安装、卸载、加载或修改已有任务。
+- [ ] 说明新增本地为准一致性检查，默认关闭，频率可选，不会从备份回写本机，不会覆盖旧归档。
 - [ ] 说明 GUI 通过 HTTP helper 或桌面 helper 可以执行真实备份，但仍不会执行恢复、安装或卸载。
 - [ ] 说明 `codexrestore --plan` 可以生成恢复预案，不会修改文件。
 - [ ] 说明 helper 增加结构化 action、配置持久化、Keychain secret 接口和备份历史。

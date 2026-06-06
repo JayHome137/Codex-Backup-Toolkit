@@ -55,6 +55,27 @@ function backupRequest(command = [
   };
 }
 
+function syncCommandRequest(command = [
+  'CODEX_BACKUP_TARGET=local \\',
+  'CODEX_BACKUP_LOCAL_DIR="/tmp/CodexBackups" \\',
+  'CODEX_BACKUP_RETENTION_COUNT=5 \\',
+  'CODEX_BACKUP_RETENTION_DAYS=14 \\',
+  'CODEX_BACKUP_REMOTE_RETENTION=0 \\',
+  'CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=12 \\',
+  'CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=24 \\',
+  'CODEX_BACKUP_ENCRYPT=0 \\',
+  './scripts/codexbackup.sh --sync-check --target local',
+].join('\n')) {
+  return {
+    schema,
+    version: 1,
+    requestId: 'test-sync-command-1',
+    createdAt: '2026-06-04T00:00:00.000Z',
+    kind: 'sync',
+    command,
+  };
+}
+
 function backupActionRequest() {
   return {
     schema,
@@ -89,6 +110,32 @@ function restorePlanActionRequest() {
       target: 'local',
       config: {
         localDir: '/tmp/CodexBackups',
+      },
+    },
+  };
+}
+
+function syncActionRequest(target = 'local') {
+  return {
+    schema,
+    version: 1,
+    requestId: 'test-sync-action-1',
+    createdAt: '2026-06-04T00:00:00.000Z',
+    kind: 'sync',
+    action: {
+      type: 'syncLocalAuthoritative',
+      target,
+      config: {
+        localDir: '/tmp/CodexBackups',
+        smbHost: 'nas.example.local',
+        smbUser: 'backup-user',
+        smbShare: 'CodexBackup',
+        retentionCount: 5,
+        retentionDays: 14,
+        remoteRetention: false,
+        checkIntervalHours: 12,
+        minBackupIntervalHours: 24,
+        encrypt: false,
       },
     },
   };
@@ -385,6 +432,25 @@ test('run accepts backup requests and calls the injected executor', async () => 
   });
 });
 
+test('run accepts raw local authoritative sync check requests and calls the injected executor', async () => {
+  const calls = [];
+  await withHelper(async (request) => {
+    calls.push(request);
+    return { exitCode: 0, stdout: 'Sync status: consistent', stderr: '' };
+  }, async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(syncCommandRequest()),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].kind, 'sync');
+    assert.equal(body.audit.commandKind, 'sync');
+    assert.equal(body.stdout, 'Sync status: consistent');
+  });
+});
+
 test('run builds commands from structured backup actions before calling the executor', async () => {
   const calls = [];
   await withHelper(async (request) => {
@@ -457,6 +523,81 @@ test('run builds commands from structured restore plan actions without recording
     assert.equal(body.audit.commandKind, 'restorePlan');
     assert.equal(entries.length, 0);
   }, { historyStore });
+});
+
+test('run builds commands from structured sync actions and records history only when a backup is created', async () => {
+  const calls = [];
+  const entries = [];
+  const historyStore = {
+    append: async (entry) => entries.push(entry),
+    read: async () => ({ version: 1, entries }),
+  };
+
+  await withHelper(async (request) => {
+    calls.push(request);
+    return {
+      exitCode: 0,
+      stdout: 'Sync status: drift\nSync action: backup-created\nBackup written to:\n  /tmp/CodexBackups/codex-backup-sync.tar.gz\n',
+      stderr: '',
+    };
+  }, async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(syncActionRequest()),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].kind, 'sync');
+    assert.match(calls[0].command, /CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=12/);
+    assert.match(calls[0].command, /\.\/scripts\/codexbackup\.sh --sync-local-authoritative --target local/);
+    assert.equal(body.status, 'ok');
+    assert.equal(body.audit.commandKind, 'sync');
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].action, 'syncLocalAuthoritative');
+    assert.deepEqual(entries[0].archivePaths, ['/tmp/CodexBackups/codex-backup-sync.tar.gz']);
+  }, { historyStore });
+});
+
+test('run does not record sync history when no backup is created', async () => {
+  const entries = [];
+  const historyStore = {
+    append: async (entry) => entries.push(entry),
+    read: async () => ({ version: 1, entries }),
+  };
+
+  await withHelper(async () => ({
+    exitCode: 0,
+    stdout: 'Sync status: consistent\nSync action: already-consistent\n',
+    stderr: '',
+  }), async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(syncActionRequest()),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(body.audit.commandKind, 'sync');
+    assert.equal(entries.length, 0);
+  }, { historyStore });
+});
+
+test('run rejects structured sync actions for unsupported targets', async () => {
+  let callCount = 0;
+  await withHelper(async () => {
+    callCount += 1;
+    return { exitCode: 0, stdout: 'unexpected', stderr: '' };
+  }, async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(syncActionRequest('webdav')),
+    });
+
+    assert.equal(response.status, 403);
+    assert.equal(callCount, 0);
+    assert.equal(body.errorCode, 'ERR_COMMAND_NOT_ALLOWED');
+    assert.match(body.stderr, /currently supports local and smb targets/);
+  });
 });
 
 test('run rejects encrypted backup requests without an age recipient before executor is called', async () => {

@@ -38,7 +38,7 @@ export function extractArchivePaths(stdout) {
 export function buildBackupHistoryEntry({ request, result, startedAt, finishedAt }) {
   const target = request?.action?.target ?? parseTargetFromCommand(request?.command);
   return {
-    action: 'backup',
+    action: request?.kind === 'sync' ? 'syncLocalAuthoritative' : 'backup',
     target,
     status: Number(result?.exitCode) === 0 ? 'success' : 'error',
     startedAt,

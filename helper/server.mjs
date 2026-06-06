@@ -187,7 +187,7 @@ async function handleRequest({ automationStatus, configStore, executor, historyS
       const result = await executor(executableRequest);
       const exitCode = Number.isInteger(result.exitCode) ? result.exitCode : 1;
       const finishedAt = new Date().toISOString();
-      if (executableRequest.kind === 'backup') {
+      if (executableRequest.kind === 'backup' || shouldRecordSyncBackup(executableRequest, { ...result, exitCode })) {
         await historyStore.append(buildBackupHistoryEntry({ request: executableRequest, result: { ...result, exitCode }, startedAt, finishedAt }));
       }
       writeJson(response, 200, buildResponse(executableRequest, {
@@ -228,13 +228,19 @@ function buildResponse(request, options) {
     stderr: options.stderr,
     ...(options.errorCode ? { errorCode: options.errorCode } : {}),
     audit: {
-      commandKind: ['doctor', 'validate', 'backup', 'restorePlan'].includes(request?.kind) ? request.kind : 'doctor',
+      commandKind: ['doctor', 'validate', 'backup', 'restorePlan', 'sync'].includes(request?.kind) ? request.kind : 'doctor',
       decision: options.decision,
       helper: helperName,
       startedAt: options.startedAt,
       finishedAt: options.finishedAt ?? new Date().toISOString(),
     },
   };
+}
+
+function shouldRecordSyncBackup(request, result) {
+  return request?.kind === 'sync'
+    && Number(result?.exitCode) === 0
+    && String(result?.stdout ?? '').includes('Sync action: backup-created');
 }
 
 function writeError(response, statusCode, errorCode, message) {

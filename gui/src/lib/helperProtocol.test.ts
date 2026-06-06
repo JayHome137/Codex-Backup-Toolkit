@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildBackupAction, buildRestorePlanAction } from './actions';
-import { buildBackupCommand, buildDoctorCommand, buildValidateCommand, defaultConfig } from './config';
+import { buildBackupAction, buildRestorePlanAction, buildSyncLocalAuthoritativeAction } from './actions';
+import { buildBackupCommand, buildDoctorCommand, buildSyncLocalAuthoritativeCommand, buildValidateCommand, defaultConfig } from './config';
 import { checkHelperHealth, buildHelperRequest, createHttpHelperTransport, createMockHelperTransport, runHelperCommand } from './helperProtocol';
 
 describe('helper protocol', () => {
@@ -33,6 +33,13 @@ describe('helper protocol', () => {
     expect(request.command).toContain('./scripts/codexbackup.sh --target local');
   });
 
+  it('builds a versioned helper request for sync commands', () => {
+    const request = buildHelperRequest(buildSyncLocalAuthoritativeCommand(defaultConfig));
+
+    expect(request.kind).toBe('sync');
+    expect(request.command).toContain('--sync-local-authoritative --target local');
+  });
+
   it('builds helper requests from structured actions without requiring a command string', () => {
     const action = buildBackupAction(defaultConfig);
     const request = buildHelperRequest(action);
@@ -47,6 +54,15 @@ describe('helper protocol', () => {
     const request = buildHelperRequest(action);
 
     expect(request.kind).toBe('restorePlan');
+    expect(request.action).toEqual(action);
+    expect(request.command).toBeUndefined();
+  });
+
+  it('builds helper requests for structured sync actions', () => {
+    const action = buildSyncLocalAuthoritativeAction(defaultConfig);
+    const request = buildHelperRequest(action);
+
+    expect(request.kind).toBe('sync');
     expect(request.action).toEqual(action);
     expect(request.command).toBeUndefined();
   });

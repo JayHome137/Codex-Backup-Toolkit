@@ -4,7 +4,7 @@ import { createMockHelperTransport, runHelperAction, runHelperCommand, type Help
 
 type AllowedLocalCommand = {
   allowed: true;
-  kind: 'doctor' | 'validate' | 'backup' | 'restorePlan';
+  kind: 'doctor' | 'validate' | 'backup' | 'restorePlan' | 'sync';
 };
 
 type BlockedLocalCommand = {
@@ -14,13 +14,14 @@ type BlockedLocalCommand = {
 
 export type LocalCommandClassification = AllowedLocalCommand | BlockedLocalCommand;
 
-const generalBlockReason = 'Web 桥接只允许环境检查、真实备份和隔离的计划校验。';
+const generalBlockReason = 'Web 桥接只允许环境检查、真实备份、一致性同步、恢复预案和隔离的计划校验。';
 
 const commandKindLabels: Record<AllowedLocalCommand['kind'], string> = {
   doctor: '环境检查',
   validate: '计划校验',
   backup: '备份执行',
   restorePlan: '恢复预案',
+  sync: '一致性同步',
 };
 
 const decisionLabels: Record<HelperResponse['audit']['decision'], string> = {
@@ -65,6 +66,13 @@ export function classifyLocalCommand(command: string): LocalCommandClassificatio
       return { allowed: false, reason: '加密备份必须配置 CODEX_BACKUP_AGE_RECIPIENT 或 CODEX_BACKUP_AGE_RECIPIENT_FILE。' };
     }
     return { allowed: true, kind: 'backup' };
+  }
+
+  if (command.includes('./scripts/codexbackup.sh --sync-check --target ') || command.includes('./scripts/codexbackup.sh --sync-local-authoritative --target ')) {
+    if (command.includes('CODEX_BACKUP_ENCRYPT=1') && !command.includes('CODEX_BACKUP_AGE_RECIPIENT=') && !command.includes('CODEX_BACKUP_AGE_RECIPIENT_FILE=')) {
+      return { allowed: false, reason: '加密一致性同步必须配置 CODEX_BACKUP_AGE_RECIPIENT 或 CODEX_BACKUP_AGE_RECIPIENT_FILE。' };
+    }
+    return { allowed: true, kind: 'sync' };
   }
 
   return { allowed: false, reason: generalBlockReason };

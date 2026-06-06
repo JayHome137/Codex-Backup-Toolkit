@@ -30,7 +30,16 @@ export type RestorePlanAction = {
   ageIdentity?: string;
 };
 
-export type HelperAction = BackupAction | RestorePlanAction;
+export type SyncLocalAuthoritativeAction = {
+  type: 'syncLocalAuthoritative';
+  target: BackupTarget;
+  config: BackupAction['config'] & {
+    checkIntervalHours: number;
+    minBackupIntervalHours: number;
+  };
+};
+
+export type HelperAction = BackupAction | RestorePlanAction | SyncLocalAuthoritativeAction;
 
 export function buildBackupAction(config: BackupConfig): BackupAction {
   return {
@@ -41,6 +50,24 @@ export function buildBackupAction(config: BackupConfig): BackupAction {
       retentionCount: config.retentionCount,
       retentionDays: config.retentionDays,
       remoteRetention: config.remoteRetention,
+      encrypt: config.encrypt,
+      ageRecipient: config.ageRecipient,
+      ageRecipientFile: config.ageRecipientFile,
+    },
+  };
+}
+
+export function buildSyncLocalAuthoritativeAction(config: BackupConfig): SyncLocalAuthoritativeAction {
+  return {
+    type: 'syncLocalAuthoritative',
+    target: config.target,
+    config: {
+      ...targetConfig(config),
+      retentionCount: config.retentionCount,
+      retentionDays: config.retentionDays,
+      remoteRetention: config.remoteRetention,
+      checkIntervalHours: config.syncCheckIntervalHours,
+      minBackupIntervalHours: config.syncMinBackupIntervalHours,
       encrypt: config.encrypt,
       ageRecipient: config.ageRecipient,
       ageRecipientFile: config.ageRecipientFile,

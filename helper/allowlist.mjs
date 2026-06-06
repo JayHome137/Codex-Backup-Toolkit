@@ -26,8 +26,8 @@ export function classifyHelperCommand(request) {
     return { ...classification, command: buildCommandFromAction(request.action) };
   }
 
-  if (request.kind !== 'doctor' && request.kind !== 'validate' && request.kind !== 'backup') {
-    return { allowed: false, reason: 'Only doctor, backup, and isolated validate requests are allowed.' };
+  if (request.kind !== 'doctor' && request.kind !== 'validate' && request.kind !== 'backup' && request.kind !== 'sync') {
+    return { allowed: false, reason: 'Only doctor, backup, sync, and isolated validate requests are allowed.' };
   }
 
   if (typeof request.command !== 'string' || request.command.trim() === '') {
@@ -40,6 +40,10 @@ export function classifyHelperCommand(request) {
 
   if (request.kind === 'backup') {
     return classifyBackupCommand(request.command);
+  }
+
+  if (request.kind === 'sync') {
+    return classifySyncCommand(request.command);
   }
 
   return classifyValidateCommand(request.command);
@@ -72,6 +76,23 @@ function classifyBackupCommand(command) {
   }
 
   return { allowed: true, kind: 'backup' };
+}
+
+function classifySyncCommand(command) {
+  const lines = parseSafeCommandLines(command);
+  if (!lines.ok) return lines;
+
+  const match = lines.finalLine.match(/^\.\/scripts\/codexbackup\.sh --sync-(check|local-authoritative) --target ([a-z]+)$/);
+  const target = match?.[2];
+  if (!match || (target !== 'local' && target !== 'smb') || lines.env.CODEX_BACKUP_TARGET !== target) {
+    return { allowed: false, reason: 'Only local authoritative sync commands for local and smb targets are allowed.' };
+  }
+
+  if (lines.env.CODEX_BACKUP_ENCRYPT === '1' && !lines.env.CODEX_BACKUP_AGE_RECIPIENT && !lines.env.CODEX_BACKUP_AGE_RECIPIENT_FILE) {
+    return { allowed: false, reason: 'Encrypted sync commands require CODEX_BACKUP_AGE_RECIPIENT or CODEX_BACKUP_AGE_RECIPIENT_FILE.' };
+  }
+
+  return { allowed: true, kind: 'sync' };
 }
 
 function classifyValidateCommand(command) {

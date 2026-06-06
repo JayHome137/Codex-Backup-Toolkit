@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.0 - 2026-06-06
+
+- 新增本地为准一致性检查：支持 `--sync-check` 只读对比，以及 `--sync-local-authoritative` 在不一致时生成新的时间戳备份。
+- 新增可配置频率：`CODEX_BACKUP_SYNC_ENABLED`、`CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS`、`CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS`，默认关闭，不改变既有定时备份行为。
+- 定时脚本在显式启用同步后会调用本地为准检查；未启用时仍执行原来的普通备份。
+- 备份归档新增 fingerprint sidecar，用于对比本地状态和最新备份；保留策略会一起清理 fingerprint 文件。
+- helper 新增结构化 `syncLocalAuthoritative` action 和 raw sync allowlist；只有同步确实创建备份时才写入备份历史。
+- GUI 新增 `一致性统一` 面板、同步频率设置、只读检查和本地为准备份入口，最新备份结果可展示同步触发的新归档。
+- 新增 CLI、定时脚本、helper 和 GUI 测试覆盖本地为准一致性检查。
+- GUI/Tauri 版本升至 `0.14.0`。
+
 ## 0.13.0 - 2026-06-06
 
 - helper 新增只读 `GET /automation` 端点，展示 macOS launchd 备份任务的 label、加载状态、plist、安装目录、执行脚本、日志路径和计划信息。

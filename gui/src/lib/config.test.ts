@@ -5,6 +5,8 @@ import {
   buildEnvFile,
   buildRestoreCommand,
   buildRestoreLatestCommand,
+  buildSyncCheckCommand,
+  buildSyncLocalAuthoritativeCommand,
   buildValidateCommand,
   defaultConfig,
   getConfigChecks,
@@ -27,7 +29,25 @@ describe('command builders', () => {
 
     expect(command).toContain('./scripts/codexbackup.sh --target local');
     expect(command).toContain('CODEX_BACKUP_LOCAL_DIR="$HOME/CodexBackups"');
+    expect(command).toContain('CODEX_BACKUP_SYNC_ENABLED=0');
+    expect(command).toContain('CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=24');
+    expect(command).toContain('CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=24');
     expect(command).not.toContain('\n+');
+  });
+
+  it('builds local authoritative sync check and backup commands with frequency controls', () => {
+    const config = {
+      ...defaultConfig,
+      syncEnabled: true,
+      syncCheckIntervalHours: 12,
+      syncMinBackupIntervalHours: 36,
+    };
+
+    expect(buildSyncCheckCommand(config)).toContain('./scripts/codexbackup.sh --sync-check --target local');
+    expect(buildSyncLocalAuthoritativeCommand(config)).toContain('./scripts/codexbackup.sh --sync-local-authoritative --target local');
+    expect(buildSyncLocalAuthoritativeCommand(config)).toContain('CODEX_BACKUP_SYNC_ENABLED=1');
+    expect(buildSyncLocalAuthoritativeCommand(config)).toContain('CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=12');
+    expect(buildSyncLocalAuthoritativeCommand(config)).toContain('CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=36');
   });
 
   it('builds target-specific doctor command with the same environment as backup runs', () => {
@@ -104,6 +124,13 @@ describe('command builders', () => {
 
     expect(findCheck(checks, 'retention').status).toBe('warning');
     expect(findCheck(checks, 'retention').detail).toContain('保留份数');
+  });
+
+  it('flags invalid sync intervals', () => {
+    const checks = getConfigChecks({ ...defaultConfig, syncCheckIntervalHours: 0, syncMinBackupIntervalHours: -1 });
+
+    expect(findCheck(checks, 'sync').status).toBe('error');
+    expect(findCheck(checks, 'sync').detail).toContain('大于 0');
   });
 });
 

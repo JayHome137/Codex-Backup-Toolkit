@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
-import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction } from './lib/actions';
+import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction, buildSyncLocalAuthoritativeAction } from './lib/actions';
 import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
@@ -18,6 +18,8 @@ import {
   buildEnvFile,
   buildRestoreLatestCommand,
   buildRestoreCommand,
+  buildSyncCheckCommand,
+  buildSyncLocalAuthoritativeCommand,
   buildValidateCommand,
   defaultConfig,
   getConfigChecks,
@@ -80,7 +82,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.13.0';
+const appVersion = '0.14.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -117,6 +119,8 @@ function App() {
       doctor: buildDoctorCommand(config),
       backup: buildBackupCommand(config),
       envFile: buildEnvFile(config),
+      syncCheck: buildSyncCheckCommand(config),
+      syncLocalAuthoritative: buildSyncLocalAuthoritativeCommand(config),
       validate: buildValidateCommand(config),
       restore: restoreSource === 'latest' ? buildRestoreLatestCommand(config) : buildRestoreCommand(archivePath, restoreEncrypted),
     }),
@@ -125,6 +129,7 @@ function App() {
   const actions = useMemo(
     () => ({
       backup: buildBackupAction(config),
+      syncLocalAuthoritative: buildSyncLocalAuthoritativeAction(config),
       restorePlan: restoreSource === 'archive' ? buildRestorePlanAction(archivePath, restoreEncrypted) : buildLatestRestorePlanAction(config),
     }),
     [archivePath, config, restoreEncrypted, restoreSource],
@@ -140,10 +145,18 @@ function App() {
     || helperStatus === 'offline'
     || (runnerMode === 'desktopHelper' && !desktopBridge.isDesktop)
   );
+  const syncTargetSupported = config.target === 'local' || config.target === 'smb';
+  const realSyncDisabled = realRunnerMode && (
+    blockingChecks.length > 0
+    || !syncTargetSupported
+    || helperBusy
+    || helperStatus === 'offline'
+    || (runnerMode === 'desktopHelper' && !desktopBridge.isDesktop)
+  );
   const helperActionsDisabled = helperStatus === 'offline' || helperBusy;
   const helperActionLabel = helperAction ? helperActionLabels[helperAction] : null;
   const helperBannerMessage = helperActionLabel ? `${helperActionLabel}中...` : helperMessage;
-  const latestBackupEntry = helperHistory.find((entry) => entry.action === 'backup') ?? null;
+  const latestBackupEntry = helperHistory.find((entry) => entry.action === 'backup' || entry.action === 'syncLocalAuthoritative') ?? null;
   const desktopPaths = desktopDiagnostics?.paths ?? fallbackDesktopPaths;
   const displayedAppVersion = desktopDiagnostics?.version ?? appVersion;
 
@@ -184,6 +197,14 @@ function App() {
   const runConfirmedBackup = async () => {
     await runPreview(commands.backup, '真实备份', actions.backup, { refreshHelperHistory: true });
     setBackupConfirmed(false);
+  };
+
+  const runSyncCheck = async () => {
+    await runPreview(commands.syncCheck, '一致性只读检查');
+  };
+
+  const runLocalAuthoritativeSync = async () => {
+    await runPreview(commands.syncLocalAuthoritative, '本地为准一致性备份', actions.syncLocalAuthoritative, { refreshHelperHistory: true });
   };
 
   const checkHelper = async () => {
@@ -603,6 +624,31 @@ function App() {
                   </div>
                 </section>
               )}
+              <section className="panel">
+                <div className="panel-header">
+                  <div className="panel-title">
+                    <TimerReset size={16} aria-hidden="true" />
+                    <span>一致性统一</span>
+                  </div>
+                </div>
+                <div className="summary-list">
+                  <SummaryRow label="规则" value="本地数据永远优先" />
+                  <SummaryRow label="频率" value={`每 ${config.syncCheckIntervalHours} 小时检查 / 最短 ${config.syncMinBackupIntervalHours} 小时生成新备份`} />
+                  <SummaryRow label="归档" value="不覆盖旧备份，按时间戳生成并套用保留策略" />
+                  <SummaryRow label="目标端" value={syncTargetSupported ? '当前目标端支持一致性检查' : '0.14.0 先支持本地目录和 SMB/NAS'} />
+                </div>
+                <p className="muted-copy">一致性统一不会从备份回写本机，也不会覆盖已有归档；发现备份和本地不一致时，只创建新的时间戳备份。</p>
+                <div className="action-row">
+                  <button className="button button--tertiary" disabled={!syncTargetSupported || helperBusy} onClick={runSyncCheck} type="button">
+                    <ShieldCheck size={15} aria-hidden="true" />
+                    只读检查
+                  </button>
+                  <button className="button button--primary" disabled={realRunnerMode ? realSyncDisabled : !syncTargetSupported || helperBusy} onClick={runLocalAuthoritativeSync} type="button">
+                    <TimerReset size={15} aria-hidden="true" />
+                    本地为准生成备份
+                  </button>
+                </div>
+              </section>
               <CommandPreview command={commands.backup} title="备份命令" onCopy={copyText} />
             </div>
           </section>
@@ -679,6 +725,7 @@ function App() {
             </section>
             <CommandPreview command={commands.envFile} title="config.env 预览" onCopy={copyText} />
             <CommandPreview command={commands.backup} title="生成的备份命令" onCopy={copyText} />
+            <CommandPreview command={commands.syncLocalAuthoritative} title="一致性同步命令" onCopy={copyText} />
           </section>
         )}
 
@@ -1237,7 +1284,7 @@ function HelperHistoryItem({ entry }: { entry: BackupHistoryEntry }) {
   return (
     <div className="history-item">
       <div>
-        <strong>{targetLabels[entry.target as keyof typeof targetLabels] ?? entry.target}</strong>
+        <strong>{entry.action === 'syncLocalAuthoritative' ? '一致性备份' : targetLabels[entry.target as keyof typeof targetLabels] ?? entry.target}</strong>
         <span>{entry.status === 'success' ? '成功' : '失败'} / 退出码 {entry.exitCode}</span>
       </div>
       <code>{entry.archivePaths.length > 0 ? entry.archivePaths.join('\n') : '没有检测到归档路径'}</code>

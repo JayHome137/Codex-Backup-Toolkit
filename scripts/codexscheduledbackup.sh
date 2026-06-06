@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="${0:A:h}"
 BACKUP_SCRIPT="${SCRIPT_DIR}/codexbackup.sh"
 INTERVAL_DAYS="${CODEX_BACKUP_INTERVAL_DAYS:-3}"
+SYNC_ENABLED="${CODEX_BACKUP_SYNC_ENABLED:-0}"
 STATE_DIR="${CODEX_BACKUP_STATE_DIR:-${HOME}/Library/Application Support/CodexBackupToolkit/state}"
 LAST_SUCCESS_FILE="${STATE_DIR}/last-success-epoch"
 NOW="$(date +%s)"
@@ -17,7 +18,7 @@ else
   LAST_SUCCESS=0
 fi
 
-if [[ "$LAST_SUCCESS" =~ '^[0-9]+$' ]] && (( LAST_SUCCESS > 0 )); then
+if [[ "$SYNC_ENABLED" != "1" && "$SYNC_ENABLED" != "true" && "$SYNC_ENABLED" != "yes" && "$LAST_SUCCESS" =~ '^[0-9]+$' ]] && (( LAST_SUCCESS > 0 )); then
   ELAPSED="$((NOW - LAST_SUCCESS))"
   if (( ELAPSED < INTERVAL_SECONDS )); then
     NEXT_RUN="$((LAST_SUCCESS + INTERVAL_SECONDS))"
@@ -28,5 +29,12 @@ if [[ "$LAST_SUCCESS" =~ '^[0-9]+$' ]] && (( LAST_SUCCESS > 0 )); then
   fi
 fi
 
-"$BACKUP_SCRIPT"
+case "$SYNC_ENABLED" in
+  1|true|yes)
+    "$BACKUP_SCRIPT" --sync-local-authoritative
+    ;;
+  *)
+    "$BACKUP_SCRIPT"
+    ;;
+esac
 date +%s > "$LAST_SUCCESS_FILE"

@@ -15,10 +15,13 @@ export type BackupConfig = {
   retentionCount: number;
   retentionDays: number;
   remoteRetention: boolean;
+  syncEnabled: boolean;
+  syncCheckIntervalHours: number;
+  syncMinBackupIntervalHours: number;
 };
 
 export type ConfigCheck = {
-  id: 'target' | 'encryption' | 'retention' | 'credentials';
+  id: 'target' | 'encryption' | 'retention' | 'credentials' | 'sync';
   label: string;
   status: 'ok' | 'warning' | 'error';
   detail: string;
@@ -46,6 +49,9 @@ export const defaultConfig: BackupConfig = {
   retentionCount: 10,
   retentionDays: 30,
   remoteRetention: false,
+  syncEnabled: false,
+  syncCheckIntervalHours: 24,
+  syncMinBackupIntervalHours: 24,
 };
 
 const quoteEnv = (value: string) => `"${value}"`;
@@ -63,6 +69,9 @@ export function buildEnvLines(config: BackupConfig): string[] {
     `CODEX_BACKUP_RETENTION_COUNT=${config.retentionCount}`,
     `CODEX_BACKUP_RETENTION_DAYS=${config.retentionDays}`,
     `CODEX_BACKUP_REMOTE_RETENTION=${config.remoteRetention ? 1 : 0}`,
+    `CODEX_BACKUP_SYNC_ENABLED=${config.syncEnabled ? 1 : 0}`,
+    `CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=${config.syncCheckIntervalHours}`,
+    `CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=${config.syncMinBackupIntervalHours}`,
     `CODEX_BACKUP_ENCRYPT=${config.encrypt ? 1 : 0}`,
   ];
 
@@ -103,6 +112,14 @@ export function buildBackupCommand(config: BackupConfig): string {
   return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexbackup.sh --target ${config.target}`;
 }
 
+export function buildSyncCheckCommand(config: BackupConfig): string {
+  return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexbackup.sh --sync-check --target ${config.target}`;
+}
+
+export function buildSyncLocalAuthoritativeCommand(config: BackupConfig): string {
+  return `${joinEnvLines(buildEnvLines(config))}${lineContinuation}./scripts/codexbackup.sh --sync-local-authoritative --target ${config.target}`;
+}
+
 export function buildEnvFile(config: BackupConfig): string {
   return [
     '# Codex-Backup-toolkit config.env 预览',
@@ -132,6 +149,7 @@ export function getConfigChecks(config: BackupConfig): ConfigCheck[] {
     getCredentialCheck(config),
     getEncryptionCheck(config),
     getRetentionCheck(config),
+    getSyncCheck(config),
   ];
 }
 
@@ -242,5 +260,29 @@ function getRetentionCheck(config: BackupConfig): ConfigCheck {
     label: '保留策略',
     status: 'ok',
     detail: config.remoteRetention ? '远端保留策略已显式开启。' : '远端保留策略默认关闭，不会删除云端旧备份。',
+  };
+}
+
+function getSyncCheck(config: BackupConfig): ConfigCheck {
+  if (config.syncCheckIntervalHours <= 0 || config.syncMinBackupIntervalHours <= 0) {
+    return { id: 'sync', label: '一致性检查', status: 'error', detail: '检查频率和最小备份间隔必须大于 0 小时。' };
+  }
+
+  if (config.target === 'webdav' || config.target === 'rclone') {
+    return {
+      id: 'sync',
+      label: '一致性检查',
+      status: 'warning',
+      detail: '0.14.0 的本地为准一致性检查先支持本地目录和 SMB/NAS；云端目标仍可使用普通备份。',
+    };
+  }
+
+  return {
+    id: 'sync',
+    label: '一致性检查',
+    status: 'ok',
+    detail: config.syncEnabled
+      ? `已启用：每 ${config.syncCheckIntervalHours} 小时检查一次，最短 ${config.syncMinBackupIntervalHours} 小时生成一次新备份。`
+      : '默认关闭；开启后仍以本地数据为准，只在不一致时生成新的时间戳备份。',
   };
 }

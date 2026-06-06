@@ -9,7 +9,7 @@ export type SecretInput = {
 export type DeleteSecretInput = Omit<SecretInput, 'secret'>;
 
 export type BackupHistoryEntry = {
-  action: 'backup';
+  action: 'backup' | 'syncLocalAuthoritative';
   archivePaths: string[];
   exitCode: number;
   finishedAt: string;
@@ -70,7 +70,7 @@ export function createHelperApi(baseUrl = 'http://127.0.0.1:37371', fetcher: typ
     async loadConfig(): Promise<BackupConfig> {
       const body = await request('/config', { method: 'GET' });
       if (!isConfigResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 配置响应不符合协议。');
-      return body.config;
+      return normalizeConfig(body.config);
     },
 
     async saveConfig(config: BackupConfig): Promise<BackupConfig> {
@@ -80,7 +80,7 @@ export function createHelperApi(baseUrl = 'http://127.0.0.1:37371', fetcher: typ
         body: JSON.stringify(config),
       });
       if (!isConfigResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 配置响应不符合协议。');
-      return body.config;
+      return normalizeConfig(body.config);
     },
 
     async saveSecret(input: SecretInput): Promise<{ status: 'ok' }> {
@@ -114,6 +114,35 @@ export function createHelperApi(baseUrl = 'http://127.0.0.1:37371', fetcher: typ
       if (!isAutomationResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 自动化状态响应不符合协议。');
       return body.automation;
     },
+  };
+}
+
+function normalizeConfig(config: BackupConfig): BackupConfig {
+  return {
+    ...defaultBackupConfig(),
+    ...config,
+  };
+}
+
+function defaultBackupConfig(): BackupConfig {
+  return {
+    target: 'local',
+    localDir: '$HOME/CodexBackups',
+    smbHost: 'nas.example.local',
+    smbUser: 'backup-user',
+    smbShare: 'CodexBackup',
+    webdavUrl: 'https://webdav.example.com/remote.php/dav/files/user/CodexBackup',
+    webdavUser: 'backup-user',
+    rcloneRemote: 'gdrive:CodexBackup',
+    encrypt: false,
+    ageRecipient: '',
+    ageRecipientFile: '',
+    retentionCount: 10,
+    retentionDays: 30,
+    remoteRetention: false,
+    syncEnabled: false,
+    syncCheckIntervalHours: 24,
+    syncMinBackupIntervalHours: 24,
   };
 }
 

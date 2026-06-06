@@ -14,6 +14,10 @@ AGE_RECIPIENT_FILE="${CODEX_BACKUP_AGE_RECIPIENT_FILE:-}"
 RETENTION_COUNT="${CODEX_BACKUP_RETENTION_COUNT:-0}"
 RETENTION_DAYS="${CODEX_BACKUP_RETENTION_DAYS:-0}"
 REMOTE_RETENTION="${CODEX_BACKUP_REMOTE_RETENTION:-0}"
+SYNC_ENABLED="${CODEX_BACKUP_SYNC_ENABLED:-0}"
+SYNC_CHECK_INTERVAL_HOURS="${CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS:-24}"
+SYNC_MIN_BACKUP_INTERVAL_HOURS="${CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS:-24}"
+STATE_DIR="${CODEX_BACKUP_STATE_DIR:-${HOME}/Library/Application Support/CodexBackupToolkit/state}"
 SMB_HOST="${CODEX_BACKUP_SMB_HOST:-${CODEX_BACKUP_HOST:-}}"
 SMB_USER="${CODEX_BACKUP_SMB_USER:-${CODEX_BACKUP_USER:-}}"
 SMB_SHARE="${CODEX_BACKUP_SMB_SHARE:-${CODEX_BACKUP_SHARE:-CodexBackup}}"
@@ -37,11 +41,14 @@ ARCHIVE_FILE_NAME="${ARCHIVE_BASENAME}.tar.gz"
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/codex-backup.XXXXXX")"
 STAGING_DIR="${WORK_DIR}/staging"
 MANIFEST="${WORK_DIR}/${ARCHIVE_BASENAME}.manifest.txt"
+FINGERPRINT="${WORK_DIR}/${ARCHIVE_BASENAME}.fingerprint.txt"
 ARCHIVE="${WORK_DIR}/${ARCHIVE_FILE_NAME}"
 DOCTOR=0
 DRY_RUN=0
 LIST_TARGETS=0
 CONFIG_GUIDE=0
+SYNC_CHECK=0
+SYNC_LOCAL_AUTHORITATIVE=0
 
 cleanup() {
   rm -rf "$WORK_DIR"
@@ -53,6 +60,8 @@ usage() {
 Usage: codexbackup [--target local|smb|webdav|rclone] [--local-output DIR]
        codexbackup --doctor
        codexbackup --config-guide [--target local|smb|webdav|rclone]
+       codexbackup --sync-check [--target local|smb|webdav|rclone]
+       codexbackup --sync-local-authoritative [--target local|smb|webdav|rclone]
        codexbackup --list-targets
 
 Creates a Codex Desktop backup archive and publishes it to the configured
@@ -63,6 +72,9 @@ Options:
   --local-output DIR   Write backup files to a local directory. Alias for --target local.
   --doctor             Check dependencies and target configuration without backing up.
   --config-guide       Print target setup, safety, and encryption guidance.
+  --sync-check         Compare local data with the latest backup fingerprint. Read-only.
+  --sync-local-authoritative
+                       If local data differs from the latest backup, create a new timestamped backup.
   --dry-run            Show what would be backed up and where, without creating files.
   --list-targets       Print supported storage targets.
   -h, --help           Show this help.
@@ -94,6 +106,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --config-guide)
       CONFIG_GUIDE=1
+      shift
+      ;;
+    --sync-check)
+      SYNC_CHECK=1
+      shift
+      ;;
+    --sync-local-authoritative)
+      SYNC_LOCAL_AUTHORITATIVE=1
       shift
       ;;
     --dry-run)
@@ -322,6 +342,11 @@ EOF
   exit 0
 fi
 
+if [[ "$SYNC_CHECK" -eq 1 && "$SYNC_LOCAL_AUTHORITATIVE" -eq 1 ]]; then
+  echo "Use either --sync-check or --sync-local-authoritative, not both." >&2
+  exit 2
+fi
+
 copy_if_exists() {
   local src="$1"
   local dest="$2"
@@ -337,6 +362,172 @@ copy_if_exists() {
   else
     printf 'missing:  %s\n' "$src" >> "$MANIFEST"
   fi
+}
+
+fingerprint_if_exists() {
+  local src="$1"
+  local label="$2"
+  if [[ ! -e "$src" ]]; then
+    printf 'missing\t%s\t%s\n' "$label" "$src"
+    return 0
+  fi
+
+  if [[ -d "$src" ]]; then
+    (
+      cd "$src"
+      find . \
+        -path './.git/fsmonitor--daemon.ipc' -prune -o \
+        -path './tmp' -prune -o \
+        -path './.tmp' -prune -o \
+        -type f ! -name '*.sock' ! -name '*.socket' -print0 |
+        LC_ALL=C sort -z |
+        while IFS= read -r -d '' file; do
+          local digest size
+          digest="$(shasum -a 256 "$file" | awk '{print $1}')"
+          size="$(stat -f '%z' "$file" 2>/dev/null || wc -c < "$file" | tr -d ' ')"
+          printf 'file\t%s/%s\t%s\t%s\n' "$label" "${file#./}" "$size" "$digest"
+        done
+    )
+    return 0
+  fi
+
+  local digest size
+  digest="$(shasum -a 256 "$src" | awk '{print $1}')"
+  size="$(stat -f '%z' "$src" 2>/dev/null || wc -c < "$src" | tr -d ' ')"
+  printf 'file\t%s\t%s\t%s\n' "$label" "$size" "$digest"
+}
+
+write_local_fingerprint() {
+  local dest="$1"
+  {
+    printf 'Codex backup fingerprint v1\n'
+    printf 'Profile: %s\n' "$PROFILE"
+    fingerprint_if_exists "${HOME}/.codex" 'home/.codex'
+    fingerprint_if_exists "${HOME}/Library/Application Support/Codex" 'Library/Application Support/Codex'
+    fingerprint_if_exists "${HOME}/Library/Application Support/OpenAI" 'Library/Application Support/OpenAI'
+    fingerprint_if_exists "${HOME}/Library/Application Support/OpenAI/Codex" 'Library/Application Support/OpenAI/Codex'
+    fingerprint_if_exists "${HOME}/Library/Application Support/com.openai.codex" 'Library/Application Support/com.openai.codex'
+    fingerprint_if_exists "${HOME}/Documents/Codex" 'Documents/Codex'
+  } > "$dest"
+}
+
+fingerprint_digest() {
+  shasum -a 256 "$1" | awk '{print $1}'
+}
+
+select_latest_archive_path() {
+  local dir="$1"
+  [[ -d "$dir" ]] || return 0
+  find "$dir" -maxdepth 1 -type f \( -name 'codex-backup-*.tar.gz' -o -name 'codex-backup-*.tar.gz.age' \) -print | sort | tail -1
+}
+
+fingerprint_for_archive_path() {
+  local archive="$1"
+  if [[ "$archive" == *.tar.gz.age ]]; then
+    print -r -- "${archive%.tar.gz.age}.fingerprint.txt"
+  else
+    print -r -- "${archive%.tar.gz}.fingerprint.txt"
+  fi
+}
+
+state_file() {
+  print -r -- "${STATE_DIR}/$1"
+}
+
+hours_to_seconds() {
+  local hours="$1"
+  [[ "$hours" =~ '^[0-9]+$' ]] || { echo 0; return 0; }
+  echo $((hours * 60 * 60))
+}
+
+sync_interval_elapsed() {
+  local state_path interval_seconds last now
+  state_path="$(state_file last-sync-check-epoch)"
+  interval_seconds="$(hours_to_seconds "$SYNC_CHECK_INTERVAL_HOURS")"
+  (( interval_seconds <= 0 )) && return 0
+  [[ -f "$state_path" ]] || return 0
+  last="$(cat "$state_path" 2>/dev/null || echo 0)"
+  [[ "$last" =~ '^[0-9]+$' ]] || return 0
+  now="$(date +%s)"
+  (( now - last >= interval_seconds ))
+}
+
+sync_backup_cooldown_elapsed() {
+  local state_path interval_seconds last now
+  state_path="$(state_file last-sync-backup-epoch)"
+  interval_seconds="$(hours_to_seconds "$SYNC_MIN_BACKUP_INTERVAL_HOURS")"
+  (( interval_seconds <= 0 )) && return 0
+  [[ -f "$state_path" ]] || return 0
+  last="$(cat "$state_path" 2>/dev/null || echo 0)"
+  [[ "$last" =~ '^[0-9]+$' ]] || return 0
+  now="$(date +%s)"
+  (( now - last >= interval_seconds ))
+}
+
+write_sync_state() {
+  local name="$1"
+  mkdir -p "$STATE_DIR"
+  date +%s > "$(state_file "$name")"
+}
+
+sync_target_dir() {
+  case "$TARGET" in
+    local)
+      print -r -- "$LOCAL_DIR"
+      ;;
+    smb)
+      nc -z -G 5 "$SMB_HOST" 445 >/dev/null 2>&1 || {
+        echo "Cannot reach ${SMB_HOST}:445. Check network or use --target local." >&2
+        exit 1
+      }
+      mount_smb_target
+      print -r -- "${SMB_MOUNT}/${REMOTE_DIR}"
+      ;;
+    *)
+      echo "Sync check currently supports local and smb targets. Use normal backups for ${TARGET}." >&2
+      exit 2
+      ;;
+  esac
+}
+
+run_sync_check() {
+  local target_dir latest_archive latest_fingerprint local_fingerprint local_digest backup_digest
+  target_dir="$(sync_target_dir)"
+  latest_archive="$(select_latest_archive_path "$target_dir")"
+  local_fingerprint="${WORK_DIR}/current.fingerprint.txt"
+  write_local_fingerprint "$local_fingerprint"
+  local_digest="$(fingerprint_digest "$local_fingerprint")"
+
+  echo "Codex sync check"
+  echo "Target: ${TARGET}"
+  echo "Target path: ${target_dir}"
+  echo "Local fingerprint: ${local_digest}"
+
+  if [[ -z "$latest_archive" ]]; then
+    echo "Sync status: missing-backup"
+    echo "Reason: no latest backup archive found."
+    return 20
+  fi
+
+  latest_fingerprint="$(fingerprint_for_archive_path "$latest_archive")"
+  echo "Latest backup: ${latest_archive}"
+  echo "Latest fingerprint: ${latest_fingerprint}"
+  if [[ ! -f "$latest_fingerprint" ]]; then
+    echo "Sync status: missing-fingerprint"
+    echo "Reason: latest backup has no fingerprint sidecar."
+    return 21
+  fi
+
+  backup_digest="$(fingerprint_digest "$latest_fingerprint")"
+  echo "Backup fingerprint: ${backup_digest}"
+  if [[ "$local_digest" == "$backup_digest" ]]; then
+    echo "Sync status: consistent"
+    return 0
+  fi
+
+  echo "Sync status: drift"
+  echo "Reason: local data differs from the latest backup fingerprint."
+  return 22
 }
 
 url_escape() {
@@ -560,7 +751,7 @@ apply_local_retention() {
   local pattern='codex-backup-*.tar.gz*'
 
   if [[ "$RETENTION_DAYS" =~ '^[0-9]+$' ]] && (( RETENTION_DAYS > 0 )); then
-    find "$dir" -maxdepth 1 -type f \( -name 'codex-backup-*.tar.gz' -o -name 'codex-backup-*.tar.gz.age' -o -name 'codex-backup-*.tar.gz.sha256' -o -name 'codex-backup-*.tar.gz.age.sha256' -o -name 'codex-backup-*.manifest.txt' \) -mtime +"$RETENTION_DAYS" -delete
+    find "$dir" -maxdepth 1 -type f \( -name 'codex-backup-*.tar.gz' -o -name 'codex-backup-*.tar.gz.age' -o -name 'codex-backup-*.tar.gz.sha256' -o -name 'codex-backup-*.tar.gz.age.sha256' -o -name 'codex-backup-*.manifest.txt' -o -name 'codex-backup-*.fingerprint.txt' \) -mtime +"$RETENTION_DAYS" -delete
   fi
 
   if [[ "$RETENTION_COUNT" =~ '^[0-9]+$' ]] && (( RETENTION_COUNT > 0 )); then
@@ -568,6 +759,7 @@ apply_local_retention() {
     find "$dir" -maxdepth 1 -type f \( -name 'codex-backup-*.tar.gz' -o -name 'codex-backup-*.tar.gz.age' \) -print | sort -r | tail -n +$((RETENTION_COUNT + 1)) | while IFS= read -r old_base; do
       rm -f "$old_base" "${old_base}.sha256"
       rm -f "${old_base%.tar.gz}.manifest.txt" "${old_base%.tar.gz.age}.manifest.txt"
+      rm -f "${old_base%.tar.gz}.fingerprint.txt" "${old_base%.tar.gz.age}.fingerprint.txt"
     done
   fi
 
@@ -607,6 +799,11 @@ remote_artifacts_for_archive() {
   print -r -- "$archive_name"
   print -r -- "${archive_name}.sha256"
   print -r -- "$(archive_manifest_name "$archive_name")"
+  if [[ "$archive_name" == *.tar.gz.age ]]; then
+    print -r -- "${archive_name%.tar.gz.age}.fingerprint.txt"
+  else
+    print -r -- "${archive_name%.tar.gz}.fingerprint.txt"
+  fi
 }
 
 apply_webdav_retention() {
@@ -651,16 +848,17 @@ Restore toolkit synced to:
 EOF
 }
 
-echo "Codex backup"
-echo "Tool: ${TOOL_NAME}"
-echo "Target: ${TARGET}"
-echo "Timestamp: ${TIMESTAMP}"
-echo "Archive: ${ARCHIVE_BASENAME}.tar.gz"
-echo
+run_backup() {
+  echo "Codex backup"
+  echo "Tool: ${TOOL_NAME}"
+  echo "Target: ${TARGET}"
+  echo "Timestamp: ${TIMESTAMP}"
+  echo "Archive: ${ARCHIVE_BASENAME}.tar.gz"
+  echo
 
-mkdir -p "$STAGING_DIR/home" "$STAGING_DIR/Library/Application Support" "$STAGING_DIR/Documents"
+  mkdir -p "$STAGING_DIR/home" "$STAGING_DIR/Library/Application Support" "$STAGING_DIR/Documents"
 
-cat > "$MANIFEST" <<EOF
+  cat > "$MANIFEST" <<EOF
 Codex backup manifest
 Created: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 Source home: ${HOME}
@@ -670,64 +868,118 @@ Target: ${TARGET}
 
 EOF
 
-copy_if_exists "${HOME}/.codex" "${STAGING_DIR}/home/.codex"
-copy_if_exists "${HOME}/Library/Application Support/Codex" "${STAGING_DIR}/Library/Application Support/Codex"
-copy_if_exists "${HOME}/Library/Application Support/OpenAI" "${STAGING_DIR}/Library/Application Support/OpenAI"
-copy_if_exists "${HOME}/Library/Application Support/OpenAI/Codex" "${STAGING_DIR}/Library/Application Support/OpenAI/Codex"
-copy_if_exists "${HOME}/Library/Application Support/com.openai.codex" "${STAGING_DIR}/Library/Application Support/com.openai.codex"
-copy_if_exists "${HOME}/Documents/Codex" "${STAGING_DIR}/Documents/Codex"
+  copy_if_exists "${HOME}/.codex" "${STAGING_DIR}/home/.codex"
+  copy_if_exists "${HOME}/Library/Application Support/Codex" "${STAGING_DIR}/Library/Application Support/Codex"
+  copy_if_exists "${HOME}/Library/Application Support/OpenAI" "${STAGING_DIR}/Library/Application Support/OpenAI"
+  copy_if_exists "${HOME}/Library/Application Support/OpenAI/Codex" "${STAGING_DIR}/Library/Application Support/OpenAI/Codex"
+  copy_if_exists "${HOME}/Library/Application Support/com.openai.codex" "${STAGING_DIR}/Library/Application Support/com.openai.codex"
+  copy_if_exists "${HOME}/Documents/Codex" "${STAGING_DIR}/Documents/Codex"
+  write_local_fingerprint "$FINGERPRINT"
 
-cat >> "$MANIFEST" <<EOF
+  cat >> "$MANIFEST" <<EOF
 
 Archive format: tar.gz
 Restore script: scripts/codexrestore.sh
 Excluded transient files: .git/fsmonitor--daemon.ipc, tmp/, .tmp/, *.sock, *.socket
 EOF
 
-cp "$MANIFEST" "${STAGING_DIR}/MANIFEST.txt"
+  cp "$MANIFEST" "${STAGING_DIR}/MANIFEST.txt"
+  cp "$FINGERPRINT" "${STAGING_DIR}/FINGERPRINT.txt"
 
-tar -C "$STAGING_DIR" -czf "$ARCHIVE" .
-(cd "$(dirname "$ARCHIVE")" && shasum -a 256 "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
+  tar -C "$STAGING_DIR" -czf "$ARCHIVE" .
+  (cd "$(dirname "$ARCHIVE")" && shasum -a 256 "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
 
-FINAL_ARCHIVE="$(encrypt_archive_if_requested)"
-FINAL_SHA="${FINAL_ARCHIVE}.sha256"
-FINAL_FILES=("$FINAL_ARCHIVE" "$FINAL_SHA" "$MANIFEST")
-copy_final_files_to_spool "${FINAL_FILES[@]}"
+  FINAL_ARCHIVE="$(encrypt_archive_if_requested)"
+  FINAL_SHA="${FINAL_ARCHIVE}.sha256"
+  FINAL_FILES=("$FINAL_ARCHIVE" "$FINAL_SHA" "$MANIFEST" "$FINGERPRINT")
+  copy_final_files_to_spool "${FINAL_FILES[@]}"
 
-case "$TARGET" in
-  local)
-    DEST_DIR="$LOCAL_DIR"
-    TOOLKIT_DEST_DISPLAY="${DEST_DIR}/${TOOLKIT_REMOTE_DIR}"
-    publish_files_to_dir "$DEST_DIR" "${FINAL_FILES[@]}"
-    publish_restore_toolkit_to_dir "${DEST_DIR}/${TOOLKIT_REMOTE_DIR}"
-    apply_local_retention "$DEST_DIR"
-    ;;
-  smb)
-    nc -z -G 5 "$SMB_HOST" 445 >/dev/null 2>&1 || {
-      echo "Cannot reach ${SMB_HOST}:445. Check network or use --target local." >&2
-      exit 1
-    }
-    mount_smb_target
-    DEST_DIR="${SMB_MOUNT}/${REMOTE_DIR}"
-    TOOLKIT_DEST_DISPLAY="${SMB_MOUNT}/${TOOLKIT_REMOTE_DIR}"
-    mkdir -p "$DEST_DIR"
-    xattr -d com.apple.provenance "$DEST_DIR" 2>/dev/null || true
-    publish_files_to_dir "$DEST_DIR" "${FINAL_FILES[@]}"
-    publish_restore_toolkit_to_dir "${SMB_MOUNT}/${TOOLKIT_REMOTE_DIR}"
-    apply_local_retention "$DEST_DIR"
-    ;;
-  webdav)
-    DEST_DIR="$(publish_to_webdav "${FINAL_FILES[@]}")"
-    TOOLKIT_DEST_DISPLAY="${WEBDAV_URL%/}/${TOOLKIT_REMOTE_DIR}"
-    ;;
-  rclone)
-    DEST_DIR="$(publish_to_rclone "${FINAL_FILES[@]}")"
-    TOOLKIT_DEST_DISPLAY="${RCLONE_REMOTE%/}/${TOOLKIT_REMOTE_DIR}"
-    ;;
-  *)
-    echo "Unknown CODEX_BACKUP_TARGET: ${TARGET}" >&2
-    exit 2
-    ;;
-esac
+  case "$TARGET" in
+    local)
+      DEST_DIR="$LOCAL_DIR"
+      TOOLKIT_DEST_DISPLAY="${DEST_DIR}/${TOOLKIT_REMOTE_DIR}"
+      publish_files_to_dir "$DEST_DIR" "${FINAL_FILES[@]}"
+      publish_restore_toolkit_to_dir "${DEST_DIR}/${TOOLKIT_REMOTE_DIR}"
+      apply_local_retention "$DEST_DIR"
+      ;;
+    smb)
+      nc -z -G 5 "$SMB_HOST" 445 >/dev/null 2>&1 || {
+        echo "Cannot reach ${SMB_HOST}:445. Check network or use --target local." >&2
+        exit 1
+      }
+      mount_smb_target
+      DEST_DIR="${SMB_MOUNT}/${REMOTE_DIR}"
+      TOOLKIT_DEST_DISPLAY="${SMB_MOUNT}/${TOOLKIT_REMOTE_DIR}"
+      mkdir -p "$DEST_DIR"
+      xattr -d com.apple.provenance "$DEST_DIR" 2>/dev/null || true
+      publish_files_to_dir "$DEST_DIR" "${FINAL_FILES[@]}"
+      publish_restore_toolkit_to_dir "${SMB_MOUNT}/${TOOLKIT_REMOTE_DIR}"
+      apply_local_retention "$DEST_DIR"
+      ;;
+    webdav)
+      DEST_DIR="$(publish_to_webdav "${FINAL_FILES[@]}")"
+      TOOLKIT_DEST_DISPLAY="${WEBDAV_URL%/}/${TOOLKIT_REMOTE_DIR}"
+      ;;
+    rclone)
+      DEST_DIR="$(publish_to_rclone "${FINAL_FILES[@]}")"
+      TOOLKIT_DEST_DISPLAY="${RCLONE_REMOTE%/}/${TOOLKIT_REMOTE_DIR}"
+      ;;
+    *)
+      echo "Unknown CODEX_BACKUP_TARGET: ${TARGET}" >&2
+      exit 2
+      ;;
+  esac
 
-print_backup_result "$DEST_DIR" "$TOOLKIT_DEST_DISPLAY" "${FINAL_FILES[@]}"
+  print_backup_result "$DEST_DIR" "$TOOLKIT_DEST_DISPLAY" "${FINAL_FILES[@]}"
+}
+
+if [[ "$SYNC_CHECK" -eq 1 ]]; then
+  set +e
+  run_sync_check
+  SYNC_STATUS=$?
+  set -e
+  case "$SYNC_STATUS" in
+    0|20|21|22) exit 0 ;;
+    *) exit "$SYNC_STATUS" ;;
+  esac
+fi
+
+if [[ "$SYNC_LOCAL_AUTHORITATIVE" -eq 1 ]]; then
+  if ! sync_interval_elapsed; then
+    echo "Codex sync check"
+    echo "Sync action: check-skipped"
+    echo "Reason: CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=${SYNC_CHECK_INTERVAL_HOURS} has not elapsed."
+    exit 0
+  fi
+
+  set +e
+  SYNC_OUTPUT="$(run_sync_check 2>&1)"
+  SYNC_STATUS=$?
+  set -e
+  print -r -- "$SYNC_OUTPUT"
+  write_sync_state last-sync-check-epoch
+
+  case "$SYNC_STATUS" in
+    0)
+      echo "Sync action: already-consistent"
+      exit 0
+      ;;
+    20|21|22)
+      if ! sync_backup_cooldown_elapsed; then
+        echo "Sync action: backup-cooldown"
+        echo "Reason: CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=${SYNC_MIN_BACKUP_INTERVAL_HOURS} has not elapsed."
+        exit 0
+      fi
+      echo "Sync action: backup-needed"
+      run_backup
+      write_sync_state last-sync-backup-epoch
+      echo "Sync action: backup-created"
+      exit 0
+      ;;
+    *)
+      exit "$SYNC_STATUS"
+      ;;
+  esac
+fi
+
+run_backup
