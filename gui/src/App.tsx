@@ -9,6 +9,7 @@ import { TargetForm } from './components/TargetForm';
 import { buildBackupAcceptance, type BackupAcceptance, type BackupAcceptanceCheck } from './lib/backupAcceptance';
 import { buildBackupHealth, type BackupHealth } from './lib/backupHealth';
 import { buildFirstRunJourney, type FirstRunJourney, type FirstRunJourneyStep } from './lib/firstRunJourney';
+import { buildInstallReadiness, type InstallReadiness, type InstallReadinessStep } from './lib/installReadiness';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type AutomationStatus, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
@@ -90,7 +91,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.23.0';
+const appVersion = '0.24.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -194,6 +195,14 @@ function App() {
     isDesktop: desktopBridge.isDesktop,
     toolkitAvailable: desktopToolkitStatus.available,
   }), [desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, displayedAppVersion, helperStatus]);
+  const installReadiness = useMemo(() => buildInstallReadiness({
+    appVersion: displayedAppVersion,
+    backupAcceptance,
+    doctorReady: doctorReport !== null && doctorReport.status !== 'error',
+    helperOnline: helperStatus === 'online' || desktopHelperStatus.online,
+    isDesktop: desktopBridge.isDesktop,
+    toolkitAvailable: desktopToolkitStatus.available,
+  }), [backupAcceptance, desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, displayedAppVersion, doctorReport, helperStatus]);
   const targetSetupGuide = useMemo(() => buildTargetSetupGuide(config, configChecks), [config, configChecks]);
   const restorePlanGuide = useMemo(() => buildRestorePlanGuide(actions.restorePlan), [actions.restorePlan]);
 
@@ -736,9 +745,13 @@ function App() {
           <section className="view-stack">
             <PostInstallPanel
               experience={postInstallExperience}
+              installReadiness={installReadiness}
               onCopy={copyText}
               onOpenGuide={() => setActiveSection('guide')}
+              onOpenLogs={() => setActiveSection('logs')}
+              onOpenRestore={() => setActiveSection('restore')}
               onOpenSettings={() => setActiveSection('settings')}
+              onOpenTargets={() => setActiveSection('targets')}
             />
             <DesktopReadinessPanel
               appVersion={displayedAppVersion}
@@ -1408,14 +1421,22 @@ function FirstRunJourneyPanel({
 
 function PostInstallPanel({
   experience,
+  installReadiness,
   onCopy,
   onOpenGuide,
+  onOpenLogs,
+  onOpenRestore,
   onOpenSettings,
+  onOpenTargets,
 }: {
   experience: PostInstallExperience;
+  installReadiness: InstallReadiness;
   onCopy: (text: string) => Promise<void>;
   onOpenGuide: () => void;
+  onOpenLogs: () => void;
+  onOpenRestore: () => void;
   onOpenSettings: () => void;
+  onOpenTargets: () => void;
 }) {
   return (
     <section className="panel readiness-panel">
@@ -1489,8 +1510,89 @@ function PostInstallPanel({
           {experience.trustChecklist.map((item) => <PostInstallItemCard item={item} key={item.id} />)}
         </div>
       </section>
+      <InstallReadinessPanel
+        readiness={installReadiness}
+        onOpenGuide={onOpenGuide}
+        onOpenLogs={onOpenLogs}
+        onOpenRestore={onOpenRestore}
+        onOpenSettings={onOpenSettings}
+        onOpenTargets={onOpenTargets}
+      />
     </section>
   );
+}
+
+function InstallReadinessPanel({
+  onOpenGuide,
+  onOpenLogs,
+  onOpenRestore,
+  onOpenSettings,
+  onOpenTargets,
+  readiness,
+}: {
+  onOpenGuide: () => void;
+  onOpenLogs: () => void;
+  onOpenRestore: () => void;
+  onOpenSettings: () => void;
+  onOpenTargets: () => void;
+  readiness: InstallReadiness;
+}) {
+  return (
+    <section className="sub-panel">
+      <div className="panel-title">
+        <ClipboardCheck size={16} aria-hidden="true" />
+        <span>安装落地验收</span>
+      </div>
+      <div className="summary-list">
+        <SummaryRow label="结论" value={readiness.summary} />
+        <SummaryRow label="安全边界" value={readiness.safetyNote} />
+      </div>
+      <div className="check-list check-list--grid">
+        {readiness.steps.map((step) => (
+          <InstallReadinessStepItem
+            key={step.id}
+            onAction={installReadinessAction(step, { onOpenGuide, onOpenLogs, onOpenRestore, onOpenSettings, onOpenTargets })}
+            step={step}
+          />
+        ))}
+      </div>
+      <StepList steps={readiness.nextActions} />
+    </section>
+  );
+}
+
+function InstallReadinessStepItem({ onAction, step }: { onAction: () => void; step: InstallReadinessStep }) {
+  const Icon = step.status === 'ok' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${step.status === 'blocked' ? 'error' : step.status}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{step.label}</strong>
+        <span>{step.detail}</span>
+        <button className="inline-action" onClick={onAction} type="button">验收{step.actionLabel}</button>
+      </div>
+    </div>
+  );
+}
+
+function installReadinessAction(
+  step: InstallReadinessStep,
+  actions: {
+    onOpenGuide: () => void;
+    onOpenLogs: () => void;
+    onOpenRestore: () => void;
+    onOpenSettings: () => void;
+    onOpenTargets: () => void;
+  },
+): () => void {
+  return {
+    'download-checksum': actions.onOpenGuide,
+    'first-open': actions.onOpenGuide,
+    runtime: actions.onOpenSettings,
+    'target-doctor': actions.onOpenTargets,
+    'first-backup': actions.onOpenLogs,
+    'restore-boundary': actions.onOpenRestore,
+  }[step.id];
 }
 
 function StepList({ steps }: { steps: string[] }) {

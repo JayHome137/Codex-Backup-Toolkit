@@ -65,7 +65,7 @@ describe('post install experience', () => {
 
   it('builds a release trust checklist without claiming signing or auto-update support', () => {
     const experience = buildPostInstallExperience({
-      appVersion: '0.23.0',
+      appVersion: '0.24.0',
       helperOnline: true,
       isDesktop: true,
       toolkitAvailable: true,

@@ -269,6 +269,8 @@ Since 0.19.0, the `Targets` screen includes a setup guide. For local, SMB/NAS, W
 
 Since 0.23.0, the GUI includes four maturity flows for the first public desktop loop: target doctor advice, first real-backup acceptance, restore-plan guidance, and a release trust checklist. These flows explain what to check next, show archive/sha256/manifest proof from helper history, clarify what `codexrestore --plan` does and does not do, and keep unsigned-build/checksum/manual-smoke limitations visible. They do not add real restore execution, scheduled-task mutation, signing, notarization, or auto-update.
 
+Since 0.24.0, the `Install` screen includes an install-readiness acceptance checklist. It connects DMG checksum verification, first open, desktop runtime, target doctor, first backup acceptance, and restore-plan boundary into one post-download path. Each step links to the existing safe screen; it does not run real restore, install, uninstall, or mutate scheduled jobs.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:

@@ -173,9 +173,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /安装/i }));
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.23.0_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.23.0_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.23.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.24.0_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.24.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.24.0_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -183,6 +183,9 @@ describe('App', () => {
     expect(screen.getByText(/系统设置 > 隐私与安全/)).toBeInTheDocument();
     expect(screen.getByText('安装后 smoke 检查')).toBeInTheDocument();
     expect(screen.getByText('发布可信度')).toBeInTheDocument();
+    expect(screen.getByText('安装落地验收')).toBeInTheDocument();
+    expect(screen.getByText('桌面运行时')).toBeInTheDocument();
+    expect(screen.getByText('首次备份验收')).toBeInTheDocument();
     expect(screen.getByText('Release 产物完整')).toBeInTheDocument();
     expect(screen.getByText('已知限制明确')).toBeInTheDocument();
     expect(screen.getByText('打开引导页并运行环境检查。')).toBeInTheDocument();
@@ -192,11 +195,31 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /公证/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /复制校验命令/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.23.0_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.24.0_aarch64.dmg.sha256');
     });
+  });
+
+  it('lets the install readiness panel navigate to settings, targets, logs, and restore', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    fireEvent.click(screen.getByRole('button', { name: /验收打开设置/ }));
+    expect(screen.getByText('桌面 helper')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    fireEvent.click(screen.getByRole('button', { name: /验收运行目标端检查/ }));
+    expect(screen.getByText('目标端配置')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    fireEvent.click(screen.getByRole('button', { name: /验收刷新历史/ }));
+    expect(screen.getByText('helper 备份历史')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    fireEvent.click(screen.getByRole('button', { name: /验收打开恢复预案/ }));
+    expect(screen.getAllByText('恢复预览').length).toBeGreaterThan(0);
   });
 
   it('refreshes backup health by reading helper history and automation status', async () => {
@@ -885,7 +908,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.23.0')).toBeInTheDocument();
+    expect(screen.getByText('0.24.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {
