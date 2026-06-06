@@ -94,7 +94,7 @@ describe('App', () => {
     expect(screen.getByText('运行目标端 doctor')).toBeInTheDocument();
     expect(screen.getByText('执行确认备份')).toBeInTheDocument();
     expect(screen.getByText('确认恢复边界')).toBeInTheDocument();
-    expect(screen.getByText(/不会执行真实恢复/)).toBeInTheDocument();
+    expect(screen.getAllByText(/不会执行真实恢复/).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
 
@@ -122,12 +122,29 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /健康/i }));
 
+    expect(screen.getByText('日常使用状态')).toBeInTheDocument();
+    expect(screen.getByText('首次使用')).toBeInTheDocument();
+    expect(screen.getByText('健康度')).toBeInTheDocument();
     expect(screen.getByText('备份健康度')).toBeInTheDocument();
     expect(screen.getByText('helper')).toBeInTheDocument();
-    expect(screen.getByText('最近备份')).toBeInTheDocument();
+    expect(screen.getAllByText('最近备份').length).toBeGreaterThan(0);
     expect(screen.getByText('一致性')).toBeInTheDocument();
     expect(screen.getByText('建议动作')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /打开目标端/i })).toBeInTheDocument();
+  });
+
+  it('shows daily usage status on overview without adding restore or automation mutation controls', () => {
+    render(<App />);
+
+    expect(screen.getByText('日常使用状态')).toBeInTheDocument();
+    expect(screen.getByText('日常备份需要关注，有建议补齐的状态。')).toBeInTheDocument();
+    expect(screen.getAllByText(/真实备份仍需要手动确认/).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /卸载定时任务/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /日常刷新/ }));
+    expect(screen.getByText('健康')).toBeInTheDocument();
   });
 
   it('guides first-run validation without exposing install, uninstall, or real restore actions', async () => {
@@ -204,9 +221,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /安装/i }));
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.25.0_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.25.0_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.25.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.26.0_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.26.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.26.0_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -229,7 +246,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.25.0_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.26.0_aarch64.dmg.sha256');
     });
   });
 
@@ -939,7 +956,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.25.0')).toBeInTheDocument();
+    expect(screen.getByText('0.26.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {

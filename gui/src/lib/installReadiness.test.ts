@@ -16,7 +16,7 @@ const successfulBackup: BackupHistoryEntry = {
 describe('buildInstallReadiness', () => {
   it('marks the install path ready when desktop runtime and backup acceptance are ready', () => {
     const readiness = buildInstallReadiness({
-      appVersion: '0.25.0',
+      appVersion: '0.26.0',
       backupAcceptance: buildBackupAcceptance([successfulBackup]),
       doctorReady: true,
       helperOnline: true,
@@ -39,7 +39,7 @@ describe('buildInstallReadiness', () => {
 
   it('shows actionable blockers before helper and first backup are ready', () => {
     const readiness = buildInstallReadiness({
-      appVersion: '0.25.0',
+      appVersion: '0.26.0',
       backupAcceptance: buildBackupAcceptance([]),
       doctorReady: false,
       helperOnline: false,
@@ -61,7 +61,7 @@ describe('buildInstallReadiness', () => {
 
   it('keeps the flow read-only except for existing confirmed backup action', () => {
     const readiness = buildInstallReadiness({
-      appVersion: '0.25.0',
+      appVersion: '0.26.0',
       backupAcceptance: buildBackupAcceptance([]),
       doctorReady: true,
       helperOnline: true,

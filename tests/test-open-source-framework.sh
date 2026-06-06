@@ -94,9 +94,11 @@ assert_contains README.md 'codexrestore.sh --plan'
 assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.25\.0"'
+assert_contains gui/package.json '"version": "0\.26\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
+assert_file gui/src/lib/firstUsePath.ts
+assert_file gui/src/lib/dailyUsageStatus.ts
 assert_contains gui/package.json '"desktop:build"'
 assert_contains gui/package.json '"desktop:checksum"'
 assert_contains gui/package.json '"desktop:smoke"'

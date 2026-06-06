@@ -273,6 +273,8 @@ Since 0.24.0, the `Install` screen includes an install-readiness acceptance chec
 
 Since 0.25.0, the `Overview` and `Guide` screens include a first real-use path. It connects install readiness, target setup, doctor checks, manually confirmed backup, first backup acceptance, and restore-plan boundary into one first-use route. It only shows status, links to existing screens, and runs the existing read-only doctor check; it does not run real restore, install, uninstall, or mutate scheduled jobs.
 
+Since 0.26.0, the `Overview` and `Health` screens include a daily usage status panel. It combines the first real-use path, latest backup, backup health score, and read-only automation result into a daily-ready, needs-attention, or blocked status. It only reads existing state, navigates to existing screens, or refreshes health; it does not rescan archives, add helper APIs, run real restore, install, uninstall, or mutate scheduled jobs.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:

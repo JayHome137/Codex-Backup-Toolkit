@@ -8,6 +8,7 @@ import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
 import { buildBackupAcceptance, type BackupAcceptance, type BackupAcceptanceCheck } from './lib/backupAcceptance';
 import { buildBackupHealth, type BackupHealth } from './lib/backupHealth';
+import { buildDailyUsageStatus, type DailyUsageCard, type DailyUsageStatus } from './lib/dailyUsageStatus';
 import { buildFirstRunJourney, type FirstRunJourney, type FirstRunJourneyStep } from './lib/firstRunJourney';
 import { buildFirstUsePath, type FirstUsePath, type FirstUsePathStep } from './lib/firstUsePath';
 import { buildInstallReadiness, type InstallReadiness, type InstallReadinessStep } from './lib/installReadiness';
@@ -92,7 +93,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.25.0';
+const appVersion = '0.26.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -213,6 +214,10 @@ function App() {
     installReadiness,
     targetSetupGuide,
   }), [backupAcceptance, desktopHelperStatus.online, doctorAdvice, helperStatus, installReadiness, targetSetupGuide]);
+  const dailyUsageStatus = useMemo(() => buildDailyUsageStatus({
+    firstUsePath,
+    health: backupHealth,
+  }), [backupHealth, firstUsePath]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -637,6 +642,13 @@ function App() {
               toolkitStatus={desktopToolkitStatus}
             />
 
+            <DailyUsageStatusPanel
+              onOpenHealth={() => setActiveSection('health')}
+              onOpenLogs={() => setActiveSection('logs')}
+              onOpenTargets={() => setActiveSection('targets')}
+              status={dailyUsageStatus}
+            />
+
             <FirstUsePathPanel
               path={firstUsePath}
               onOpenInstall={() => setActiveSection('install')}
@@ -788,6 +800,12 @@ function App() {
 
         {activeSection === 'health' && (
           <section className="view-stack">
+            <DailyUsageStatusPanel
+              onOpenHealth={refreshBackupHealth}
+              onOpenLogs={() => setActiveSection('logs')}
+              onOpenTargets={() => setActiveSection('targets')}
+              status={dailyUsageStatus}
+            />
             <BackupHealthPanel
               health={backupHealth}
               onRefresh={refreshBackupHealth}
@@ -1318,6 +1336,65 @@ function BackupHealthPanel({
         </div>
       </section>
     </>
+  );
+}
+
+function DailyUsageStatusPanel({
+  onOpenHealth,
+  onOpenLogs,
+  onOpenTargets,
+  status,
+}: {
+  onOpenHealth: () => void | Promise<void>;
+  onOpenLogs: () => void;
+  onOpenTargets: () => void;
+  status: DailyUsageStatus;
+}) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Activity size={16} aria-hidden="true" />
+          <span>日常使用状态</span>
+        </div>
+        <StatusBadge status={dailyUsageStatusBadge(status.level)} label={dailyUsageStatusLevelLabel(status.level)} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="结论" value={status.summary} />
+          <SummaryRow label="下一步" value={status.primaryAction} />
+          <SummaryRow label="安全边界" value={status.safetyNote} />
+        </div>
+        <div className="readiness-copy">
+          <strong>日常备份判断</strong>
+          <p>这个状态汇总首次真实使用路径、最近备份、健康度和自动化读取结果，只提示当前是否适合进入日常节奏。</p>
+          <div className="action-row">
+            <button className="button button--primary" onClick={() => void onOpenHealth()} type="button">
+              <RotateCcw size={15} aria-hidden="true" />
+              日常刷新
+            </button>
+            <button className="button button--tertiary" onClick={onOpenLogs} type="button">日常记录</button>
+            <button className="button button--tertiary" onClick={onOpenTargets} type="button">日常配置</button>
+          </div>
+        </div>
+      </div>
+      <div className="check-list check-list--grid">
+        {status.cards.map((card) => <DailyUsageCardItem card={card} key={card.id} />)}
+      </div>
+    </section>
+  );
+}
+
+function DailyUsageCardItem({ card }: { card: DailyUsageCard }) {
+  const Icon = card.status === 'ok' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${card.status}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{card.label}</strong>
+        <span>{card.detail}</span>
+      </div>
+    </div>
   );
 }
 
@@ -2368,6 +2445,20 @@ function backupHealthLevelLabel(level: BackupHealth['level']): string {
     healthy: '健康',
     warning: '需要关注',
     risk: '存在风险',
+  }[level];
+}
+
+function dailyUsageStatusBadge(level: DailyUsageStatus['level']): CommandResult['status'] {
+  if (level === 'ready') return 'success';
+  if (level === 'blocked') return 'error';
+  return 'warning';
+}
+
+function dailyUsageStatusLevelLabel(level: DailyUsageStatus['level']): string {
+  return {
+    attention: '需要关注',
+    blocked: '有阻断项',
+    ready: '日常可用',
   }[level];
 }
 
