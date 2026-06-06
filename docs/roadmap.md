@@ -32,6 +32,7 @@ Status: current scope.
 - GUI helper connection banner, offline disabled actions, and clearer helper loading/error states. Status: added for 0.6.0.
 - GUI confirmed real backup execution with automatic helper history refresh. Status: added for 0.7.0.
 - Tauri macOS desktop shell, desktop helper lifecycle bridge, settings page, and latest backup result display. Status: added for 0.8.0.
+- Bundled helper/scripts resources for packaged desktop builds. Status: added for 0.9.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 const HELPER_PORT: u16 = 37371;
 const HELPER_BASE: &str = "http://127.0.0.1:37371";
@@ -47,12 +47,12 @@ fn helper_status(state: State<'_, HelperState>) -> Result<HelperStatus, String> 
 }
 
 #[tauri::command]
-fn helper_start(state: State<'_, HelperState>) -> Result<HelperStatus, String> {
+fn helper_start(app: AppHandle, state: State<'_, HelperState>) -> Result<HelperStatus, String> {
     if helper_is_online() {
         return build_status(&state);
     }
 
-    let repo_root = resolve_repo_root()?;
+    let repo_root = resolve_toolkit_root(Some(&app))?;
     let helper_path = repo_root.join("helper/server.mjs");
     if !helper_path.exists() {
         let message = format!(
@@ -249,12 +249,17 @@ fn helper_transport_error(error: ureq::Error) -> String {
     }
 }
 
-fn resolve_repo_root() -> Result<PathBuf, String> {
+fn resolve_toolkit_root(app: Option<&AppHandle>) -> Result<PathBuf, String> {
     if let Ok(root) = std::env::var("CODEX_BACKUP_TOOLKIT_ROOT") {
         return Ok(PathBuf::from(root));
     }
 
     let mut candidates = Vec::new();
+    if let Some(app) = app {
+        if let Ok(resource_dir) = app.path().resource_dir() {
+            candidates.push(resource_dir.join("toolkit"));
+        }
+    }
     if let Ok(current_dir) = std::env::current_dir() {
         candidates.push(current_dir);
     }
@@ -269,17 +274,70 @@ fn resolve_repo_root() -> Result<PathBuf, String> {
         }
     }
 
-    for candidate in candidates {
-        if candidate.join("helper/server.mjs").exists() {
-            return Ok(candidate);
-        }
-    }
+    find_toolkit_root(candidates).ok_or_else(|| "无法定位工具根目录。请设置 CODEX_BACKUP_TOOLKIT_ROOT，或确认桌面 App 已打包 helper/scripts 资源。".to_string())
+}
 
-    Err("无法定位仓库根目录。请设置 CODEX_BACKUP_TOOLKIT_ROOT。".to_string())
+fn find_toolkit_root(candidates: Vec<PathBuf>) -> Option<PathBuf> {
+    candidates.into_iter().find(|candidate| is_toolkit_root(candidate))
+}
+
+fn is_toolkit_root(candidate: &PathBuf) -> bool {
+    candidate.join("helper/server.mjs").exists() && candidate.join("scripts/codexbackup.sh").exists()
 }
 
 fn set_last_error(state: &State<'_, HelperState>, value: Option<String>) {
     if let Ok(mut last_error) = state.last_error.lock() {
         *last_error = value;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn finds_candidate_with_helper_and_scripts() {
+        let root = make_temp_root("valid");
+        fs::create_dir_all(root.join("helper")).unwrap();
+        fs::create_dir_all(root.join("scripts")).unwrap();
+        fs::write(root.join("helper/server.mjs"), "").unwrap();
+        fs::write(root.join("scripts/codexbackup.sh"), "").unwrap();
+
+        assert_eq!(find_toolkit_root(vec![root.clone()]), Some(root.clone()));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rejects_candidate_without_scripts() {
+        let root = make_temp_root("missing-scripts");
+        fs::create_dir_all(root.join("helper")).unwrap();
+        fs::write(root.join("helper/server.mjs"), "").unwrap();
+
+        assert_eq!(find_toolkit_root(vec![root.clone()]), None);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn prefers_first_valid_candidate() {
+        let invalid = make_temp_root("invalid-first");
+        let valid = make_temp_root("valid-second");
+        fs::create_dir_all(invalid.join("helper")).unwrap();
+        fs::write(invalid.join("helper/server.mjs"), "").unwrap();
+        fs::create_dir_all(valid.join("helper")).unwrap();
+        fs::create_dir_all(valid.join("scripts")).unwrap();
+        fs::write(valid.join("helper/server.mjs"), "").unwrap();
+        fs::write(valid.join("scripts/codexbackup.sh"), "").unwrap();
+
+        assert_eq!(find_toolkit_root(vec![invalid.clone(), valid.clone()]), Some(valid.clone()));
+        let _ = fs::remove_dir_all(invalid);
+        let _ = fs::remove_dir_all(valid);
+    }
+
+    fn make_temp_root(name: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!("codexbackup-tauri-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        root
     }
 }

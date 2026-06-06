@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0 - 2026-06-06
+
+- 桌面 App 打包时新增内置 toolkit 资源：`helper/`、`scripts/`、`config.example.env` 和 `examples/`。
+- Tauri helper 启动逻辑优先识别 App Resources 中的 `toolkit/`，开发环境仍支持 `CODEX_BACKUP_TOOLKIT_ROOT` 和仓库根目录。
+- helper 根目录识别要求同时存在 `helper/server.mjs` 和 `scripts/codexbackup.sh`，避免只找到半套资源。
+- 新增 Rust 单元测试覆盖 toolkit 资源定位逻辑。
+- 发布检查脚本新增 Tauri 资源打包断言。
+- GUI/Tauri 版本升至 `0.9.0`。
+
 ## 0.8.0 - 2026-06-06
 
 - 新增 Tauri v2 桌面壳，复用现有 React/Vite GUI，目标产物为本机未签名 `.app`，环境支持时生成 `.dmg`。
