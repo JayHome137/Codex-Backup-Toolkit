@@ -151,13 +151,20 @@ npm run desktop:smoke
 
 当前目标是本机可运行的未签名 `.app`；如果 Tauri 和本机打包环境支持，也会生成 `.dmg`。当前不包含 Apple Developer 签名、公证和自动更新。缺少 Rust 工具链时，`desktop:build` 会输出中文提示，并指向 `https://rustup.rs/`。
 
-桌面 App 启动后会检查 `127.0.0.1:37371`。如果发现外部 helper 已在线，只会连接它，退出 App 时不会停止外部进程；如果由 App 启动托管 helper，退出时会尝试清理该 helper。0.9.0 起，打包产物会内置 `helper/`、`scripts/`、`config.example.env` 和 `examples/`，桌面 App 可以优先从 App Resources 中启动 helper。开发或调试时如需指定仓库根目录，可设置：
+桌面 App 启动后会检查 `127.0.0.1:37371`。如果发现外部 helper 已在线，只会连接它，退出 App 时不会停止外部进程；如果由 App 启动托管 helper，退出时会尝试清理该 helper。0.9.0 起，打包产物会内置 `helper/`、`scripts/`、`config.example.env` 和 `examples/`，桌面 App 可以优先从 App Resources 中启动 helper。0.10.0 起，App 托管 helper 的输出会写入：
+
+```text
+~/Library/Logs/CodexBackup/desktop-helper.out.log
+~/Library/Logs/CodexBackup/desktop-helper.err.log
+```
+
+开发或调试时如需指定仓库根目录，可设置：
 
 ```zsh
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-GUI 的 `设置` 页会显示 helper 状态、启动/停止按钮、内置 toolkit 来源、配置路径、历史路径、日志路径和版本信息。`日志` 页会显示最近一次真实备份结果，包括归档、sha256 和 manifest 路径，并提供复制与打开路径入口。恢复页仍只生成 `codexrestore --plan`，不会执行真实恢复。
+GUI 的 `设置` 页会显示 helper 状态、启动/停止按钮、桌面诊断、内置 toolkit 来源、配置路径、历史路径、日志路径和版本信息，并提供打开配置目录、日志目录和 toolkit 目录的入口。`日志` 页会显示最近一次真实备份结果，包括归档、sha256 和 manifest 路径，并提供复制与打开路径入口。恢复页仍只生成 `codexrestore --plan`，不会执行真实恢复。
 
 ## 浏览器模式和本地 helper
 
@@ -177,7 +184,7 @@ npm run dev
 node helper/server.mjs
 ```
 
-helper 默认只监听 `127.0.0.1:37371`。GUI 顶部会显示 helper 未确认、检查中、在线或离线状态；helper 离线时，加载/保存配置、Keychain 密钥和真实历史按钮会暂时禁用，避免误操作。GUI 选择 `HTTP 助手` 后，可以执行环境检查、加载/保存配置、保存/删除 Keychain 密钥、读取真实备份历史、受控真实备份、恢复预案和隔离的计划校验。真实备份需要先确认摘要，再点击 `执行真实备份`，成功后会自动刷新 helper 备份历史并更新最新备份结果。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
+helper 默认只监听 `127.0.0.1:37371`。GUI 顶部会显示 helper 未确认、检查中、在线或离线状态；helper 离线时，加载/保存配置、Keychain 密钥和真实历史按钮会暂时禁用，避免误操作。GUI 选择 `HTTP 助手` 或 `桌面` helper 后，可以执行环境检查、加载/保存配置、保存/删除 Keychain 密钥、读取真实备份历史、受控真实备份、恢复预案和隔离的计划校验。真实备份需要先确认摘要，再点击 `执行真实备份`，成功后会自动刷新 helper 备份历史并更新最新备份结果。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
 
 helper 仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。备份历史会保存到 `~/Library/Application Support/CodexBackupToolkit/history.json`。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
 

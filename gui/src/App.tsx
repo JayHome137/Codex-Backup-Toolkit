@@ -10,7 +10,7 @@ import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
-import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopHelperStatus, type DesktopToolkitStatus } from './lib/desktopBridge';
+import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopDiagnostics, type DesktopHelperStatus, type DesktopPaths, type DesktopToolkitStatus } from './lib/desktopBridge';
 import {
   buildBackupCommand,
   buildDoctorCommand,
@@ -46,7 +46,7 @@ type SecretDraft = {
 type HelperConnectionStatus = 'unknown' | 'checking' | 'online' | 'offline';
 
 type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret-delete' | 'history-load' | null;
-type DesktopActionState = 'status' | 'start' | 'stop' | null;
+type DesktopActionState = 'diagnostics' | 'status' | 'start' | 'stop' | null;
 
 type RunPreviewOptions = {
   refreshHelperHistory?: boolean;
@@ -59,6 +59,19 @@ const helperActionLabels: Record<Exclude<HelperActionState, null>, string> = {
   'secret-delete': '删除密钥',
   'history-load': '刷新历史',
 };
+
+const fallbackDesktopPaths: DesktopPaths = {
+  appSupportDir: '~/Library/Application Support/CodexBackupToolkit',
+  automationStderrLogPath: '~/Library/Logs/CodexBackup/backup.err.log',
+  automationStdoutLogPath: '~/Library/Logs/CodexBackup/backup.out.log',
+  configPath: '~/Library/Application Support/CodexBackupToolkit/config.json',
+  desktopHelperStderrLogPath: '~/Library/Logs/CodexBackup/desktop-helper.err.log',
+  desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
+  historyPath: '~/Library/Application Support/CodexBackupToolkit/history.json',
+  logDir: '~/Library/Logs/CodexBackup',
+};
+
+const appVersion = '0.10.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -78,6 +91,7 @@ function App() {
   const [backupConfirmed, setBackupConfirmed] = useState(false);
   const [desktopHelperStatus, setDesktopHelperStatus] = useState<DesktopHelperStatus>({ managed: false, online: false, source: 'unavailable' });
   const [desktopToolkitStatus, setDesktopToolkitStatus] = useState<DesktopToolkitStatus>({ available: false, source: 'unavailable' });
+  const [desktopDiagnostics, setDesktopDiagnostics] = useState<DesktopDiagnostics | null>(null);
   const [desktopAction, setDesktopAction] = useState<DesktopActionState>(null);
   const [desktopMessage, setDesktopMessage] = useState('桌面状态尚未检查。');
   const desktopBridge = useMemo(() => createDesktopBridge(), []);
@@ -107,11 +121,20 @@ function App() {
   const configChecks = useMemo(() => getConfigChecks(config), [config]);
   const blockingChecks = configChecks.filter((check) => check.status === 'error');
   const helperBusy = helperStatus === 'checking' || helperAction !== null;
-  const realBackupDisabled = runnerMode === 'httpHelper' && (!backupConfirmed || blockingChecks.length > 0 || helperBusy || helperStatus === 'offline');
+  const realRunnerMode = runnerMode === 'httpHelper' || runnerMode === 'desktopHelper';
+  const realBackupDisabled = realRunnerMode && (
+    !backupConfirmed
+    || blockingChecks.length > 0
+    || helperBusy
+    || helperStatus === 'offline'
+    || (runnerMode === 'desktopHelper' && !desktopBridge.isDesktop)
+  );
   const helperActionsDisabled = helperStatus === 'offline' || helperBusy;
   const helperActionLabel = helperAction ? helperActionLabels[helperAction] : null;
   const helperBannerMessage = helperActionLabel ? `${helperActionLabel}中...` : helperMessage;
   const latestBackupEntry = helperHistory.find((entry) => entry.action === 'backup') ?? null;
+  const desktopPaths = desktopDiagnostics?.paths ?? fallbackDesktopPaths;
+  const displayedAppVersion = desktopDiagnostics?.version ?? appVersion;
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -119,8 +142,11 @@ function App() {
       return;
     }
 
-    void refreshDesktopHelperStatus({ autoStart: true });
-    void refreshDesktopToolkitStatus();
+    const initializeDesktop = async () => {
+      await refreshDesktopHelperStatus({ autoStart: true });
+      await refreshDesktopDiagnostics({ silent: true });
+    };
+    void initializeDesktop();
   }, [desktopBridge]);
 
   const setConfigAndSecretDefaults = (nextConfig: BackupConfig) => {
@@ -329,6 +355,37 @@ function App() {
     }
   };
 
+  const refreshDesktopDiagnostics = async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!silent) setDesktopAction('diagnostics');
+    try {
+      const diagnostics = await desktopBridge.desktopDiagnostics();
+      setDesktopDiagnostics(diagnostics);
+      setDesktopToolkitStatus(diagnostics.toolkit);
+      applyDesktopStatus(diagnostics.helper);
+      if (!silent) {
+        setLastResult({
+          status: diagnostics.toolkit.available ? 'success' : 'warning',
+          output: [
+            '桌面诊断已刷新。',
+            '',
+            `版本: ${diagnostics.version}`,
+            `helper: ${desktopHelperStatusLabel(diagnostics.helper)}`,
+            `toolkit: ${diagnostics.toolkit.available ? '可用' : '不可用'}`,
+            `配置: ${diagnostics.paths.configPath}`,
+            `历史: ${diagnostics.paths.historyPath}`,
+            `日志: ${diagnostics.paths.logDir}`,
+          ].join('\n'),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!silent) setLastResult({ status: 'error', output: `桌面诊断失败：\n${message}` });
+      setDesktopMessage(`桌面诊断失败：${message}`);
+    } finally {
+      if (!silent) setDesktopAction(null);
+    }
+  };
+
   const startDesktopHelper = async () => {
     setDesktopAction('start');
     try {
@@ -368,6 +425,10 @@ function App() {
       const message = error instanceof Error ? error.message : String(error);
       setLastResult({ status: 'error', output: `打开路径失败：\n${path}\n\n${message}` });
     }
+  };
+
+  const openDesktopPath = async (path: string) => {
+    await openBackupPath(path);
   };
 
   const status = lastResult?.status ?? 'idle';
@@ -456,7 +517,7 @@ function App() {
                       检查助手
                     </button>
                   )}
-                  {runnerMode !== 'httpHelper' && (
+                  {!realRunnerMode && (
                     <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令', actions.backup)} type="button">
                       <Archive size={15} aria-hidden="true" />
                       {runnerMode === 'mock' ? '预览备份' : '执行备份'}
@@ -464,7 +525,7 @@ function App() {
                   )}
                 </div>
               </section>
-              {runnerMode === 'httpHelper' && (
+              {realRunnerMode && (
                 <section className="panel real-backup-panel">
                   <div className="panel-header">
                     <div className="panel-title">
@@ -750,6 +811,10 @@ function App() {
                   <ShieldCheck size={15} aria-hidden="true" />
                   检查 toolkit
                 </button>
+                <button className="button button--tertiary" disabled={desktopAction !== null || !desktopBridge.isDesktop} onClick={() => refreshDesktopDiagnostics()} type="button">
+                  <ShieldCheck size={15} aria-hidden="true" />
+                  {desktopAction === 'diagnostics' ? '诊断中' : '刷新诊断'}
+                </button>
               </div>
             </section>
             <section className="panel">
@@ -767,6 +832,12 @@ function App() {
                 <SummaryRow label="脚本" value={desktopToolkitStatus.scriptsPath ?? '未定位'} />
               </div>
               {desktopToolkitStatus.lastError && <p className="muted-copy">{desktopToolkitStatus.lastError}</p>}
+              <div className="action-row">
+                <button className="button button--tertiary" disabled={!desktopBridge.isDesktop || !desktopToolkitStatus.rootPath} onClick={() => desktopToolkitStatus.rootPath && openDesktopPath(desktopToolkitStatus.rootPath)} type="button">
+                  <FolderOpen size={15} aria-hidden="true" />
+                  打开 toolkit
+                </button>
+              </div>
             </section>
             <section className="panel">
               <div className="panel-header">
@@ -776,11 +847,15 @@ function App() {
                 </div>
               </div>
               <div className="summary-list">
-                <SummaryRow label="配置" value="~/Library/Application Support/CodexBackupToolkit/config.json" />
-                <SummaryRow label="历史" value="~/Library/Application Support/CodexBackupToolkit/history.json" />
-                <SummaryRow label="标准输出" value="~/Library/Logs/CodexBackup/backup.out.log" />
-                <SummaryRow label="错误输出" value="~/Library/Logs/CodexBackup/backup.err.log" />
-                <SummaryRow label="版本" value="0.9.1" />
+                <SummaryRow label="版本" value={displayedAppVersion} />
+                <PathRow label="配置" path={desktopPaths.configPath} onOpen={openDesktopPath} />
+                <PathRow label="历史" path={desktopPaths.historyPath} onOpen={openDesktopPath} />
+                <PathRow label="配置目录" path={desktopPaths.appSupportDir} onOpen={openDesktopPath} />
+                <PathRow label="自动化标准输出" path={desktopPaths.automationStdoutLogPath} onOpen={openDesktopPath} />
+                <PathRow label="自动化错误输出" path={desktopPaths.automationStderrLogPath} onOpen={openDesktopPath} />
+                <PathRow label="桌面 helper 输出" path={desktopPaths.desktopHelperStdoutLogPath} onOpen={openDesktopPath} />
+                <PathRow label="桌面 helper 错误" path={desktopPaths.desktopHelperStderrLogPath} onOpen={openDesktopPath} />
+                <PathRow label="日志目录" path={desktopPaths.logDir} onOpen={openDesktopPath} />
               </div>
             </section>
           </section>
@@ -1038,6 +1113,19 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     <div className="summary-row">
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function PathRow({ label, onOpen, path }: { label: string; onOpen: (path: string) => Promise<void>; path: string }) {
+  const canOpen = !path.startsWith('~');
+  return (
+    <div className="summary-row summary-row--action">
+      <span>{label}</span>
+      <strong>{path}</strong>
+      <button className="icon-button" disabled={!canOpen} onClick={() => onOpen(path)} title={`打开${label}`} type="button">
+        <FolderOpen size={14} aria-hidden="true" />
+      </button>
     </div>
   );
 }

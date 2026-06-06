@@ -334,6 +334,10 @@ button:disabled {
   padding: 7px 9px;
 }
 
+.summary-row--action {
+  grid-template-columns: 118px minmax(0, 1fr) 32px;
+}
+
 .summary-row span,
 .field span {
   color: var(--mute);
@@ -650,6 +654,8 @@ input[type="checkbox"] {
   .metric-grid,
   .two-column,
   .form-grid,
+  .summary-row,
+  .summary-row--action,
   .artifact-row {
     grid-template-columns: 1fr;
   }

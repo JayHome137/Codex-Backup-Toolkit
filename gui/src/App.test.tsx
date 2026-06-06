@@ -547,6 +547,19 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /停止 helper/i })).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
+    expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
+    expect(screen.getByText('0.10.0')).toBeInTheDocument();
+  });
+
+  it('keeps real backup confirmation disabled in desktop mode outside Tauri', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /桌面/i }));
+
+    expect(screen.getByText('真实备份确认')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /确认真实备份/i }));
+    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
   });
 
   it('shows latest backup result artifacts from helper history', async () => {

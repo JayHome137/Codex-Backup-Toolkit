@@ -236,13 +236,20 @@ npm run desktop:smoke
 
 The current target is a local unsigned `.app`; a `.dmg` is produced when the local Tauri/macOS build environment supports it. Apple Developer signing, notarization, and auto-update are not included yet. If Rust is missing, `desktop:build` prints a Chinese diagnostic and points to `https://rustup.rs/`.
 
-The desktop app checks `127.0.0.1:37371` on startup. If an external helper is already online, the app connects to it and does not stop it on exit. If the app starts a managed helper, it attempts to stop only that managed helper when the app exits. Since 0.9.0, packaged builds include `helper/`, `scripts/`, `config.example.env`, and `examples/` as app resources, so the desktop app can start its bundled helper first. Development or custom runs can still point the helper launcher at the repo root with:
+The desktop app checks `127.0.0.1:37371` on startup. If an external helper is already online, the app connects to it and does not stop it on exit. If the app starts a managed helper, it attempts to stop only that managed helper when the app exits. Since 0.9.0, packaged builds include `helper/`, `scripts/`, `config.example.env`, and `examples/` as app resources, so the desktop app can start its bundled helper first. Since 0.10.0, managed helper stdout/stderr are written to:
+
+```text
+~/Library/Logs/CodexBackup/desktop-helper.out.log
+~/Library/Logs/CodexBackup/desktop-helper.err.log
+```
+
+Development or custom runs can still point the helper launcher at the repo root with:
 
 ```zsh
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-The `Settings` screen shows helper status, start/stop controls, bundled toolkit source, config path, history path, log paths, and version information. The `Logs` screen now shows the latest real backup result with archive, sha256, and manifest paths plus copy/open actions. Restore still only generates `codexrestore --plan`; it does not execute real restore.
+The `Settings` screen shows helper status, start/stop controls, desktop diagnostics, bundled toolkit source, config path, history path, log paths, and version information, with open-path actions for the config directory, log directory, and toolkit directory. The `Logs` screen now shows the latest real backup result with archive, sha256, and manifest paths plus copy/open actions. Restore still only generates `codexrestore --plan`; it does not execute real restore.
 
 ## Browser Mode And Local Helper
 

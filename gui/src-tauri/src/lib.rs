@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::path::PathBuf;
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -8,6 +9,8 @@ use tauri::{AppHandle, Manager, State};
 
 const HELPER_PORT: u16 = 37371;
 const HELPER_BASE: &str = "http://127.0.0.1:37371";
+const APP_SUPPORT_DIR: &str = "Library/Application Support/CodexBackupToolkit";
+const LOG_DIR: &str = "Library/Logs/CodexBackup";
 
 #[derive(Default)]
 struct HelperState {
@@ -34,6 +37,28 @@ struct ToolkitStatus {
     root_path: Option<String>,
     scripts_path: Option<String>,
     source: ToolkitSource,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopPaths {
+    app_support_dir: String,
+    automation_stderr_log_path: String,
+    automation_stdout_log_path: String,
+    config_path: String,
+    desktop_helper_stderr_log_path: String,
+    desktop_helper_stdout_log_path: String,
+    history_path: String,
+    log_dir: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopDiagnostics {
+    helper: HelperStatus,
+    paths: DesktopPaths,
+    toolkit: ToolkitStatus,
+    version: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -72,6 +97,19 @@ fn toolkit_status(app: AppHandle) -> ToolkitStatus {
 }
 
 #[tauri::command]
+fn desktop_diagnostics(
+    app: AppHandle,
+    state: State<'_, HelperState>,
+) -> Result<DesktopDiagnostics, String> {
+    Ok(DesktopDiagnostics {
+        helper: build_status(&state)?,
+        paths: desktop_paths()?,
+        toolkit: build_toolkit_status(Some(&app)),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    })
+}
+
+#[tauri::command]
 fn helper_start(app: AppHandle, state: State<'_, HelperState>) -> Result<HelperStatus, String> {
     if helper_is_online() {
         return build_status(&state);
@@ -92,8 +130,8 @@ fn helper_start(app: AppHandle, state: State<'_, HelperState>) -> Result<HelperS
         .arg(&helper_path)
         .current_dir(&repo_root)
         .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(helper_log_file("desktop-helper.out.log")?)
+        .stderr(helper_log_file("desktop-helper.err.log")?)
         .spawn()
         .map_err(|error| {
             let message = format!("启动 helper 失败：{error}");
@@ -102,7 +140,10 @@ fn helper_start(app: AppHandle, state: State<'_, HelperState>) -> Result<HelperS
         })?;
 
     {
-        let mut managed = state.child.lock().map_err(|_| "helper 状态锁不可用。".to_string())?;
+        let mut managed = state
+            .child
+            .lock()
+            .map_err(|_| "helper 状态锁不可用。".to_string())?;
         *managed = Some(child);
     }
 
@@ -122,7 +163,10 @@ fn helper_start(app: AppHandle, state: State<'_, HelperState>) -> Result<HelperS
 #[tauri::command]
 fn helper_stop(state: State<'_, HelperState>) -> Result<HelperStatus, String> {
     let child = {
-        let mut managed = state.child.lock().map_err(|_| "helper 状态锁不可用。".to_string())?;
+        let mut managed = state
+            .child
+            .lock()
+            .map_err(|_| "helper 状态锁不可用。".to_string())?;
         managed.take()
     };
 
@@ -179,6 +223,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             helper_status,
             toolkit_status,
+            desktop_diagnostics,
             helper_start,
             helper_stop,
             helper_request,
@@ -187,7 +232,11 @@ pub fn run() {
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
                 if let Some(state) = window.try_state::<HelperState>() {
-                    let child = state.child.lock().ok().and_then(|mut managed| managed.take());
+                    let child = state
+                        .child
+                        .lock()
+                        .ok()
+                        .and_then(|mut managed| managed.take());
                     if let Some(mut child) = child {
                         let _ = child.kill();
                         let _ = child.wait();
@@ -226,9 +275,16 @@ fn build_status(state: &State<'_, HelperState>) -> Result<HelperStatus, String> 
 }
 
 fn prune_managed_child(state: &State<'_, HelperState>) -> Result<bool, String> {
-    let mut managed = state.child.lock().map_err(|_| "helper 状态锁不可用。".to_string())?;
+    let mut managed = state
+        .child
+        .lock()
+        .map_err(|_| "helper 状态锁不可用。".to_string())?;
     if let Some(child) = managed.as_mut() {
-        if child.try_wait().map_err(|error| format!("检查 helper 进程失败：{error}"))?.is_some() {
+        if child
+            .try_wait()
+            .map_err(|error| format!("检查 helper 进程失败：{error}"))?
+            .is_some()
+        {
             *managed = None;
             return Ok(false);
         }
@@ -245,6 +301,49 @@ fn helper_is_online() -> bool {
         .call()
         .map(|response| response.status() == 200)
         .unwrap_or(false)
+}
+
+fn helper_log_file(name: &str) -> Result<Stdio, String> {
+    let path = logs_dir()?.join(name);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| format!("创建 helper 日志目录失败：{error}"))?;
+    }
+    File::create(&path)
+        .map(Stdio::from)
+        .map_err(|error| format!("打开 helper 日志文件失败：{}：{error}", path.display()))
+}
+
+fn desktop_paths() -> Result<DesktopPaths, String> {
+    let app_support_dir = app_support_dir()?;
+    let log_dir = logs_dir()?;
+    Ok(DesktopPaths {
+        app_support_dir: path_string(&app_support_dir),
+        automation_stderr_log_path: path_string(&log_dir.join("backup.err.log")),
+        automation_stdout_log_path: path_string(&log_dir.join("backup.out.log")),
+        config_path: path_string(&app_support_dir.join("config.json")),
+        desktop_helper_stderr_log_path: path_string(&log_dir.join("desktop-helper.err.log")),
+        desktop_helper_stdout_log_path: path_string(&log_dir.join("desktop-helper.out.log")),
+        history_path: path_string(&app_support_dir.join("history.json")),
+        log_dir: path_string(&log_dir),
+    })
+}
+
+fn app_support_dir() -> Result<PathBuf, String> {
+    Ok(home_dir()?.join(APP_SUPPORT_DIR))
+}
+
+fn logs_dir() -> Result<PathBuf, String> {
+    Ok(home_dir()?.join(LOG_DIR))
+}
+
+fn home_dir() -> Result<PathBuf, String> {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| "无法读取 HOME 目录。".to_string())
+}
+
+fn path_string(path: &Path) -> String {
+    path.to_string_lossy().to_string()
 }
 
 fn validate_helper_request(request: &HelperRequest) -> Result<(), String> {
@@ -281,7 +380,9 @@ fn resolve_toolkit_root(app: Option<&AppHandle>) -> Result<PathBuf, String> {
         return Ok(PathBuf::from(root));
     }
 
-    Err(status.last_error.unwrap_or_else(|| "无法定位工具根目录。".to_string()))
+    Err(status
+        .last_error
+        .unwrap_or_else(|| "无法定位工具根目录。".to_string()))
 }
 
 fn build_toolkit_status(app: Option<&AppHandle>) -> ToolkitStatus {
@@ -291,10 +392,22 @@ fn build_toolkit_status(app: Option<&AppHandle>) -> ToolkitStatus {
             let root = candidate.path.to_string_lossy().to_string();
             return ToolkitStatus {
                 available: true,
-                helper_path: Some(candidate.path.join("helper/server.mjs").to_string_lossy().to_string()),
+                helper_path: Some(
+                    candidate
+                        .path
+                        .join("helper/server.mjs")
+                        .to_string_lossy()
+                        .to_string(),
+                ),
                 last_error: None,
                 root_path: Some(root),
-                scripts_path: Some(candidate.path.join("scripts/codexbackup.sh").to_string_lossy().to_string()),
+                scripts_path: Some(
+                    candidate
+                        .path
+                        .join("scripts/codexbackup.sh")
+                        .to_string_lossy()
+                        .to_string(),
+                ),
                 source: candidate.source,
             };
         }
@@ -319,24 +432,42 @@ fn toolkit_candidates(app: Option<&AppHandle>) -> Vec<ToolkitCandidate> {
     let mut candidates = Vec::new();
 
     if let Ok(root) = std::env::var("CODEX_BACKUP_TOOLKIT_ROOT") {
-        candidates.push(ToolkitCandidate { path: PathBuf::from(root), source: ToolkitSource::Environment });
+        candidates.push(ToolkitCandidate {
+            path: PathBuf::from(root),
+            source: ToolkitSource::Environment,
+        });
     }
 
     if let Some(app) = app {
         if let Ok(resource_dir) = app.path().resource_dir() {
-            candidates.push(ToolkitCandidate { path: resource_dir.join("toolkit"), source: ToolkitSource::Bundle });
+            candidates.push(ToolkitCandidate {
+                path: resource_dir.join("toolkit"),
+                source: ToolkitSource::Bundle,
+            });
         }
     }
     if let Ok(current_dir) = std::env::current_dir() {
-        candidates.push(ToolkitCandidate { path: current_dir, source: ToolkitSource::Development });
+        candidates.push(ToolkitCandidate {
+            path: current_dir,
+            source: ToolkitSource::Development,
+        });
     }
     if let Some(manifest_dir) = option_env!("CARGO_MANIFEST_DIR") {
         let manifest = PathBuf::from(manifest_dir);
-        candidates.push(ToolkitCandidate { path: manifest.clone(), source: ToolkitSource::Development });
+        candidates.push(ToolkitCandidate {
+            path: manifest.clone(),
+            source: ToolkitSource::Development,
+        });
         if let Some(gui_dir) = manifest.parent() {
-            candidates.push(ToolkitCandidate { path: gui_dir.to_path_buf(), source: ToolkitSource::Development });
+            candidates.push(ToolkitCandidate {
+                path: gui_dir.to_path_buf(),
+                source: ToolkitSource::Development,
+            });
             if let Some(repo_dir) = gui_dir.parent() {
-                candidates.push(ToolkitCandidate { path: repo_dir.to_path_buf(), source: ToolkitSource::Development });
+                candidates.push(ToolkitCandidate {
+                    path: repo_dir.to_path_buf(),
+                    source: ToolkitSource::Development,
+                });
             }
         }
     }
@@ -345,7 +476,8 @@ fn toolkit_candidates(app: Option<&AppHandle>) -> Vec<ToolkitCandidate> {
 }
 
 fn is_toolkit_root(candidate: &PathBuf) -> bool {
-    candidate.join("helper/server.mjs").exists() && candidate.join("scripts/codexbackup.sh").exists()
+    candidate.join("helper/server.mjs").exists()
+        && candidate.join("scripts/codexbackup.sh").exists()
 }
 
 fn set_last_error(state: &State<'_, HelperState>, value: Option<String>) {
@@ -367,7 +499,14 @@ mod tests {
         fs::write(root.join("helper/server.mjs"), "").unwrap();
         fs::write(root.join("scripts/codexbackup.sh"), "").unwrap();
 
-        assert_eq!(toolkit_status_from_candidates(vec![ToolkitCandidate { path: root.clone(), source: ToolkitSource::Development }]).root_path, Some(root.clone().to_string_lossy().to_string()));
+        assert_eq!(
+            toolkit_status_from_candidates(vec![ToolkitCandidate {
+                path: root.clone(),
+                source: ToolkitSource::Development
+            }])
+            .root_path,
+            Some(root.clone().to_string_lossy().to_string())
+        );
         let _ = fs::remove_dir_all(root);
     }
 
@@ -377,7 +516,13 @@ mod tests {
         fs::create_dir_all(root.join("helper")).unwrap();
         fs::write(root.join("helper/server.mjs"), "").unwrap();
 
-        assert!(!toolkit_status_from_candidates(vec![ToolkitCandidate { path: root.clone(), source: ToolkitSource::Development }]).available);
+        assert!(
+            !toolkit_status_from_candidates(vec![ToolkitCandidate {
+                path: root.clone(),
+                source: ToolkitSource::Development
+            }])
+            .available
+        );
         let _ = fs::remove_dir_all(root);
     }
 
@@ -394,9 +539,16 @@ mod tests {
 
         assert_eq!(
             toolkit_status_from_candidates(vec![
-                ToolkitCandidate { path: invalid.clone(), source: ToolkitSource::Development },
-                ToolkitCandidate { path: valid.clone(), source: ToolkitSource::Environment },
-            ]).root_path,
+                ToolkitCandidate {
+                    path: invalid.clone(),
+                    source: ToolkitSource::Development
+                },
+                ToolkitCandidate {
+                    path: valid.clone(),
+                    source: ToolkitSource::Environment
+                },
+            ])
+            .root_path,
             Some(valid.clone().to_string_lossy().to_string())
         );
         let _ = fs::remove_dir_all(invalid);
@@ -411,13 +563,42 @@ mod tests {
         fs::write(root.join("helper/server.mjs"), "").unwrap();
         fs::write(root.join("scripts/codexbackup.sh"), "").unwrap();
 
-        let status = toolkit_status_from_candidates(vec![ToolkitCandidate { path: root.clone(), source: ToolkitSource::Bundle }]);
+        let status = toolkit_status_from_candidates(vec![ToolkitCandidate {
+            path: root.clone(),
+            source: ToolkitSource::Bundle,
+        }]);
         assert!(status.available);
         assert_eq!(status.source, ToolkitSource::Bundle);
         assert_eq!(status.root_path, Some(root.to_string_lossy().to_string()));
         assert!(status.helper_path.unwrap().ends_with("helper/server.mjs"));
-        assert!(status.scripts_path.unwrap().ends_with("scripts/codexbackup.sh"));
+        assert!(status
+            .scripts_path
+            .unwrap()
+            .ends_with("scripts/codexbackup.sh"));
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn reports_desktop_paths_under_home() {
+        let paths = desktop_paths().unwrap();
+        assert!(paths
+            .config_path
+            .ends_with("Library/Application Support/CodexBackupToolkit/config.json"));
+        assert!(paths
+            .history_path
+            .ends_with("Library/Application Support/CodexBackupToolkit/history.json"));
+        assert!(paths
+            .automation_stdout_log_path
+            .ends_with("Library/Logs/CodexBackup/backup.out.log"));
+        assert!(paths
+            .automation_stderr_log_path
+            .ends_with("Library/Logs/CodexBackup/backup.err.log"));
+        assert!(paths
+            .desktop_helper_stdout_log_path
+            .ends_with("Library/Logs/CodexBackup/desktop-helper.out.log"));
+        assert!(paths
+            .desktop_helper_stderr_log_path
+            .ends_with("Library/Logs/CodexBackup/desktop-helper.err.log"));
     }
 
     fn toolkit_status_from_candidates(candidates: Vec<ToolkitCandidate>) -> ToolkitStatus {
@@ -425,19 +606,39 @@ mod tests {
             if is_toolkit_root(&candidate.path) {
                 return ToolkitStatus {
                     available: true,
-                    helper_path: Some(candidate.path.join("helper/server.mjs").to_string_lossy().to_string()),
+                    helper_path: Some(
+                        candidate
+                            .path
+                            .join("helper/server.mjs")
+                            .to_string_lossy()
+                            .to_string(),
+                    ),
                     last_error: None,
                     root_path: Some(candidate.path.to_string_lossy().to_string()),
-                    scripts_path: Some(candidate.path.join("scripts/codexbackup.sh").to_string_lossy().to_string()),
+                    scripts_path: Some(
+                        candidate
+                            .path
+                            .join("scripts/codexbackup.sh")
+                            .to_string_lossy()
+                            .to_string(),
+                    ),
                     source: candidate.source,
                 };
             }
         }
-        ToolkitStatus { available: false, helper_path: None, last_error: Some("missing".to_string()), root_path: None, scripts_path: None, source: ToolkitSource::Unavailable }
+        ToolkitStatus {
+            available: false,
+            helper_path: None,
+            last_error: Some("missing".to_string()),
+            root_path: None,
+            scripts_path: None,
+            source: ToolkitSource::Unavailable,
+        }
     }
 
     fn make_temp_root(name: &str) -> PathBuf {
-        let root = std::env::temp_dir().join(format!("codexbackup-tauri-{name}-{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("codexbackup-tauri-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         root

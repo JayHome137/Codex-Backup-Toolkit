@@ -23,7 +23,26 @@ export type DesktopToolkitStatus = {
   source: 'bundle' | 'environment' | 'development' | 'unavailable';
 };
 
+export type DesktopPaths = {
+  appSupportDir: string;
+  automationStderrLogPath: string;
+  automationStdoutLogPath: string;
+  configPath: string;
+  desktopHelperStderrLogPath: string;
+  desktopHelperStdoutLogPath: string;
+  historyPath: string;
+  logDir: string;
+};
+
+export type DesktopDiagnostics = {
+  helper: DesktopHelperStatus;
+  paths: DesktopPaths;
+  toolkit: DesktopToolkitStatus;
+  version: string;
+};
+
 export type DesktopBridge = {
+  desktopDiagnostics(): Promise<DesktopDiagnostics>;
   helperRequest<T = unknown>(request: DesktopHelperRequest): Promise<T>;
   helperStart(): Promise<DesktopHelperStatus>;
   helperStatus(): Promise<DesktopHelperStatus>;
@@ -53,6 +72,9 @@ export function createDesktopBridge(options: BridgeOptions = {}): DesktopBridge 
   }
 
   return {
+    desktopDiagnostics(): Promise<DesktopDiagnostics> {
+      return invoke<DesktopDiagnostics>('desktop_diagnostics');
+    },
     helperRequest<T = unknown>(request: DesktopHelperRequest): Promise<T> {
       return invoke<T>('helper_request', { request });
     },
@@ -133,6 +155,9 @@ export function getBackupArtifacts(paths: string[]): { archivePath: string; chec
 
 function createUnavailableBridge(): DesktopBridge {
   return {
+    async desktopDiagnostics(): Promise<DesktopDiagnostics> {
+      return unavailableDiagnostics();
+    },
     async helperRequest(): Promise<never> {
       throw new Error('ERR_DESKTOP_UNAVAILABLE: 当前不是 Tauri 桌面环境。');
     },
@@ -152,6 +177,28 @@ function createUnavailableBridge(): DesktopBridge {
     async toolkitStatus(): Promise<DesktopToolkitStatus> {
       return { available: false, lastError: '当前不是 Tauri 桌面环境。', source: 'unavailable' };
     },
+  };
+}
+
+function unavailableDiagnostics(): DesktopDiagnostics {
+  return {
+    helper: unavailableStatus(),
+    paths: defaultDesktopPaths(),
+    toolkit: { available: false, lastError: '当前不是 Tauri 桌面环境。', source: 'unavailable' },
+    version: '0.10.0',
+  };
+}
+
+function defaultDesktopPaths(): DesktopPaths {
+  return {
+    appSupportDir: '~/Library/Application Support/CodexBackupToolkit',
+    automationStderrLogPath: '~/Library/Logs/CodexBackup/backup.err.log',
+    automationStdoutLogPath: '~/Library/Logs/CodexBackup/backup.out.log',
+    configPath: '~/Library/Application Support/CodexBackupToolkit/config.json',
+    desktopHelperStderrLogPath: '~/Library/Logs/CodexBackup/desktop-helper.err.log',
+    desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
+    historyPath: '~/Library/Application Support/CodexBackupToolkit/history.json',
+    logDir: '~/Library/Logs/CodexBackup',
   };
 }
 

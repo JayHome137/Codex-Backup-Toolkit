@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0 - 2026-06-06
+
+- Tauri 后端新增 `desktop_diagnostics` 命令，集中返回 helper 状态、toolkit 来源、配置路径、历史路径、日志路径和版本信息。
+- 桌面 App 托管 helper 的标准输出和错误输出会写入 `~/Library/Logs/CodexBackup/desktop-helper.out.log` 和 `desktop-helper.err.log`。
+- GUI 设置页新增 `刷新诊断`、打开 toolkit、打开配置/历史/日志路径入口，减少手动定位本机文件的成本。
+- GUI 的 `桌面` helper 模式现在和 `HTTP 助手` 一样要求先确认真实备份摘要，非 Tauri 网页环境下不会启用桌面真实备份。
+- 增加 Rust 和 GUI 测试覆盖桌面路径、诊断桥接、设置页路径和桌面真实备份确认边界。
+- GUI/Tauri 版本升至 `0.10.0`。
+
 ## 0.9.2 - 2026-06-06
 
 - 新增 `npm run desktop:checksum`，为当前版本 `.dmg` 生成 `.sha256` 文件并立即反向校验。

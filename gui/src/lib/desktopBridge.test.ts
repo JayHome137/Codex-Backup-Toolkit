@@ -19,15 +19,31 @@ describe('desktop bridge', () => {
     const invoke = async <T,>(command: string): Promise<T> => invokeMock(command) as Promise<T>;
     const bridge = createDesktopBridge({ invoke });
 
+    await bridge.desktopDiagnostics();
     await bridge.helperStatus();
     await bridge.helperStart();
     await bridge.helperStop();
     await bridge.toolkitStatus();
 
+    expect(invokeMock).toHaveBeenCalledWith('desktop_diagnostics');
     expect(invokeMock).toHaveBeenCalledWith('helper_status');
     expect(invokeMock).toHaveBeenCalledWith('helper_start');
     expect(invokeMock).toHaveBeenCalledWith('helper_stop');
     expect(invokeMock).toHaveBeenCalledWith('toolkit_status');
+  });
+
+  it('returns default diagnostics outside Tauri desktop', async () => {
+    const bridge = createDesktopBridge({ invoke: null });
+
+    await expect(bridge.desktopDiagnostics()).resolves.toMatchObject({
+      helper: { online: false, source: 'unavailable' },
+      paths: {
+        configPath: '~/Library/Application Support/CodexBackupToolkit/config.json',
+        desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
+      },
+      toolkit: { available: false, source: 'unavailable' },
+      version: '0.10.0',
+    });
   });
 
   it('sends helper requests through the desktop helper api', async () => {

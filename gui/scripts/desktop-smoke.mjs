@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const version = process.env.npm_package_version ?? '0.9.1';
+const version = process.env.npm_package_version ?? '0.10.0';
 const appRoot = join('src-tauri', 'target', 'release', 'bundle', 'macos', 'CodexBackup.app');
 const resourceRoot = join(appRoot, 'Contents', 'Resources', 'toolkit');
 const dmgPath = join('src-tauri', 'target', 'release', 'bundle', 'dmg', `CodexBackup_${version}_aarch64.dmg`);

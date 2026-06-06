@@ -30,9 +30,12 @@
 - [ ] 在 GUI 日志页确认可以看到 `刷新历史` 和 `helper 备份历史`。
 - [ ] 在 GUI 日志页确认真实备份历史刷新后可以看到 `最新备份结果`、归档路径、sha256 路径和 manifest 路径。
 - [ ] 打开桌面 App，确认 helper 可以自动启动或在 `设置` 页一键启动。
+- [ ] 确认 `设置` 页 `刷新诊断` 能显示 helper、toolkit、配置、历史、日志和版本信息。
+- [ ] 确认 App 托管 helper 的输出写入 `desktop-helper.out.log` 和 `desktop-helper.err.log`。
 - [ ] 退出桌面 App 后，确认由 App 启动的托管 helper 没有在 `37371` 残留。
 - [ ] 手动启动外部 helper 后再打开桌面 App，确认显示外部 helper 在线，退出 App 不停止外部 helper。
-- [ ] 确认 `设置` 页展示配置路径、历史路径、日志路径和版本信息。
+- [ ] 确认 `设置` 页可以打开配置目录、日志目录和 toolkit 目录。
+- [ ] 在 GUI 概览页确认 `桌面` helper 模式和 `HTTP 助手` 一样必须先点击 `确认真实备份` 才能点击 `执行真实备份`。
 - [ ] 确认桌面 bridge 只代理允许的 helper API，不开放真实恢复、安装、卸载、status 或任意 shell。
 - [ ] 确认本轮验证没有加载、修改或卸载已有真实定时备份任务。
 - [ ] 确认 README 示例命令和当前脚本名称一致。
@@ -45,20 +48,21 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.9.2
+git tag v0.10.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.9.2` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.10.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
 - [ ] 说明 0.9.0 桌面产物内置 helper/scripts toolkit 资源，本机可构建未签名 `.app`，环境支持时生成 `.dmg`。
 - [ ] 说明未包含 Apple 签名、公证和自动更新。
 - [ ] 说明桌面 App 可以托管 helper，也可以连接外部 helper；退出时只停止自己启动的托管 helper。
+- [ ] 说明桌面 App 增加诊断入口和托管 helper 日志，便于定位配置、历史、日志和 toolkit 路径。
 - [ ] 说明 GUI 通过 HTTP helper 或桌面 helper 可以执行真实备份，但仍不会执行恢复、安装或卸载。
 - [ ] 说明 `codexrestore --plan` 可以生成恢复预案，不会修改文件。
 - [ ] 说明 helper 增加结构化 action、配置持久化、Keychain secret 接口和备份历史。
