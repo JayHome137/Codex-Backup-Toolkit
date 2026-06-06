@@ -15,6 +15,7 @@ import { createLocalBridgeRunner } from './lib/localBridge';
 import { parseDoctorOutput, type DoctorReport } from './lib/doctorReport';
 import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopDiagnostics, type DesktopHelperStatus, type DesktopPaths, type DesktopToolkitStatus } from './lib/desktopBridge';
 import { buildPostInstallExperience, type PostInstallExperience, type PostInstallItem } from './lib/postInstallExperience';
+import { buildTargetSetupGuide, type TargetSetupGuide, type TargetSetupStep } from './lib/targetSetupGuide';
 import {
   buildBackupCommand,
   buildDoctorCommand,
@@ -86,7 +87,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.18.0';
+const appVersion = '0.19.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -188,6 +189,7 @@ function App() {
     isDesktop: desktopBridge.isDesktop,
     toolkitAvailable: desktopToolkitStatus.available,
   }), [desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, displayedAppVersion, helperStatus]);
+  const targetSetupGuide = useMemo(() => buildTargetSetupGuide(config, configChecks), [config, configChecks]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -757,6 +759,12 @@ function App() {
 
         {activeSection === 'targets' && (
           <section className="view-stack">
+            <TargetSetupGuidePanel
+              guide={targetSetupGuide}
+              onCopy={copyText}
+              onRunDoctor={() => runPreview(commands.doctor, '目标端检查命令')}
+              runningDoctor={runningCommand === commands.doctor}
+            />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -1484,6 +1492,100 @@ function PostInstallItemCard({ item }: { item: PostInstallItem }) {
       </div>
     </div>
   );
+}
+
+function TargetSetupGuidePanel({
+  guide,
+  onCopy,
+  onRunDoctor,
+  runningDoctor,
+}: {
+  guide: TargetSetupGuide;
+  onCopy: (text: string) => Promise<void>;
+  onRunDoctor: () => Promise<void>;
+  runningDoctor: boolean;
+}) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Compass size={16} aria-hidden="true" />
+          <span>{guide.title}</span>
+        </div>
+        <StatusBadge status={guide.level === 'blocked' ? 'error' : guide.level === 'ready' ? 'success' : 'warning'} label={targetSetupLevelLabel(guide.level)} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="下一步" value={guide.nextAction} />
+          <SummaryRow label="验证命令" value={guide.validationCommand} />
+          <SummaryRow label="安全边界" value={guide.safetyNotes[0]} />
+        </div>
+        <div className="readiness-copy">
+          <strong>先连通，再备份</strong>
+          <p>按顺序补齐目标端信息、运行只读 doctor 检查，再回到概览页手动确认真实备份。这里不会保存密码明文，也不会修改自动化任务。</p>
+          <div className="action-row">
+            <button className="button button--primary" disabled={runningDoctor || guide.level === 'blocked'} onClick={() => void onRunDoctor()} type="button">
+              <ShieldCheck size={15} aria-hidden="true" />
+              {runningDoctor ? '检查中' : '运行目标端检查'}
+            </button>
+            <button className="button button--tertiary" onClick={() => void onCopy(guide.validationCommand)} type="button">
+              <ClipboardCheck size={15} aria-hidden="true" />
+              复制验证命令
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="check-list check-list--grid">
+        {guide.steps.map((step) => <TargetSetupStepCard key={`${step.label}-${step.detail}`} step={step} />)}
+      </div>
+      <div className="two-column two-column--tight">
+        <section className="sub-panel">
+          <div className="panel-title">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>常见失败</span>
+          </div>
+          <div className="history-list">
+            {guide.commonFailures.map((failure) => (
+              <div className="history-item" key={failure.label}>
+                <div>
+                  <strong>{failure.label}</strong>
+                  <span>{failure.detail}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="sub-panel">
+          <div className="panel-title">
+            <ShieldCheck size={16} aria-hidden="true" />
+            <span>安全说明</span>
+          </div>
+          <StepList steps={guide.safetyNotes} />
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function TargetSetupStepCard({ step }: { step: TargetSetupStep }) {
+  const Icon = step.status === 'ready' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${step.status === 'blocked' ? 'error' : step.status === 'ready' ? 'ok' : 'warning'}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{step.label}</strong>
+        <span>{step.detail}</span>
+      </div>
+    </div>
+  );
+}
+
+function targetSetupLevelLabel(level: TargetSetupGuide['level']): string {
+  return {
+    blocked: '有阻断项',
+    'needs-action': '待验证',
+    ready: '可验证',
+  }[level];
 }
 
 function FirstRunJourneyStepItem({ onAction, step }: { onAction: () => void; step: FirstRunJourneyStep }) {

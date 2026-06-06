@@ -265,6 +265,8 @@ Since 0.17.0, the GUI includes an `Install` screen. It shows the current Release
 
 Since 0.18.0, the `Install` screen also explains how to read successful and failed checksum output, how to handle macOS unsigned-app blocking, and which post-install smoke checks to run. Those smoke checks still use existing safe screens and manual confirmation only; they do not add auto-update, signing, notarization, real restore, or scheduled-job mutation capabilities.
 
+Since 0.19.0, the `Targets` screen includes a setup guide. For local, SMB/NAS, WebDAV, and rclone targets it shows setup steps, the read-only doctor validation command, next action, common failure causes, and safety boundaries. The guide reuses the existing `codexbackup --doctor` path; it does not store plaintext passwords, add helper APIs, install, uninstall, or mutate scheduled jobs.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:

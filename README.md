@@ -181,6 +181,8 @@ CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 
 0.18.0 起，`安装` 页会进一步说明校验成功和失败时分别代表什么、macOS 拦截未签名 App 时如何处理，以及安装后应按什么顺序完成 smoke 检查。smoke 检查仍只使用已有安全页面和手动确认流程，不会新增自动更新、签名、公证、真实恢复或自动化任务修改能力。
 
+0.19.0 起，`目标端` 页新增设置向导，会按本地目录、SMB/NAS、WebDAV 或 rclone 展示配置步骤、只读 doctor 验证命令、下一步动作、常见失败原因和安全边界。向导复用现有 `codexbackup --doctor`，不会保存密码明文，不会新增 helper API，也不会安装、卸载或修改已有定时任务。
+
 0.10.1 起，桌面 App 已接入正式图标资源。当前图标采用黑底玻璃质感备份图标方向，包含多尺寸 PNG 和 `icon.icns`，用于 `.app`、Dock、Finder 和 DMG 展示。
 
 ## 浏览器模式和本地 helper

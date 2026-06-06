@@ -25,6 +25,31 @@ describe('App', () => {
     expect(screen.getAllByText(/CODEX_BACKUP_WEBDAV_URL=/).length).toBeGreaterThan(0);
   });
 
+  it('shows a target setup guide with validation and common failure guidance', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+
+    expect(screen.getByText('本地目录设置向导')).toBeInTheDocument();
+    expect(screen.getByText('确认输出目录')).toBeInTheDocument();
+    expect(screen.getAllByText('运行目标端检查').length).toBeGreaterThan(0);
+    expect(screen.getByText(/不会安装、卸载或修改定时任务/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /复制验证命令/i }));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('./scripts/codexbackup.sh --doctor --target local'));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
+
+    expect(screen.getByText('WebDAV 设置向导')).toBeInTheDocument();
+    expect(screen.getByText('保存或临时提供密码')).toBeInTheDocument();
+    expect(screen.getByText('评估加密')).toBeInTheDocument();
+    expect(screen.getByText('401 或 403')).toBeInTheDocument();
+    expect(screen.getByText('地址不可访问')).toBeInTheDocument();
+  });
+
   it('runs doctor through the preview-only mock runner', async () => {
     render(<App />);
 
@@ -136,9 +161,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /安装/i }));
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.18.0_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.18.0_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.18.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.19.0_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.19.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.19.0_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -155,7 +180,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /复制校验命令/i }));
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.18.0_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.19.0_aarch64.dmg.sha256');
     });
   });
 
@@ -334,7 +359,7 @@ describe('App', () => {
     fireEvent.click(screen.getByLabelText('使用 age 加密归档'));
 
     expect(screen.getByLabelText('age 收件人')).toBeInTheDocument();
-    expect(screen.getByText(/启用加密时必须配置 CODEX_BACKUP_AGE_RECIPIENT/)).toBeInTheDocument();
+    expect(screen.getAllByText(/启用加密时必须配置 CODEX_BACKUP_AGE_RECIPIENT/).length).toBeGreaterThan(0);
   });
 
   it('sends backup execution requests through the HTTP helper transport', async () => {
@@ -801,7 +826,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.18.0')).toBeInTheDocument();
+    expect(screen.getByText('0.19.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {
