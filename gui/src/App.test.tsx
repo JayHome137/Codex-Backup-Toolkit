@@ -62,6 +62,69 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /打开目标端/i })).toBeInTheDocument();
   });
 
+  it('refreshes backup health by reading helper history and automation status', async () => {
+    const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      const path = new URL(String(_url)).pathname;
+      if (method === 'GET' && path === '/history') {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          history: {
+            version: 1,
+            entries: [{
+              action: 'backup',
+              target: 'local',
+              status: 'success',
+              startedAt: '2026-06-06T00:00:00.000Z',
+              finishedAt: '2026-06-06T00:00:01.000Z',
+              exitCode: 0,
+              archivePaths: ['/tmp/CodexBackups/codex-backup-health.tar.gz'],
+            }],
+          },
+        });
+      }
+      if (method === 'GET' && path === '/automation') {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          automation: {
+            label: 'dev.codexbackup.toolkit',
+            loaded: true,
+            plistExists: true,
+            installDirExists: true,
+            scheduledScriptExists: true,
+            plistPath: '/Users/test/Library/LaunchAgents/dev.codexbackup.toolkit.plist',
+            installDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+            scheduledScriptPath: '/Users/test/Library/Application Support/CodexBackupToolkit/scripts/codexscheduledbackup.sh',
+            stdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+            stderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+            schedule: '03:00 / 每 3 天',
+          },
+        });
+      }
+      return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok' });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /健康/i }));
+    fireEvent.click(screen.getByRole('button', { name: /刷新健康状态/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-health.tar.gz').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/定时任务已加载/).length).toBeGreaterThan(0);
+      expect(screen.getByText(/已刷新健康状态/)).toBeInTheDocument();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', { method: 'GET' });
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/automation', { method: 'GET' });
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
+  });
+
   it('copies command previews to the clipboard', async () => {
     render(<App />);
 

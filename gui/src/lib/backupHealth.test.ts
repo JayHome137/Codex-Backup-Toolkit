@@ -82,4 +82,19 @@ describe('backup health summary', () => {
     expect(sync?.status).toBe('ok');
     expect(sync?.detail).toContain('每 12 小时检查');
   });
+
+  it('exposes the latest successful backup artifact for the health page', () => {
+    const health = buildBackupHealth(baseInput);
+
+    expect(health.latestBackup).toEqual({
+      action: 'backup',
+      actionLabel: '普通备份',
+      ageHours: 12,
+      archivePath: '/tmp/CodexBackups/codex-backup-mac.tar.gz',
+      exitCode: 0,
+      finishedAt: '2026-06-06T00:00:01.000Z',
+      status: 'success',
+      target: 'local',
+    });
+  });
 });

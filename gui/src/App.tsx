@@ -50,6 +50,7 @@ type SecretDraft = {
 type HelperConnectionStatus = 'unknown' | 'checking' | 'online' | 'offline';
 
 type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret-delete' | 'history-load' | 'automation-load' | null;
+type HealthActionState = 'refresh' | null;
 type DesktopActionState = 'diagnostics' | 'status' | 'start' | 'stop' | null;
 
 type RunPreviewOptions = {
@@ -101,6 +102,7 @@ function App() {
   const [secretDraft, setSecretDraft] = useState<SecretDraft>(defaultSecretDraft(defaultConfig));
   const [helperStatus, setHelperStatus] = useState<HelperConnectionStatus>('unknown');
   const [helperAction, setHelperAction] = useState<HelperActionState>(null);
+  const [healthAction, setHealthAction] = useState<HealthActionState>(null);
   const [helperMessage, setHelperMessage] = useState('尚未检查本地 helper。需要加载配置、保存密钥或读取真实历史时，请先确认 helper 已启动。');
   const [backupConfirmed, setBackupConfirmed] = useState(false);
   const [desktopHelperStatus, setDesktopHelperStatus] = useState<DesktopHelperStatus>({ managed: false, online: false, source: 'unavailable' });
@@ -138,6 +140,7 @@ function App() {
   const configChecks = useMemo(() => getConfigChecks(config), [config]);
   const blockingChecks = configChecks.filter((check) => check.status === 'error');
   const helperBusy = helperStatus === 'checking' || helperAction !== null;
+  const healthBusy = healthAction !== null;
   const realRunnerMode = runnerMode === 'httpHelper' || runnerMode === 'desktopHelper';
   const realBackupDisabled = realRunnerMode && (
     !backupConfirmed
@@ -356,6 +359,28 @@ function App() {
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
     } finally {
       setHelperAction(null);
+      setRunningCommand(null);
+    }
+  };
+
+  const refreshBackupHealth = async () => {
+    setHealthAction('refresh');
+    setRunningCommand('GET /history + GET /automation');
+    try {
+      const [entries, status] = await Promise.all([
+        helperApi.loadHistory(),
+        helperApi.loadAutomationStatus(),
+      ]);
+      setHelperHistory(entries);
+      setAutomationStatus(status);
+      setHelperStatus('online');
+      setHelperMessage(`已刷新健康状态：${entries.length} 条历史，自动化 ${status.loaded ? '已加载' : '未加载'}。`);
+      setLastResult({ status: 'success', output: `已刷新健康状态：${entries.length} 条历史，自动化 ${status.loaded ? '已加载' : '未加载'}。` });
+    } catch (error) {
+      updateHelperFailureState(error);
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
+    } finally {
+      setHealthAction(null);
       setRunningCommand(null);
     }
   };
@@ -667,10 +692,12 @@ function App() {
           <section className="view-stack">
             <BackupHealthPanel
               health={backupHealth}
+              onRefresh={refreshBackupHealth}
               onOpenLogs={() => setActiveSection('logs')}
               onOpenSchedule={() => setActiveSection('schedule')}
               onOpenSettings={() => setActiveSection('settings')}
               onOpenTargets={() => setActiveSection('targets')}
+              refreshing={healthBusy}
             />
           </section>
         )}
@@ -1074,16 +1101,20 @@ function HelperConnectionBanner({
 
 function BackupHealthPanel({
   health,
+  onRefresh,
   onOpenLogs,
   onOpenSchedule,
   onOpenSettings,
   onOpenTargets,
+  refreshing,
 }: {
   health: BackupHealth;
+  onRefresh: () => void;
   onOpenLogs: () => void;
   onOpenSchedule: () => void;
   onOpenSettings: () => void;
   onOpenTargets: () => void;
+  refreshing: boolean;
 }) {
   return (
     <>
@@ -1099,6 +1130,8 @@ function BackupHealthPanel({
           <div className="summary-list">
             <SummaryRow label="状态" value={backupHealthLevelLabel(health.level)} />
             <SummaryRow label="摘要" value={health.summary} />
+            <SummaryRow label="最近归档" value={health.latestBackup?.archivePath ?? '尚无归档记录'} />
+            <SummaryRow label="完成时间" value={health.latestBackup ? formatDateTime(health.latestBackup.finishedAt) : '尚无记录'} />
             <SummaryRow label="检查项" value={`${health.items.length} 项`} />
             <SummaryRow label="下一步" value={health.nextActions[0] ?? '保持当前备份节奏'} />
           </div>
@@ -1106,12 +1139,33 @@ function BackupHealthPanel({
             <strong>只读健康视图</strong>
             <p>这里聚合 helper、配置、历史、自动化和一致性检查状态，只做展示和跳转，不会执行真实恢复、安装、卸载或修改已有定时任务。</p>
             <div className="action-row">
+              <button className="button button--primary" disabled={refreshing} onClick={onRefresh} type="button">
+                <RotateCcw size={15} aria-hidden="true" />
+                {refreshing ? '刷新中' : '刷新健康状态'}
+              </button>
               <button className="button button--tertiary" onClick={onOpenTargets} type="button">打开目标端</button>
               <button className="button button--tertiary" onClick={onOpenLogs} type="button">打开日志</button>
               <button className="button button--tertiary" onClick={onOpenSchedule} type="button">打开计划</button>
               <button className="button button--tertiary" onClick={onOpenSettings} type="button">打开设置</button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="panel panel--compact">
+        <div className="panel-header">
+          <div className="panel-title">
+            <Archive size={16} aria-hidden="true" />
+            <span>最近备份摘要</span>
+          </div>
+          <StatusBadge status={health.latestBackup?.status === 'success' ? 'success' : health.latestBackup ? 'error' : 'warning'} label={health.latestBackup ? health.latestBackup.actionLabel : '无历史'} />
+        </div>
+        <div className="summary-list">
+          <SummaryRow label="目标端" value={health.latestBackup?.target ?? '尚无记录'} />
+          <SummaryRow label="状态" value={health.latestBackup ? backupResultStatusLabel(health.latestBackup.status) : '尚无记录'} />
+          <SummaryRow label="退出码" value={health.latestBackup ? String(health.latestBackup.exitCode) : '尚无记录'} />
+          <SummaryRow label="时间差" value={health.latestBackup?.ageHours === null || health.latestBackup?.ageHours === undefined ? '无法计算' : `约 ${health.latestBackup.ageHours} 小时前`} />
+          <SummaryRow label="归档路径" value={health.latestBackup?.archivePath ?? '尚无归档记录'} />
         </div>
       </section>
 
@@ -1387,6 +1441,16 @@ function helperStatusLabel(status: HelperConnectionStatus): string {
     online: 'helper 在线',
     offline: 'helper 离线',
   }[status];
+}
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function backupResultStatusLabel(status: BackupHistoryEntry['status']): string {
+  return status === 'success' ? '成功' : '失败';
 }
 
 function HelperHistoryItem({ entry }: { entry: BackupHistoryEntry }) {

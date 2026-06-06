@@ -19,17 +19,30 @@ export type BackupHealthItem = {
 
 export type BackupHealth = {
   items: BackupHealthItem[];
+  latestBackup: BackupHealthLatestBackup | null;
   level: 'healthy' | 'warning' | 'risk';
   nextActions: string[];
   score: number;
   summary: string;
 };
 
+export type BackupHealthLatestBackup = {
+  action: BackupHistoryEntry['action'];
+  actionLabel: string;
+  ageHours: number | null;
+  archivePath: string | null;
+  exitCode: number;
+  finishedAt: string;
+  status: BackupHistoryEntry['status'];
+  target: string;
+};
+
 export function buildBackupHealth(input: BackupHealthInput): BackupHealth {
+  const latestEntry = latestBackupEntry(input.history);
   const items: BackupHealthItem[] = [
     helperItem(input.helperOnline),
     configItem(input.configErrorCount),
-    historyItem(input.history, input.now),
+    historyItem(latestEntry, input.now),
     automationItem(input.automationStatus),
     syncItem(input.config),
   ];
@@ -39,6 +52,7 @@ export function buildBackupHealth(input: BackupHealthInput): BackupHealth {
 
   return {
     items,
+    latestBackup: latestEntry ? buildLatestBackup(latestEntry, input.now) : null,
     level,
     nextActions,
     score,
@@ -59,8 +73,7 @@ function configItem(configErrorCount: number): BackupHealthItem {
   return { id: 'config', label: '配置', status: 'ok', detail: '目标端、加密和保留策略没有阻断项。' };
 }
 
-function historyItem(history: BackupHistoryEntry[], now: Date): BackupHealthItem {
-  const latest = history.find((entry) => entry.action === 'backup' || entry.action === 'syncLocalAuthoritative');
+function historyItem(latest: BackupHistoryEntry | null, now: Date): BackupHealthItem {
   if (!latest) {
     return { id: 'history', label: '最近备份', status: 'warning', detail: '还没有 helper 备份历史。' };
   }
@@ -68,8 +81,7 @@ function historyItem(history: BackupHistoryEntry[], now: Date): BackupHealthItem
     return { id: 'history', label: '最近备份', status: 'error', detail: `最近一次备份失败，退出码 ${latest.exitCode}。` };
   }
 
-  const finished = Date.parse(latest.finishedAt);
-  const ageHours = Number.isFinite(finished) ? Math.max(0, Math.round((now.getTime() - finished) / 36_000) / 100) : null;
+  const ageHours = backupAgeHours(latest.finishedAt, now);
   const suffix = latest.action === 'syncLocalAuthoritative' ? '一致性备份成功' : '最近备份成功';
   return {
     id: 'history',
@@ -77,6 +89,28 @@ function historyItem(history: BackupHistoryEntry[], now: Date): BackupHealthItem
     status: 'ok',
     detail: ageHours === null ? suffix : `${suffix}，约 ${ageHours} 小时前完成。`,
   };
+}
+
+function latestBackupEntry(history: BackupHistoryEntry[]): BackupHistoryEntry | null {
+  return history.find((entry) => entry.action === 'backup' || entry.action === 'syncLocalAuthoritative') ?? null;
+}
+
+function buildLatestBackup(entry: BackupHistoryEntry, now: Date): BackupHealthLatestBackup {
+  return {
+    action: entry.action,
+    actionLabel: entry.action === 'syncLocalAuthoritative' ? '本地为准一致性备份' : '普通备份',
+    ageHours: backupAgeHours(entry.finishedAt, now),
+    archivePath: entry.archivePaths[0] ?? null,
+    exitCode: entry.exitCode,
+    finishedAt: entry.finishedAt,
+    status: entry.status,
+    target: entry.target,
+  };
+}
+
+function backupAgeHours(finishedAt: string, now: Date): number | null {
+  const finished = Date.parse(finishedAt);
+  return Number.isFinite(finished) ? Math.max(0, Math.round((now.getTime() - finished) / 36_000) / 100) : null;
 }
 
 function automationItem(status: AutomationStatus | null): BackupHealthItem {
