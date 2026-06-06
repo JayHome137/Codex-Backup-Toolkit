@@ -2,8 +2,10 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const version = process.env.npm_package_version ?? '0.10.0';
+const version = process.env.npm_package_version ?? '0.10.1';
 const appRoot = join('src-tauri', 'target', 'release', 'bundle', 'macos', 'CodexBackup.app');
+const appIcon = join(appRoot, 'Contents', 'Resources', 'icon.icns');
+const iconRoot = join('src-tauri', 'icons');
 const resourceRoot = join(appRoot, 'Contents', 'Resources', 'toolkit');
 const dmgPath = join('src-tauri', 'target', 'release', 'bundle', 'dmg', `CodexBackup_${version}_aarch64.dmg`);
 const checksumPath = `${dmgPath}.sha256`;
@@ -20,6 +22,14 @@ const requiredFiles = [
   join(resourceRoot, 'scripts', 'codexrestore.sh'),
   join(resourceRoot, 'config.example.env'),
   join(resourceRoot, 'examples', 'local.env'),
+  appIcon,
+  join(iconRoot, '32x32.png'),
+  join(iconRoot, '128x128.png'),
+  join(iconRoot, '128x128@2x.png'),
+  join(iconRoot, '512x512.png'),
+  join(iconRoot, '1024x1024.png'),
+  join(iconRoot, 'icon.icns'),
+  join(iconRoot, 'icon.png'),
   dmgPath,
   checksumPath,
 ];
@@ -41,6 +51,11 @@ if (packagedTests.length > 0) {
 
 if (statSync(dmgPath).size === 0) {
   console.error(`桌面 DMG 文件为空：${dmgPath}`);
+  process.exit(1);
+}
+
+if (statSync(appIcon).size === 0) {
+  console.error(`桌面 App 图标文件为空：${appIcon}`);
   process.exit(1);
 }
 

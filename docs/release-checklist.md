@@ -23,6 +23,7 @@
 - [ ] 运行 `cd gui && npm run desktop:checksum`。
 - [ ] 运行 `cd gui && npm run desktop:smoke`。
 - [ ] 确认 `.app` Resources 中包含 `toolkit/helper/server.mjs` 和 `toolkit/scripts/codexbackup.sh`。
+- [ ] 确认 `.app` Resources 中包含 `icon.icns`，且 `gui/src-tauri/icons/` 中多尺寸图标齐全。
 - [ ] 运行 `./scripts/codexbackup.sh --doctor --target local`。
 - [ ] 启动 `node helper/server.mjs`，打开 GUI，选择 `HTTP 助手`，确认 `检查助手` 显示在线；验证后停止 helper。
 - [ ] 在 GUI 概览页确认 `HTTP 助手` 模式下可以看到 `真实备份确认`，且必须先点击 `确认真实备份` 才能点击 `执行真实备份`。
@@ -48,18 +49,19 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.10.0
+git tag v0.10.1
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.10.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.10.1` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
 - [ ] 说明 0.9.0 桌面产物内置 helper/scripts toolkit 资源，本机可构建未签名 `.app`，环境支持时生成 `.dmg`。
+- [ ] 说明桌面 App 已接入正式图标资源。
 - [ ] 说明未包含 Apple 签名、公证和自动更新。
 - [ ] 说明桌面 App 可以托管 helper，也可以连接外部 helper；退出时只停止自己启动的托管 helper。
 - [ ] 说明桌面 App 增加诊断入口和托管 helper 日志，便于定位配置、历史、日志和 toolkit 路径。

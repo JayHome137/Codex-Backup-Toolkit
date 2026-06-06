@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.1 - 2026-06-06
+
+- 新增正式 macOS App 图标资源，采用黑底玻璃质感备份图标方向。
+- 生成并接入 Tauri 所需的多尺寸 PNG 和 `icon.icns`。
+- 桌面 smoke 检查新增 App 图标资源断言，避免打包时遗漏图标。
+- GUI/Tauri 版本升至 `0.10.1`。
+
 ## 0.10.0 - 2026-06-06
 
 - Tauri 后端新增 `desktop_diagnostics` 命令，集中返回 helper 状态、toolkit 来源、配置路径、历史路径、日志路径和版本信息。
