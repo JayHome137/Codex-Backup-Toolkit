@@ -271,6 +271,8 @@ Since 0.23.0, the GUI includes four maturity flows for the first public desktop 
 
 Since 0.24.0, the `Install` screen includes an install-readiness acceptance checklist. It connects DMG checksum verification, first open, desktop runtime, target doctor, first backup acceptance, and restore-plan boundary into one post-download path. Each step links to the existing safe screen; it does not run real restore, install, uninstall, or mutate scheduled jobs.
 
+Since 0.25.0, the `Overview` and `Guide` screens include a first real-use path. It connects install readiness, target setup, doctor checks, manually confirmed backup, first backup acceptance, and restore-plan boundary into one first-use route. It only shows status, links to existing screens, and runs the existing read-only doctor check; it does not run real restore, install, uninstall, or mutate scheduled jobs.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:

@@ -9,6 +9,7 @@ import { TargetForm } from './components/TargetForm';
 import { buildBackupAcceptance, type BackupAcceptance, type BackupAcceptanceCheck } from './lib/backupAcceptance';
 import { buildBackupHealth, type BackupHealth } from './lib/backupHealth';
 import { buildFirstRunJourney, type FirstRunJourney, type FirstRunJourneyStep } from './lib/firstRunJourney';
+import { buildFirstUsePath, type FirstUsePath, type FirstUsePathStep } from './lib/firstUsePath';
 import { buildInstallReadiness, type InstallReadiness, type InstallReadinessStep } from './lib/installReadiness';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type AutomationStatus, type BackupHistoryEntry } from './lib/helperApi';
@@ -91,7 +92,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.24.0';
+const appVersion = '0.25.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -205,6 +206,13 @@ function App() {
   }), [backupAcceptance, desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, displayedAppVersion, doctorReport, helperStatus]);
   const targetSetupGuide = useMemo(() => buildTargetSetupGuide(config, configChecks), [config, configChecks]);
   const restorePlanGuide = useMemo(() => buildRestorePlanGuide(actions.restorePlan), [actions.restorePlan]);
+  const firstUsePath = useMemo(() => buildFirstUsePath({
+    backupAcceptance,
+    doctorAdvice,
+    helperOnline: helperStatus === 'online' || desktopHelperStatus.online,
+    installReadiness,
+    targetSetupGuide,
+  }), [backupAcceptance, desktopHelperStatus.online, doctorAdvice, helperStatus, installReadiness, targetSetupGuide]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -629,6 +637,17 @@ function App() {
               toolkitStatus={desktopToolkitStatus}
             />
 
+            <FirstUsePathPanel
+              path={firstUsePath}
+              onOpenInstall={() => setActiveSection('install')}
+              onOpenLogs={() => setActiveSection('logs')}
+              onOpenOverview={() => setActiveSection('overview')}
+              onOpenRestore={() => setActiveSection('restore')}
+              onOpenTargets={() => setActiveSection('targets')}
+              onRunDoctor={() => runPreview(commands.doctor, '目标端检查命令')}
+              runningDoctor={runningCommand === commands.doctor}
+            />
+
             <TargetDoctorPanel report={doctorReport} />
             <DoctorAdvicePanel advice={doctorAdvice} />
 
@@ -726,7 +745,10 @@ function App() {
         {activeSection === 'guide' && (
           <section className="view-stack">
             <FirstRunJourneyPanel
+              firstUsePath={firstUsePath}
               journey={firstRunJourney}
+              onOpenInstall={() => setActiveSection('install')}
+              onOpenLogs={() => setActiveSection('logs')}
               onOpenOverview={() => setActiveSection('overview')}
               onOpenRestore={() => setActiveSection('restore')}
               onOpenSettings={() => setActiveSection('settings')}
@@ -1347,7 +1369,10 @@ function DesktopReadinessPanel({
 }
 
 function FirstRunJourneyPanel({
+  firstUsePath,
   journey,
+  onOpenInstall,
+  onOpenLogs,
   onOpenOverview,
   onOpenRestore,
   onOpenSettings,
@@ -1357,7 +1382,10 @@ function FirstRunJourneyPanel({
   refreshing,
   runningDoctor,
 }: {
+  firstUsePath: FirstUsePath;
   journey: FirstRunJourney;
+  onOpenInstall: () => void;
+  onOpenLogs: () => void;
   onOpenOverview: () => void;
   onOpenRestore: () => void;
   onOpenSettings: () => void;
@@ -1411,6 +1439,78 @@ function FirstRunJourneyPanel({
               onRefreshHealth,
               onRunDoctor,
             })}
+            step={step}
+          />
+        ))}
+      </div>
+      <FirstUsePathPanel
+        path={firstUsePath}
+        onOpenInstall={onOpenInstall}
+        onOpenLogs={onOpenLogs}
+        onOpenOverview={onOpenOverview}
+        onOpenRestore={onOpenRestore}
+        onOpenTargets={onOpenTargets}
+        onRunDoctor={onRunDoctor}
+        runningDoctor={runningDoctor}
+      />
+    </section>
+  );
+}
+
+function FirstUsePathPanel({
+  onOpenInstall,
+  onOpenLogs,
+  onOpenOverview,
+  onOpenRestore,
+  onOpenTargets,
+  onRunDoctor,
+  path,
+  runningDoctor,
+}: {
+  onOpenInstall: () => void;
+  onOpenLogs: () => void;
+  onOpenOverview: () => void;
+  onOpenRestore: () => void;
+  onOpenTargets: () => void;
+  onRunDoctor: () => Promise<void>;
+  path: FirstUsePath;
+  runningDoctor: boolean;
+}) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Compass size={16} aria-hidden="true" />
+          <span>首次真实使用路径</span>
+        </div>
+        <StatusBadge status={firstUsePathStatus(path.level)} label={firstUsePathLevelLabel(path.level)} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="结论" value={path.summary} />
+          <SummaryRow label="下一步" value={path.primaryAction} />
+          <SummaryRow label="安全边界" value={path.safetyNote} />
+        </div>
+        <div className="readiness-copy">
+          <strong>从安装到第一次可验收备份</strong>
+          <p>按顺序完成安装验收、目标端配置、doctor 检查、手动确认备份、结果验收和恢复边界确认。这里不会绕过真实备份确认。</p>
+          <div className="action-row">
+            <button className="button button--primary" disabled={runningDoctor} onClick={() => void onRunDoctor()} type="button">
+              <ShieldCheck size={15} aria-hidden="true" />
+              {runningDoctor ? '检查中' : '路径检查'}
+            </button>
+            <button className="button button--tertiary" onClick={onOpenTargets} type="button">路径目标</button>
+            <button className="button button--tertiary" onClick={onOpenOverview} type="button">路径概览</button>
+          </div>
+        </div>
+      </div>
+      <div className="check-list check-list--grid">
+        {path.steps.map((step, index) => (
+          <FirstUsePathStepItem
+            key={step.id}
+            index={index}
+            onAction={firstUsePathStepAction(step, { onOpenInstall, onOpenLogs, onOpenOverview, onOpenRestore, onOpenTargets, onRunDoctor })}
+            runningDoctor={runningDoctor}
             step={step}
           />
         ))}
@@ -1867,6 +1967,56 @@ function backupAcceptanceLevelLabel(level: BackupAcceptance['level']): string {
     accepted: '已通过',
     blocked: '待修正',
     pending: '待备份',
+  }[level];
+}
+
+function FirstUsePathStepItem({ index, onAction, runningDoctor, step }: { index: number; onAction: () => void; runningDoctor: boolean; step: FirstUsePathStep }) {
+  const Icon = step.status === 'ready' ? CheckCircle2 : TriangleAlert;
+  const disabled = step.id === 'doctor' && runningDoctor;
+  return (
+    <div className={`check-item check-item--${step.status === 'blocked' ? 'error' : step.status === 'ready' ? 'ok' : 'warning'}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{step.label}</strong>
+        <span>{step.detail}</span>
+        <button className="inline-action" disabled={disabled} onClick={onAction} type="button">路径步骤 {index + 1}</button>
+      </div>
+    </div>
+  );
+}
+
+function firstUsePathStepAction(
+  step: FirstUsePathStep,
+  actions: {
+    onOpenInstall: () => void;
+    onOpenLogs: () => void;
+    onOpenOverview: () => void;
+    onOpenRestore: () => void;
+    onOpenTargets: () => void;
+    onRunDoctor: () => Promise<void>;
+  },
+): () => void {
+  return {
+    acceptance: actions.onOpenLogs,
+    backup: actions.onOpenOverview,
+    doctor: () => void actions.onRunDoctor(),
+    install: actions.onOpenInstall,
+    'restore-boundary': actions.onOpenRestore,
+    target: actions.onOpenTargets,
+  }[step.id];
+}
+
+function firstUsePathStatus(level: FirstUsePath['level']): CommandResult['status'] {
+  if (level === 'ready') return 'success';
+  if (level === 'blocked') return 'error';
+  return 'warning';
+}
+
+function firstUsePathLevelLabel(level: FirstUsePath['level']): string {
+  return {
+    blocked: '有阻断项',
+    'needs-action': '待完成',
+    ready: '已闭环',
   }[level];
 }
 

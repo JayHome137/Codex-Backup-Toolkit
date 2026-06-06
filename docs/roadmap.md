@@ -48,6 +48,7 @@ Status: current scope.
 - Restore-plan guidance that explains what `codexrestore --plan` will do, will not do, needs, and risks. Status: added for 0.23.0.
 - Release trust checklist for DMG, sha256, manual smoke checks, and unsigned-build limitations. Status: added for 0.23.0.
 - Install-readiness acceptance checklist connecting DMG checksum, first open, runtime, doctor, first backup acceptance, and restore boundary. Status: added for 0.24.0.
+- First real-use path connecting install readiness, target setup, doctor, manually confirmed backup, first backup acceptance, and restore boundary. Status: added for 0.25.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
