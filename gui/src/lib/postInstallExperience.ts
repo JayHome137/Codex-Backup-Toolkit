@@ -16,8 +16,12 @@ export type PostInstallExperience = {
   assetName: string;
   checksumAssetName: string;
   checksumCommand: string;
+  checksumFailureText: string;
+  checksumSuccessText: string;
   items: PostInstallItem[];
+  macosOpenSteps: string[];
   releaseUrl: string;
+  smokeSteps: string[];
   summary: string;
 };
 
@@ -31,6 +35,8 @@ export function buildPostInstallExperience(runtime: PostInstallRuntime): PostIns
     assetName,
     checksumAssetName,
     checksumCommand: `shasum -a 256 -c ${checksumAssetName}`,
+    checksumFailureText: '如果校验输出不是 OK，请删除 DMG 和 sha256 文件后从 GitHub Release 重新下载。',
+    checksumSuccessText: `${assetName}: OK 表示下载文件和发布校验一致。`,
     items: [
       {
         detail: `从 v${runtime.appVersion} Release 下载 ${assetName} 和 ${checksumAssetName}。`,
@@ -69,7 +75,19 @@ export function buildPostInstallExperience(runtime: PostInstallRuntime): PostIns
         status: 'ok',
       },
     ],
+    macosOpenSteps: [
+      '把 CodexBackup.app 拖到 Applications 后，优先用右键或 Control 点击选择打开。',
+      '如果系统拦截未签名 App，进入系统设置 > 隐私与安全，允许打开 CodexBackup。',
+      '允许后重新打开 App，再进入引导页完成只读检查和手动备份确认。',
+    ],
     releaseUrl,
+    smokeSteps: [
+      '打开引导页并运行环境检查。',
+      '打开设置页确认 helper、toolkit、配置路径、历史路径和日志路径。',
+      '打开健康页刷新健康状态，确认 helper 历史和只读自动化状态能读取。',
+      '需要真实验证时，回到概览页手动确认后执行一次受控真实备份。',
+      '恢复页仍只生成恢复预案，不修改文件。',
+    ],
     summary: runtimeReady ? '桌面 App 已具备下载后验证和首次运行闭环。' : '下载和校验说明已就绪，首次运行后请完成引导页检查。',
   };
 }

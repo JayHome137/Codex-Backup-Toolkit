@@ -86,7 +86,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.17.0';
+const appVersion = '0.18.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -1435,7 +1435,41 @@ function PostInstallPanel({
       <div className="check-list check-list--grid">
         {experience.items.map((item) => <PostInstallItemCard item={item} key={item.id} />)}
       </div>
+      <div className="two-column two-column--tight">
+        <section className="sub-panel">
+          <div className="panel-title">
+            <ShieldCheck size={16} aria-hidden="true" />
+            <span>校验结果判断</span>
+          </div>
+          <div className="summary-list">
+            <SummaryRow label="成功" value={experience.checksumSuccessText} />
+            <SummaryRow label="失败" value={experience.checksumFailureText} />
+          </div>
+        </section>
+        <section className="sub-panel">
+          <div className="panel-title">
+            <UnlockKeyhole size={16} aria-hidden="true" />
+            <span>打不开时</span>
+          </div>
+          <StepList steps={experience.macosOpenSteps} />
+        </section>
+      </div>
+      <section className="sub-panel">
+        <div className="panel-title">
+          <ClipboardCheck size={16} aria-hidden="true" />
+          <span>安装后 smoke 检查</span>
+        </div>
+        <StepList steps={experience.smokeSteps} />
+      </section>
     </section>
+  );
+}
+
+function StepList({ steps }: { steps: string[] }) {
+  return (
+    <ol className="step-list">
+      {steps.map((step) => <li key={step}>{step}</li>)}
+    </ol>
   );
 }
 

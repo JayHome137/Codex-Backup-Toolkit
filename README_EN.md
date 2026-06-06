@@ -263,6 +263,8 @@ Since 0.16.0, the GUI includes a `Guide` screen for the first-run validation pat
 
 Since 0.17.0, the GUI includes an `Install` screen. It shows the current Release URL, DMG asset name, sha256 asset name, post-download checksum command, unsigned-build limitation, and first-open path. This screen only copies text and navigates to existing screens; it does not download or install files, run real restore, install, uninstall, or mutate scheduled jobs.
 
+Since 0.18.0, the `Install` screen also explains how to read successful and failed checksum output, how to handle macOS unsigned-app blocking, and which post-install smoke checks to run. Those smoke checks still use existing safe screens and manual confirmation only; they do not add auto-update, signing, notarization, real restore, or scheduled-job mutation capabilities.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:

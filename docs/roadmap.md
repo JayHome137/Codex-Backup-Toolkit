@@ -41,6 +41,7 @@ Status: current scope.
 - Backup health dashboard that summarizes helper, config, history, automation, and sync status. Status: added for 0.15.0.
 - First-run validation guide that links desktop readiness, target config, doctor, helper health, backup proof, and restore boundary. Status: added for 0.16.0.
 - Post-install verification page with Release URL, DMG asset names, checksum command, unsigned-build guidance, and first-open checklist. Status: added for 0.17.0.
+- Post-install checksum result guidance, macOS unsigned-app recovery steps, and smoke checklist. Status: added for 0.18.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.

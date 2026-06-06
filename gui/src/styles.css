@@ -291,6 +291,11 @@ button:disabled {
   gap: 12px;
 }
 
+.two-column--tight {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
 .panel,
 .command-preview {
   padding: 14px;
@@ -307,6 +312,15 @@ button:disabled {
 
 .readiness-panel {
   border-color: rgba(87, 193, 255, 0.22);
+}
+
+.sub-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-card);
+  padding: 12px;
 }
 
 .readiness-layout {
@@ -435,6 +449,21 @@ button:disabled {
   font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+.step-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 19px;
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.step-list li::marker {
+  color: var(--blue);
+  font-weight: 600;
 }
 
 .inline-action {
