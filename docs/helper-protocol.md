@@ -37,7 +37,7 @@ CODEX_BACKUP_HELPER_PORT=37372 node helper/server.mjs
 
 GUI 选择 `HTTP 助手` 时默认连接 `http://127.0.0.1:37371`。
 
-GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。0.6.0 起，GUI 会把 `/health` 结果显示为顶部 helper 状态；当 helper 离线时，配置、Keychain 和真实历史相关按钮会暂时禁用，直到后续健康检查恢复在线。0.7.0 起，GUI 的真实备份入口需要先确认目标端、加密状态、保留策略和 helper 状态摘要，确认后才会向 `/run` 发送结构化 `backup` action；成功后会自动读取 `/history`。
+GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。0.6.0 起，GUI 会把 `/health` 结果显示为顶部 helper 状态；当 helper 离线时，配置、Keychain 和真实历史相关按钮会暂时禁用，直到后续健康检查恢复在线。0.7.0 起，GUI 的真实备份入口需要先确认目标端、加密状态、保留策略和 helper 状态摘要，确认后才会向 `/run` 发送结构化 `backup` action；成功后会自动读取 `/history`。0.8.0 起，Tauri 桌面 App 可通过 `helper_status`、`helper_start`、`helper_stop` 和 `helper_request` 管理或连接 helper；App 只停止自己启动的托管 helper，发现外部 helper 在线时只连接、不接管。
 
 ### `GET /health`
 

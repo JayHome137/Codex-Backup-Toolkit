@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 - 2026-06-06
+
+- 新增 Tauri v2 桌面壳，复用现有 React/Vite GUI，目标产物为本机未签名 `.app`，环境支持时生成 `.dmg`。
+- GUI 增加 `桌面` helper 模式，通过 Tauri bridge 代理 helper 请求，不再依赖浏览器跨域行为。
+- 新增桌面桥接接口：`helper_status`、`helper_start`、`helper_stop`、`helper_request` 和 `open_path`。
+- 桌面 App 只停止自己启动的托管 helper；发现外部 helper 在线时只连接，不强行接管。
+- GUI 新增 `设置` 页，展示 helper 生命周期控制、配置路径、历史路径、日志路径和版本信息。
+- GUI 日志页新增 `最新备份结果`，展示最近一次真实备份的目标端、状态、退出码、时间、归档路径、sha256 路径和 manifest 路径。
+- 新增 `desktop:doctor`、`desktop:dev`、`desktop:build` 脚本；缺少 Rust 时输出中文诊断。
+- 更新 README、README_EN、安全说明、路线图和发布清单，补齐桌面 App 构建与验证说明。
+- GUI 版本升至 `0.8.0`。
+
 ## 0.7.0 - 2026-06-06
 
 - GUI 在 `HTTP 助手` 模式下新增 `真实备份确认` 面板，显示目标端、加密状态、保留策略和 helper 状态摘要。

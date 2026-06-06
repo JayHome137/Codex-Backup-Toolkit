@@ -532,9 +532,54 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/已加载 1 条 helper 备份历史/)).toBeInTheDocument();
-      expect(screen.getByText(/codex-backup-mac\.tar\.gz/)).toBeInTheDocument();
+      expect(screen.getAllByText(/codex-backup-mac\.tar\.gz/).length).toBeGreaterThan(0);
     });
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
+  });
+
+  it('shows helper lifecycle controls and product paths in Settings', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /设置/i }));
+
+    expect(screen.getByText('桌面 helper')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /启动 helper/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /停止 helper/i })).toBeInTheDocument();
+    expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
+    expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
+  });
+
+  it('shows latest backup result artifacts from helper history', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({
+      schema: 'codex-backup-helper.v1',
+      version: 1,
+      status: 'ok',
+      history: {
+        version: 1,
+        entries: [{
+          action: 'backup',
+          target: 'local',
+          status: 'success',
+          startedAt: '2026-06-06T00:00:00.000Z',
+          finishedAt: '2026-06-06T00:00:01.000Z',
+          exitCode: 0,
+          archivePaths: ['/tmp/CodexBackups/codex-backup-mac.tar.gz'],
+        }],
+      },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('最新备份结果')).toBeInTheDocument();
+      expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-mac.tar.gz').length).toBeGreaterThan(0);
+      expect(screen.getByText('/tmp/CodexBackups/codex-backup-mac.tar.gz.sha256')).toBeInTheDocument();
+      expect(screen.getByText('/tmp/CodexBackups/codex-backup-mac.manifest.txt')).toBeInTheDocument();
+    });
   });
 });
 

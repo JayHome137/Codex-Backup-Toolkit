@@ -1,6 +1,6 @@
-import { ArchiveRestore, Clock3, DatabaseBackup, FileText, Gauge, HardDrive } from 'lucide-react';
+import { ArchiveRestore, Clock3, DatabaseBackup, FileText, Gauge, HardDrive, Settings } from 'lucide-react';
 
-export type SectionId = 'overview' | 'targets' | 'schedule' | 'restore' | 'logs';
+export type SectionId = 'overview' | 'targets' | 'schedule' | 'restore' | 'logs' | 'settings';
 
 type SidebarProps = {
   activeSection: SectionId;
@@ -13,6 +13,7 @@ const items = [
   { id: 'schedule', label: '计划', icon: Clock3 },
   { id: 'restore', label: '恢复', icon: ArchiveRestore },
   { id: 'logs', label: '日志', icon: FileText },
+  { id: 'settings', label: '设置', icon: Settings },
 ] as const;
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
@@ -24,7 +25,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         </div>
         <div>
           <h1>CodexBackup</h1>
-          <p>网页版预览版</p>
+          <p>桌面预览版</p>
         </div>
       </div>
       <nav className="nav-list" aria-label="GUI 分区">

@@ -23,6 +23,6 @@ describe('mock command runner', () => {
     const result = await runner.run('./scripts/codexrestore.sh --archive /tmp/archive.tar.gz');
 
     expect(result.status).toBe('warning');
-    expect(result.output).toContain('恢复在网页版预览版中仅支持预览');
+    expect(result.output).toContain('恢复在 GUI 中仅支持预览');
   });
 });

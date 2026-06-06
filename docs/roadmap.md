@@ -31,6 +31,7 @@ Status: current scope.
 - GUI display of helper backup history. Status: added for 0.5.0.
 - GUI helper connection banner, offline disabled actions, and clearer helper loading/error states. Status: added for 0.6.0.
 - GUI confirmed real backup execution with automatic helper history refresh. Status: added for 0.7.0.
+- Tauri macOS desktop shell, desktop helper lifecycle bridge, settings page, and latest backup result display. Status: added for 0.8.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
@@ -50,6 +51,6 @@ The default should remain conservative: each profile must document exactly what 
 
 ## Phase C: GUI
 
-The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, helper online/offline state, disabled helper actions while offline, confirmed real backup execution, automatic helper history refresh, restore-plan generation, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
+The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports browser development mode and a Tauri macOS desktop shell, configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, helper online/offline state, disabled helper actions while offline, desktop helper start/stop/status, confirmed real backup execution, automatic helper history refresh, latest backup result display, restore-plan generation, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
 
 See `docs/gui-design.md` for the visual direction.

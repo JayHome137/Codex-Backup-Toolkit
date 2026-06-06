@@ -2,7 +2,7 @@
 
 `codexbackup` is a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote.
 
-The current public scope is Codex Desktop backup, restore, automation, and the browser GUI/helper foundation.
+The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation.
 
 ## What It Backs Up
 
@@ -181,9 +181,60 @@ Logs are written to:
 ~/Library/Logs/CodexBackup/backup.err.log
 ```
 
-## Web GUI Prototype
+## Desktop App And GUI
 
-The repository includes a browser-based GUI prototype for validating the interface, target configuration flow, and command previews:
+Since 0.8.0, the GUI includes a Tauri v2 desktop shell that reuses the React/Vite app under `gui/` and talks to the local helper through desktop bridge commands.
+
+Install GUI dependencies:
+
+```zsh
+cd gui
+npm ci
+```
+
+Run the browser development GUI:
+
+```zsh
+npm run dev
+```
+
+Default local URL:
+
+```text
+http://127.0.0.1:5173
+```
+
+Check the desktop build environment:
+
+```zsh
+npm run desktop:doctor
+```
+
+Run the desktop development app:
+
+```zsh
+npm run desktop:dev
+```
+
+Build unsigned desktop artifacts:
+
+```zsh
+npm run desktop:build
+```
+
+The 0.8.0 target is a local unsigned `.app`; a `.dmg` is attempted when the local Tauri/macOS build environment supports it. Apple Developer signing, notarization, and auto-update are not included yet. If Rust is missing, `desktop:build` prints a Chinese diagnostic and points to `https://rustup.rs/`.
+
+The desktop app checks `127.0.0.1:37371` on startup. If an external helper is already online, the app connects to it and does not stop it on exit. If the app starts a managed helper, it attempts to stop only that managed helper when the app exits. Packaged or custom runs can point the helper launcher at the repo root with:
+
+```zsh
+CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
+```
+
+The `Settings` screen shows helper status, start/stop controls, config path, history path, log paths, and version information. The `Logs` screen now shows the latest real backup result with archive, sha256, and manifest paths plus copy/open actions. Restore still only generates `codexrestore --plan`; it does not execute real restore.
+
+## Browser Mode And Local Helper
+
+The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:
 
 ```zsh
 cd gui
@@ -197,7 +248,7 @@ Default local URL:
 http://127.0.0.1:5173
 ```
 
-The current GUI focuses on configuration, persisted config, Keychain secret actions, safety checks, confirmed backup execution, restore planning, helper connection state, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands after an explicit confirmation step, and can execute `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
+The current GUI focuses on configuration, persisted config, Keychain secret actions, safety checks, confirmed backup execution, latest backup result display, restore planning, helper connection state, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands after an explicit confirmation step, and can execute `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
 
 The interface currently supports target forms, configuration checks, age encryption guidance, `config.env` previews, command copying, confirmed real backup execution, automatic helper history refresh after successful backups, latest/archive restore plans, mock/helper output, run history, helper online/offline status, disabled helper actions when the helper is offline, and clearer loading/error states for helper actions.
 
@@ -205,6 +256,7 @@ The GUI includes two local bridge-related modes:
 
 - `Local Bridge`: uses a mock helper to show protocol responses and allowlist behavior without executing shell commands.
 - `HTTP Helper`: connects to a manually started local helper at `http://127.0.0.1:37371`.
+- `Desktop`: uses Tauri bridge commands to start/connect/stop a managed helper and proxy helper API calls.
 
 The local helper is not started by default and does not auto-run with the GUI. For development validation, start it in a separate terminal:
 

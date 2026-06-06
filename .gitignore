@@ -14,3 +14,5 @@ tmp/
 CodexBackups/
 node_modules/
 dist/
+target/
+gen/

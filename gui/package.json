@@ -1,11 +1,14 @@
 {
   "name": "codex-backup-toolkit-gui",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "desktop:doctor": "node scripts/desktop-check.mjs",
+    "desktop:dev": "node scripts/desktop-check.mjs --required && tauri dev",
+    "desktop:build": "node scripts/desktop-check.mjs --required && tauri build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run"
   },
@@ -20,6 +23,7 @@
   "devDependencies": {
     "vitest": "latest",
     "@testing-library/react": "latest",
+    "@tauri-apps/cli": "latest",
     "@testing-library/jest-dom": "latest",
     "jsdom": "latest",
     "@types/react": "latest",

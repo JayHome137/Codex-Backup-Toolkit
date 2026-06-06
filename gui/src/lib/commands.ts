@@ -15,7 +15,7 @@ export function createMockCommandRunner(): CommandRunner {
       if (command.includes('codexrestore.sh')) {
         return {
           status: 'warning',
-          output: `恢复在网页版预览版中仅支持预览。\n\n命令：\n${command}`,
+          output: `恢复在 GUI 中仅支持预览。\n\n命令：\n${command}`,
         };
       }
 

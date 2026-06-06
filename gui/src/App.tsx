@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
@@ -10,6 +10,7 @@ import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
+import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopHelperStatus } from './lib/desktopBridge';
 import {
   buildBackupCommand,
   buildDoctorCommand,
@@ -27,7 +28,7 @@ import {
 const runner = createMockCommandRunner();
 const localBridgeRunner = createLocalBridgeRunner();
 
-type RunnerMode = 'mock' | 'localBridge' | 'httpHelper';
+type RunnerMode = 'mock' | 'localBridge' | 'httpHelper' | 'desktopHelper';
 type RestoreSource = 'latest' | 'archive';
 
 type HistoryEntry = {
@@ -45,6 +46,7 @@ type SecretDraft = {
 type HelperConnectionStatus = 'unknown' | 'checking' | 'online' | 'offline';
 
 type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret-delete' | 'history-load' | null;
+type DesktopActionState = 'status' | 'start' | 'stop' | null;
 
 type RunPreviewOptions = {
   refreshHelperHistory?: boolean;
@@ -74,8 +76,15 @@ function App() {
   const [helperAction, setHelperAction] = useState<HelperActionState>(null);
   const [helperMessage, setHelperMessage] = useState('尚未检查本地 helper。需要加载配置、保存密钥或读取真实历史时，请先确认 helper 已启动。');
   const [backupConfirmed, setBackupConfirmed] = useState(false);
+  const [desktopHelperStatus, setDesktopHelperStatus] = useState<DesktopHelperStatus>({ managed: false, online: false, source: 'unavailable' });
+  const [desktopAction, setDesktopAction] = useState<DesktopActionState>(null);
+  const [desktopMessage, setDesktopMessage] = useState('桌面状态尚未检查。');
+  const desktopBridge = useMemo(() => createDesktopBridge(), []);
   const httpHelperRunner = useMemo(() => createLocalBridgeRunner(createHttpHelperTransport()), []);
-  const helperApi = useMemo(() => createHelperApi(), []);
+  const desktopHelperRunner = useMemo(() => createLocalBridgeRunner(createDesktopHelperTransport(desktopBridge)), [desktopBridge]);
+  const webHelperApi = useMemo(() => createHelperApi(), []);
+  const desktopHelperApi = useMemo(() => createDesktopHelperApi(desktopBridge), [desktopBridge]);
+  const helperApi = runnerMode === 'desktopHelper' ? desktopHelperApi : webHelperApi;
 
   const commands = useMemo(
     () => ({
@@ -101,6 +110,16 @@ function App() {
   const helperActionsDisabled = helperStatus === 'offline' || helperBusy;
   const helperActionLabel = helperAction ? helperActionLabels[helperAction] : null;
   const helperBannerMessage = helperActionLabel ? `${helperActionLabel}中...` : helperMessage;
+  const latestBackupEntry = helperHistory.find((entry) => entry.action === 'backup') ?? null;
+
+  useEffect(() => {
+    if (!desktopBridge.isDesktop) {
+      setDesktopMessage('当前不是 Tauri 桌面环境，网页版仍可使用 HTTP helper 模式。');
+      return;
+    }
+
+    void refreshDesktopHelperStatus({ autoStart: true });
+  }, [desktopBridge]);
 
   const setConfigAndSecretDefaults = (nextConfig: BackupConfig) => {
     setConfig(nextConfig);
@@ -110,7 +129,7 @@ function App() {
 
   const runPreview = async (command: string, label: string, action?: HelperAction, options: RunPreviewOptions = {}) => {
     setRunningCommand(command);
-    const activeRunner = runnerMode === 'httpHelper' ? httpHelperRunner : runnerMode === 'localBridge' ? localBridgeRunner : runner;
+    const activeRunner = runnerMode === 'desktopHelper' ? desktopHelperRunner : runnerMode === 'httpHelper' ? httpHelperRunner : runnerMode === 'localBridge' ? localBridgeRunner : runner;
     const result = await activeRunner.run(command, action);
     setLastResult(result);
     setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
@@ -126,6 +145,11 @@ function App() {
   };
 
   const checkHelper = async () => {
+    if (runnerMode === 'desktopHelper') {
+      await refreshDesktopHelperStatus({ autoStart: true });
+      return;
+    }
+
     setHelperStatus('checking');
     setHelperMessage('正在连接 127.0.0.1:37371 的本地 helper...');
     setRunningCommand('GET http://127.0.0.1:37371/health');
@@ -276,6 +300,65 @@ function App() {
     await navigator.clipboard.writeText(text);
   };
 
+  const refreshDesktopHelperStatus = async ({ autoStart = false }: { autoStart?: boolean } = {}) => {
+    setDesktopAction('status');
+    setHelperStatus('checking');
+    try {
+      let status = await desktopBridge.helperStatus();
+      if (autoStart && desktopBridge.isDesktop && !status.online) {
+        status = await desktopBridge.helperStart();
+      }
+      applyDesktopStatus(status);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const status = { lastError: message, managed: false, online: false, source: 'unavailable' as const };
+      applyDesktopStatus(status);
+    } finally {
+      setDesktopAction(null);
+    }
+  };
+
+  const startDesktopHelper = async () => {
+    setDesktopAction('start');
+    try {
+      applyDesktopStatus(await desktopBridge.helperStart());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      applyDesktopStatus({ lastError: message, managed: false, online: false, source: 'unavailable' });
+    } finally {
+      setDesktopAction(null);
+    }
+  };
+
+  const stopDesktopHelper = async () => {
+    setDesktopAction('stop');
+    try {
+      applyDesktopStatus(await desktopBridge.helperStop());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      applyDesktopStatus({ lastError: message, managed: false, online: false, source: 'unavailable' });
+    } finally {
+      setDesktopAction(null);
+    }
+  };
+
+  const applyDesktopStatus = (status: DesktopHelperStatus) => {
+    setDesktopHelperStatus(status);
+    setHelperStatus(status.online ? 'online' : 'offline');
+    setDesktopMessage(desktopStatusMessage(status));
+    setHelperMessage(status.online ? desktopStatusMessage(status) : status.lastError ?? '桌面 helper 离线。');
+  };
+
+  const openBackupPath = async (path: string) => {
+    try {
+      await desktopBridge.openPath(path);
+      setLastResult({ status: 'success', output: `已请求打开路径：\n${path}` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setLastResult({ status: 'error', output: `打开路径失败：\n${path}\n\n${message}` });
+    }
+  };
+
   const status = lastResult?.status ?? 'idle';
 
   return (
@@ -305,6 +388,16 @@ function App() {
                 type="button"
               >
                 HTTP 助手
+              </button>
+              <button
+                className={runnerMode === 'desktopHelper' ? 'segment segment--active' : 'segment'}
+                onClick={() => {
+                  setRunnerMode('desktopHelper');
+                  void refreshDesktopHelperStatus({ autoStart: true });
+                }}
+                type="button"
+              >
+                桌面
               </button>
             </div>
             <StatusBadge status={status} label={statusLabel(status)} />
@@ -476,7 +569,7 @@ function App() {
                 </div>
               </div>
               <p className="muted-copy">
-                网页版预览版只预览 `codexinstallautomation validate`。它使用 `dev.codexbackup.toolkit.test.*` 隔离标识，
+                GUI 只预览 `codexinstallautomation validate`。它使用 `dev.codexbackup.toolkit.test.*` 隔离标识，
                 不会加载或修改你已经安装的备份任务。
               </p>
               <div className="action-row">
@@ -566,6 +659,7 @@ function App() {
                 <SummaryRow label="安装路径" value="~/Library/Application Support/CodexBackupToolkit/" />
               </div>
             </section>
+            <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -606,6 +700,56 @@ function App() {
                 ) : (
                   helperHistory.map((entry) => <HelperHistoryItem entry={entry} key={`${entry.startedAt}-${entry.target}-${entry.exitCode}`} />)
                 )}
+              </div>
+            </section>
+          </section>
+        )}
+
+        {activeSection === 'settings' && (
+          <section className="view-stack">
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <Activity size={16} aria-hidden="true" />
+                  <span>桌面 helper</span>
+                </div>
+                <StatusBadge status={desktopHelperStatus.online ? 'success' : 'warning'} label={desktopHelperStatusLabel(desktopHelperStatus)} />
+              </div>
+              <div className="summary-list">
+                <SummaryRow label="状态" value={desktopHelperStatus.online ? '在线' : '离线'} />
+                <SummaryRow label="来源" value={desktopSourceLabel(desktopHelperStatus.source)} />
+                <SummaryRow label="端口" value={String(desktopHelperStatus.port ?? 37371)} />
+                <SummaryRow label="托管" value={desktopHelperStatus.managed ? '由桌面 App 启动' : '未由桌面 App 托管'} />
+              </div>
+              <p className="muted-copy">{desktopMessage}</p>
+              <div className="action-row">
+                <button className="button button--tertiary" disabled={desktopAction !== null} onClick={() => refreshDesktopHelperStatus()} type="button">
+                  <Activity size={15} aria-hidden="true" />
+                  {desktopAction === 'status' ? '刷新中' : '刷新状态'}
+                </button>
+                <button className="button button--primary" disabled={desktopAction !== null || !desktopBridge.isDesktop} onClick={startDesktopHelper} type="button">
+                  <Play size={15} aria-hidden="true" />
+                  {desktopAction === 'start' ? '启动中' : '启动 helper'}
+                </button>
+                <button className="button button--tertiary" disabled={desktopAction !== null || !desktopBridge.isDesktop} onClick={stopDesktopHelper} type="button">
+                  <Trash2 size={15} aria-hidden="true" />
+                  {desktopAction === 'stop' ? '停止中' : '停止 helper'}
+                </button>
+              </div>
+            </section>
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  <span>产品路径</span>
+                </div>
+              </div>
+              <div className="summary-list">
+                <SummaryRow label="配置" value="~/Library/Application Support/CodexBackupToolkit/config.json" />
+                <SummaryRow label="历史" value="~/Library/Application Support/CodexBackupToolkit/history.json" />
+                <SummaryRow label="标准输出" value="~/Library/Logs/CodexBackup/backup.out.log" />
+                <SummaryRow label="错误输出" value="~/Library/Logs/CodexBackup/backup.err.log" />
+                <SummaryRow label="版本" value="0.8.0" />
               </div>
             </section>
           </section>
@@ -711,6 +855,67 @@ function HelperHistoryItem({ entry }: { entry: BackupHistoryEntry }) {
   );
 }
 
+function LatestBackupResult({
+  entry,
+  onCopy,
+  onOpen,
+}: {
+  entry: BackupHistoryEntry | null;
+  onCopy: (text: string) => Promise<void>;
+  onOpen: (path: string) => Promise<void>;
+}) {
+  const artifacts = entry ? getBackupArtifacts(entry.archivePaths) : null;
+
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Archive size={16} aria-hidden="true" />
+          <span>最新备份结果</span>
+        </div>
+      </div>
+      {!entry ? (
+        <p className="muted-copy">还没有可展示的真实备份结果。执行真实备份或刷新 helper 历史后会显示最近一次结果。</p>
+      ) : (
+        <div className="backup-result">
+          <div className="summary-list">
+            <SummaryRow label="目标端" value={targetLabels[entry.target as keyof typeof targetLabels] ?? entry.target} />
+            <SummaryRow label="状态" value={entry.status === 'success' ? '成功' : '失败'} />
+            <SummaryRow label="退出码" value={String(entry.exitCode)} />
+            <SummaryRow label="开始" value={entry.startedAt} />
+            <SummaryRow label="结束" value={entry.finishedAt} />
+          </div>
+          {artifacts ? (
+            <div className="artifact-list">
+              <ArtifactRow label="归档" path={artifacts.archivePath} onCopy={onCopy} onOpen={onOpen} />
+              <ArtifactRow label="sha256" path={artifacts.checksumPath} onCopy={onCopy} onOpen={onOpen} />
+              <ArtifactRow label="manifest" path={artifacts.manifestPath} onCopy={onCopy} onOpen={onOpen} />
+            </div>
+          ) : (
+            <p className="muted-copy">本次历史记录没有归档路径。</p>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ArtifactRow({ label, path, onCopy, onOpen }: { label: string; path: string; onCopy: (text: string) => Promise<void>; onOpen: (path: string) => Promise<void> }) {
+  return (
+    <div className="artifact-row">
+      <span>{label}</span>
+      <code>{path}</code>
+      <div className="artifact-actions">
+        <button className="button button--tertiary" onClick={() => onCopy(path)} type="button">复制</button>
+        <button className="button button--tertiary" onClick={() => onOpen(path)} type="button">
+          <FolderOpen size={14} aria-hidden="true" />
+          打开
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function sectionTitle(section: SectionId): string {
   return {
     overview: '概览',
@@ -718,6 +923,7 @@ function sectionTitle(section: SectionId): string {
     schedule: '计划校验',
     restore: '恢复预览',
     logs: '日志',
+    settings: '设置',
   }[section];
 }
 
@@ -743,7 +949,27 @@ function runnerModeLabel(mode: RunnerMode): string {
     mock: '模拟预览模式',
     localBridge: '本地桥接允许列表模式',
     httpHelper: 'HTTP 助手：127.0.0.1:37371',
+    desktopHelper: '桌面 helper：Tauri 托管或外部连接',
   }[mode];
+}
+
+function desktopStatusMessage(status: DesktopHelperStatus): string {
+  if (status.online && status.source === 'managed') return '托管 helper 在线。退出桌面 App 时会尝试清理这个 helper。';
+  if (status.online && status.source === 'external') return '外部 helper 在线。桌面 App 只连接它，退出时不会停止它。';
+  return status.lastError ?? '桌面 helper 离线。';
+}
+
+function desktopSourceLabel(source: DesktopHelperStatus['source']): string {
+  return {
+    managed: 'App 托管',
+    external: '外部 helper',
+    unavailable: '不可用',
+  }[source];
+}
+
+function desktopHelperStatusLabel(status: DesktopHelperStatus): string {
+  if (!status.online) return 'helper 离线';
+  return status.source === 'managed' ? '托管 helper 在线' : '外部 helper 在线';
 }
 
 type MetricCardProps = {
