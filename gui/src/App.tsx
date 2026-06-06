@@ -6,6 +6,7 @@ import { StatusBadge } from './components/StatusBadge';
 import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction, buildSyncLocalAuthoritativeAction } from './lib/actions';
 import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
+import { buildBackupHealth, type BackupHealth } from './lib/backupHealth';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type AutomationStatus, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
@@ -82,7 +83,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.14.0';
+const appVersion = '0.15.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -159,6 +160,14 @@ function App() {
   const latestBackupEntry = helperHistory.find((entry) => entry.action === 'backup' || entry.action === 'syncLocalAuthoritative') ?? null;
   const desktopPaths = desktopDiagnostics?.paths ?? fallbackDesktopPaths;
   const displayedAppVersion = desktopDiagnostics?.version ?? appVersion;
+  const backupHealth = useMemo(() => buildBackupHealth({
+    automationStatus,
+    config,
+    configErrorCount: blockingChecks.length,
+    helperOnline: helperStatus === 'online' || desktopHelperStatus.online,
+    history: helperHistory,
+    now: new Date(),
+  }), [automationStatus, blockingChecks.length, config, desktopHelperStatus.online, helperHistory, helperStatus]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -654,6 +663,18 @@ function App() {
           </section>
         )}
 
+        {activeSection === 'health' && (
+          <section className="view-stack">
+            <BackupHealthPanel
+              health={backupHealth}
+              onOpenLogs={() => setActiveSection('logs')}
+              onOpenSchedule={() => setActiveSection('schedule')}
+              onOpenSettings={() => setActiveSection('settings')}
+              onOpenTargets={() => setActiveSection('targets')}
+            />
+          </section>
+        )}
+
         {activeSection === 'targets' && (
           <section className="view-stack">
             <section className="panel">
@@ -1051,6 +1072,94 @@ function HelperConnectionBanner({
   );
 }
 
+function BackupHealthPanel({
+  health,
+  onOpenLogs,
+  onOpenSchedule,
+  onOpenSettings,
+  onOpenTargets,
+}: {
+  health: BackupHealth;
+  onOpenLogs: () => void;
+  onOpenSchedule: () => void;
+  onOpenSettings: () => void;
+  onOpenTargets: () => void;
+}) {
+  return (
+    <>
+      <section className="panel readiness-panel">
+        <div className="panel-header">
+          <div className="panel-title">
+            <ShieldCheck size={16} aria-hidden="true" />
+            <span>备份健康度</span>
+          </div>
+          <StatusBadge status={health.level === 'healthy' ? 'success' : health.level === 'risk' ? 'error' : 'warning'} label={`${health.score}/100`} />
+        </div>
+        <div className="readiness-layout">
+          <div className="summary-list">
+            <SummaryRow label="状态" value={backupHealthLevelLabel(health.level)} />
+            <SummaryRow label="摘要" value={health.summary} />
+            <SummaryRow label="检查项" value={`${health.items.length} 项`} />
+            <SummaryRow label="下一步" value={health.nextActions[0] ?? '保持当前备份节奏'} />
+          </div>
+          <div className="readiness-copy">
+            <strong>只读健康视图</strong>
+            <p>这里聚合 helper、配置、历史、自动化和一致性检查状态，只做展示和跳转，不会执行真实恢复、安装、卸载或修改已有定时任务。</p>
+            <div className="action-row">
+              <button className="button button--tertiary" onClick={onOpenTargets} type="button">打开目标端</button>
+              <button className="button button--tertiary" onClick={onOpenLogs} type="button">打开日志</button>
+              <button className="button button--tertiary" onClick={onOpenSchedule} type="button">打开计划</button>
+              <button className="button button--tertiary" onClick={onOpenSettings} type="button">打开设置</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <div className="panel-title">
+            <ClipboardCheck size={16} aria-hidden="true" />
+            <span>健康检查项</span>
+          </div>
+        </div>
+        <div className="check-list check-list--grid">
+          {health.items.map((item) => {
+            const Icon = item.status === 'ok' ? CheckCircle2 : TriangleAlert;
+            return (
+              <div className={`check-item check-item--${item.status}`} key={item.id}>
+                <Icon size={15} aria-hidden="true" />
+                <div>
+                  <strong>{item.label}</strong>
+                  <span>{item.detail}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="panel panel--compact">
+        <div className="panel-header">
+          <div className="panel-title">
+            <Activity size={16} aria-hidden="true" />
+            <span>建议动作</span>
+          </div>
+        </div>
+        <div className="history-list">
+          {health.nextActions.map((action) => (
+            <div className="history-item" key={action}>
+              <div>
+                <strong>{action}</strong>
+                <span>按需处理</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
 function DesktopReadinessPanel({
   appVersion,
   helperStatus,
@@ -1377,12 +1486,21 @@ function ArtifactRow({
 function sectionTitle(section: SectionId): string {
   return {
     overview: '概览',
+    health: '备份健康',
     targets: '目标端',
     schedule: '计划校验',
     restore: '恢复预览',
     logs: '日志',
     settings: '设置',
   }[section];
+}
+
+function backupHealthLevelLabel(level: BackupHealth['level']): string {
+  return {
+    healthy: '健康',
+    warning: '需要关注',
+    risk: '存在风险',
+  }[level];
 }
 
 function statusLabel(status: CommandResult['status'] | 'idle'): string {

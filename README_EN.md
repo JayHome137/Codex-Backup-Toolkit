@@ -257,6 +257,8 @@ Since 0.13.0, the `Schedule` screen includes a read-only automation status panel
 
 Since 0.14.0, the overview and target screens include local-authoritative consistency checks. Local data always wins: the feature never writes backup data back to the Mac and never overwrites existing archives. A read-only check compares the current local fingerprint with the latest backup fingerprint. A local-authoritative run creates a new timestamped backup only when the latest backup is missing or different, then applies the configured retention count and retention days. This release supports consistency checks for `local` and `smb` targets first.
 
+Since 0.15.0, the GUI includes a `Health` screen. It combines helper status, config checks, backup history, read-only automation status, and consistency-check settings into a backup health score with check items and suggested next actions. The screen is read-only apart from navigation; it does not run real restore, install, uninstall, or scheduled-task mutation commands.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:

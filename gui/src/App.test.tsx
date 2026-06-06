@@ -49,6 +49,19 @@ describe('App', () => {
     });
   });
 
+  it('shows backup health summary and next actions', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /健康/i }));
+
+    expect(screen.getByText('备份健康度')).toBeInTheDocument();
+    expect(screen.getByText('helper')).toBeInTheDocument();
+    expect(screen.getByText('最近备份')).toBeInTheDocument();
+    expect(screen.getByText('一致性')).toBeInTheDocument();
+    expect(screen.getByText('建议动作')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /打开目标端/i })).toBeInTheDocument();
+  });
+
   it('copies command previews to the clipboard', async () => {
     render(<App />);
 
@@ -628,7 +641,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.14.0')).toBeInTheDocument();
+    expect(screen.getByText('0.15.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {

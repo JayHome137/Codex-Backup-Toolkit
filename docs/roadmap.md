@@ -38,6 +38,7 @@ Status: current scope.
 - Structured doctor result display and history-to-restore-plan entry point. Status: added for 0.12.0.
 - Read-only launchd automation status in helper and GUI. Status: added for 0.13.0.
 - Local-authoritative consistency checks with configurable check frequency and backup cooldown. Status: added for 0.14.0.
+- Backup health dashboard that summarizes helper, config, history, automation, and sync status. Status: added for 0.15.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
@@ -57,6 +58,6 @@ The default should remain conservative: each profile must document exactly what 
 
 ## Phase C: GUI
 
-The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports browser development mode and a Tauri macOS desktop shell, configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, helper online/offline state, disabled helper actions while offline, desktop helper start/stop/status/diagnostics, managed helper log paths, settings path open actions, confirmed real backup execution, local-authoritative consistency checks, automatic helper history refresh, latest backup result display, restore-plan generation, read-only launchd automation status, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
+The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports browser development mode and a Tauri macOS desktop shell, configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, helper online/offline state, disabled helper actions while offline, desktop helper start/stop/status/diagnostics, managed helper log paths, settings path open actions, confirmed real backup execution, local-authoritative consistency checks, backup health scoring, automatic helper history refresh, latest backup result display, restore-plan generation, read-only launchd automation status, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
 
 See `docs/gui-design.md` for the visual direction.
