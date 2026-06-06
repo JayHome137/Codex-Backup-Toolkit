@@ -51,6 +51,7 @@ assert_file gui/package.json
 assert_file gui/src/lib/helperApi.ts
 assert_file gui/src/lib/desktopBridge.ts
 assert_file gui/scripts/desktop-check.mjs
+assert_file gui/scripts/desktop-smoke.mjs
 assert_file gui/src-tauri/Cargo.toml
 assert_file gui/src-tauri/tauri.conf.json
 assert_file gui/src-tauri/src/lib.rs
@@ -86,8 +87,9 @@ assert_contains README.md 'codexrestore.sh --plan'
 assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.9\.0"'
+assert_contains gui/package.json '"version": "0\.9\.1"'
 assert_contains gui/package.json '"desktop:build"'
+assert_contains gui/package.json '"desktop:smoke"'
 assert_contains gui/src-tauri/tauri.conf.json '"productName": "CodexBackup"'
 assert_contains gui/src-tauri/tauri.conf.json '"../../helper/server\.mjs"'
 assert_contains gui/src-tauri/tauri.conf.json '"toolkit/helper/server\.mjs"'
@@ -97,6 +99,7 @@ assert_contains gui/src-tauri/src/lib.rs 'helper_start'
 assert_contains gui/src-tauri/src/lib.rs 'helper_stop'
 assert_contains gui/src-tauri/src/lib.rs 'helper_request'
 assert_contains gui/src-tauri/src/lib.rs 'open_path'
+assert_contains gui/src-tauri/src/lib.rs 'toolkit_status'
 assert_contains docs/gui-design.md 'Raycast'
 assert_contains docs/gui-design.md 'CCSWITCH'
 assert_contains config.example.env 'CODEX_BACKUP_TARGET=(local|smb|webdav|rclone)'

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.1 - 2026-06-06
+
+- 设置页新增 `内置 toolkit` 状态，显示 toolkit 来源、根目录、helper 路径和脚本路径。
+- Tauri 后端新增 `toolkit_status` 命令，用于检查桌面 App 当前使用的 toolkit 资源来源。
+- 新增 `npm run desktop:smoke`，检查 `.app` Resources 中的运行时 toolkit 文件、确认未打入 helper 测试文件，并确认 `.dmg` 存在且非空。
+- 修正设置页版本号显示，跟随当前发布版本。
+- GUI 测试继续排除 `src-tauri/target/`，避免桌面构建缓存干扰前端测试。
+- GUI/Tauri 版本升至 `0.9.1`。
+
 ## 0.9.0 - 2026-06-06
 
 - 桌面 App 打包时新增内置 toolkit 资源：`helper/`、`scripts/`、`config.example.env` 和 `examples/`。

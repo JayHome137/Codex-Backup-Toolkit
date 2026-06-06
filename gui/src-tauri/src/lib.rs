@@ -27,9 +27,29 @@ struct HelperStatus {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct ToolkitStatus {
+    available: bool,
+    helper_path: Option<String>,
+    last_error: Option<String>,
+    root_path: Option<String>,
+    scripts_path: Option<String>,
+    source: ToolkitSource,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 enum HelperSource {
     Managed,
     External,
+    Unavailable,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum ToolkitSource {
+    Bundle,
+    Environment,
+    Development,
     Unavailable,
 }
 
@@ -44,6 +64,11 @@ struct HelperRequest {
 #[tauri::command]
 fn helper_status(state: State<'_, HelperState>) -> Result<HelperStatus, String> {
     build_status(&state)
+}
+
+#[tauri::command]
+fn toolkit_status(app: AppHandle) -> ToolkitStatus {
+    build_toolkit_status(Some(&app))
 }
 
 #[tauri::command]
@@ -153,6 +178,7 @@ pub fn run() {
         .manage(HelperState::default())
         .invoke_handler(tauri::generate_handler![
             helper_status,
+            toolkit_status,
             helper_start,
             helper_stop,
             helper_request,
@@ -250,35 +276,72 @@ fn helper_transport_error(error: ureq::Error) -> String {
 }
 
 fn resolve_toolkit_root(app: Option<&AppHandle>) -> Result<PathBuf, String> {
-    if let Ok(root) = std::env::var("CODEX_BACKUP_TOOLKIT_ROOT") {
+    let status = build_toolkit_status(app);
+    if let Some(root) = status.root_path {
         return Ok(PathBuf::from(root));
     }
 
+    Err(status.last_error.unwrap_or_else(|| "无法定位工具根目录。".to_string()))
+}
+
+fn build_toolkit_status(app: Option<&AppHandle>) -> ToolkitStatus {
+    let candidates = toolkit_candidates(app);
+    for candidate in candidates {
+        if is_toolkit_root(&candidate.path) {
+            let root = candidate.path.to_string_lossy().to_string();
+            return ToolkitStatus {
+                available: true,
+                helper_path: Some(candidate.path.join("helper/server.mjs").to_string_lossy().to_string()),
+                last_error: None,
+                root_path: Some(root),
+                scripts_path: Some(candidate.path.join("scripts/codexbackup.sh").to_string_lossy().to_string()),
+                source: candidate.source,
+            };
+        }
+    }
+
+    ToolkitStatus {
+        available: false,
+        helper_path: None,
+        last_error: Some("无法定位工具根目录。请设置 CODEX_BACKUP_TOOLKIT_ROOT，或确认桌面 App 已打包 helper/scripts 资源。".to_string()),
+        root_path: None,
+        scripts_path: None,
+        source: ToolkitSource::Unavailable,
+    }
+}
+
+struct ToolkitCandidate {
+    path: PathBuf,
+    source: ToolkitSource,
+}
+
+fn toolkit_candidates(app: Option<&AppHandle>) -> Vec<ToolkitCandidate> {
     let mut candidates = Vec::new();
+
+    if let Ok(root) = std::env::var("CODEX_BACKUP_TOOLKIT_ROOT") {
+        candidates.push(ToolkitCandidate { path: PathBuf::from(root), source: ToolkitSource::Environment });
+    }
+
     if let Some(app) = app {
         if let Ok(resource_dir) = app.path().resource_dir() {
-            candidates.push(resource_dir.join("toolkit"));
+            candidates.push(ToolkitCandidate { path: resource_dir.join("toolkit"), source: ToolkitSource::Bundle });
         }
     }
     if let Ok(current_dir) = std::env::current_dir() {
-        candidates.push(current_dir);
+        candidates.push(ToolkitCandidate { path: current_dir, source: ToolkitSource::Development });
     }
     if let Some(manifest_dir) = option_env!("CARGO_MANIFEST_DIR") {
         let manifest = PathBuf::from(manifest_dir);
-        candidates.push(manifest.clone());
+        candidates.push(ToolkitCandidate { path: manifest.clone(), source: ToolkitSource::Development });
         if let Some(gui_dir) = manifest.parent() {
-            candidates.push(gui_dir.to_path_buf());
+            candidates.push(ToolkitCandidate { path: gui_dir.to_path_buf(), source: ToolkitSource::Development });
             if let Some(repo_dir) = gui_dir.parent() {
-                candidates.push(repo_dir.to_path_buf());
+                candidates.push(ToolkitCandidate { path: repo_dir.to_path_buf(), source: ToolkitSource::Development });
             }
         }
     }
 
-    find_toolkit_root(candidates).ok_or_else(|| "无法定位工具根目录。请设置 CODEX_BACKUP_TOOLKIT_ROOT，或确认桌面 App 已打包 helper/scripts 资源。".to_string())
-}
-
-fn find_toolkit_root(candidates: Vec<PathBuf>) -> Option<PathBuf> {
-    candidates.into_iter().find(|candidate| is_toolkit_root(candidate))
+    candidates
 }
 
 fn is_toolkit_root(candidate: &PathBuf) -> bool {
@@ -304,7 +367,7 @@ mod tests {
         fs::write(root.join("helper/server.mjs"), "").unwrap();
         fs::write(root.join("scripts/codexbackup.sh"), "").unwrap();
 
-        assert_eq!(find_toolkit_root(vec![root.clone()]), Some(root.clone()));
+        assert_eq!(toolkit_status_from_candidates(vec![ToolkitCandidate { path: root.clone(), source: ToolkitSource::Development }]).root_path, Some(root.clone().to_string_lossy().to_string()));
         let _ = fs::remove_dir_all(root);
     }
 
@@ -314,7 +377,7 @@ mod tests {
         fs::create_dir_all(root.join("helper")).unwrap();
         fs::write(root.join("helper/server.mjs"), "").unwrap();
 
-        assert_eq!(find_toolkit_root(vec![root.clone()]), None);
+        assert!(!toolkit_status_from_candidates(vec![ToolkitCandidate { path: root.clone(), source: ToolkitSource::Development }]).available);
         let _ = fs::remove_dir_all(root);
     }
 
@@ -329,9 +392,48 @@ mod tests {
         fs::write(valid.join("helper/server.mjs"), "").unwrap();
         fs::write(valid.join("scripts/codexbackup.sh"), "").unwrap();
 
-        assert_eq!(find_toolkit_root(vec![invalid.clone(), valid.clone()]), Some(valid.clone()));
+        assert_eq!(
+            toolkit_status_from_candidates(vec![
+                ToolkitCandidate { path: invalid.clone(), source: ToolkitSource::Development },
+                ToolkitCandidate { path: valid.clone(), source: ToolkitSource::Environment },
+            ]).root_path,
+            Some(valid.clone().to_string_lossy().to_string())
+        );
         let _ = fs::remove_dir_all(invalid);
         let _ = fs::remove_dir_all(valid);
+    }
+
+    #[test]
+    fn reports_available_toolkit_status() {
+        let root = make_temp_root("status-valid");
+        fs::create_dir_all(root.join("helper")).unwrap();
+        fs::create_dir_all(root.join("scripts")).unwrap();
+        fs::write(root.join("helper/server.mjs"), "").unwrap();
+        fs::write(root.join("scripts/codexbackup.sh"), "").unwrap();
+
+        let status = toolkit_status_from_candidates(vec![ToolkitCandidate { path: root.clone(), source: ToolkitSource::Bundle }]);
+        assert!(status.available);
+        assert_eq!(status.source, ToolkitSource::Bundle);
+        assert_eq!(status.root_path, Some(root.to_string_lossy().to_string()));
+        assert!(status.helper_path.unwrap().ends_with("helper/server.mjs"));
+        assert!(status.scripts_path.unwrap().ends_with("scripts/codexbackup.sh"));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    fn toolkit_status_from_candidates(candidates: Vec<ToolkitCandidate>) -> ToolkitStatus {
+        for candidate in candidates {
+            if is_toolkit_root(&candidate.path) {
+                return ToolkitStatus {
+                    available: true,
+                    helper_path: Some(candidate.path.join("helper/server.mjs").to_string_lossy().to_string()),
+                    last_error: None,
+                    root_path: Some(candidate.path.to_string_lossy().to_string()),
+                    scripts_path: Some(candidate.path.join("scripts/codexbackup.sh").to_string_lossy().to_string()),
+                    source: candidate.source,
+                };
+            }
+        }
+        ToolkitStatus { available: false, helper_path: None, last_error: Some("missing".to_string()), root_path: None, scripts_path: None, source: ToolkitSource::Unavailable }
     }
 
     fn make_temp_root(name: &str) -> PathBuf {

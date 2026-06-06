@@ -10,7 +10,7 @@ import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
-import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopHelperStatus } from './lib/desktopBridge';
+import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopHelperStatus, type DesktopToolkitStatus } from './lib/desktopBridge';
 import {
   buildBackupCommand,
   buildDoctorCommand,
@@ -77,6 +77,7 @@ function App() {
   const [helperMessage, setHelperMessage] = useState('尚未检查本地 helper。需要加载配置、保存密钥或读取真实历史时，请先确认 helper 已启动。');
   const [backupConfirmed, setBackupConfirmed] = useState(false);
   const [desktopHelperStatus, setDesktopHelperStatus] = useState<DesktopHelperStatus>({ managed: false, online: false, source: 'unavailable' });
+  const [desktopToolkitStatus, setDesktopToolkitStatus] = useState<DesktopToolkitStatus>({ available: false, source: 'unavailable' });
   const [desktopAction, setDesktopAction] = useState<DesktopActionState>(null);
   const [desktopMessage, setDesktopMessage] = useState('桌面状态尚未检查。');
   const desktopBridge = useMemo(() => createDesktopBridge(), []);
@@ -119,6 +120,7 @@ function App() {
     }
 
     void refreshDesktopHelperStatus({ autoStart: true });
+    void refreshDesktopToolkitStatus();
   }, [desktopBridge]);
 
   const setConfigAndSecretDefaults = (nextConfig: BackupConfig) => {
@@ -315,6 +317,15 @@ function App() {
       applyDesktopStatus(status);
     } finally {
       setDesktopAction(null);
+    }
+  };
+
+  const refreshDesktopToolkitStatus = async () => {
+    try {
+      setDesktopToolkitStatus(await desktopBridge.toolkitStatus());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDesktopToolkitStatus({ available: false, lastError: message, source: 'unavailable' });
     }
   };
 
@@ -735,7 +746,27 @@ function App() {
                   <Trash2 size={15} aria-hidden="true" />
                   {desktopAction === 'stop' ? '停止中' : '停止 helper'}
                 </button>
+                <button className="button button--tertiary" disabled={!desktopBridge.isDesktop} onClick={refreshDesktopToolkitStatus} type="button">
+                  <ShieldCheck size={15} aria-hidden="true" />
+                  检查 toolkit
+                </button>
               </div>
+            </section>
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <Archive size={16} aria-hidden="true" />
+                  <span>内置 toolkit</span>
+                </div>
+                <StatusBadge status={desktopToolkitStatus.available ? 'success' : 'warning'} label={desktopToolkitStatus.available ? '可用' : '不可用'} />
+              </div>
+              <div className="summary-list">
+                <SummaryRow label="来源" value={toolkitSourceLabel(desktopToolkitStatus.source)} />
+                <SummaryRow label="根目录" value={desktopToolkitStatus.rootPath ?? '未定位'} />
+                <SummaryRow label="helper" value={desktopToolkitStatus.helperPath ?? '未定位'} />
+                <SummaryRow label="脚本" value={desktopToolkitStatus.scriptsPath ?? '未定位'} />
+              </div>
+              {desktopToolkitStatus.lastError && <p className="muted-copy">{desktopToolkitStatus.lastError}</p>}
             </section>
             <section className="panel">
               <div className="panel-header">
@@ -749,7 +780,7 @@ function App() {
                 <SummaryRow label="历史" value="~/Library/Application Support/CodexBackupToolkit/history.json" />
                 <SummaryRow label="标准输出" value="~/Library/Logs/CodexBackup/backup.out.log" />
                 <SummaryRow label="错误输出" value="~/Library/Logs/CodexBackup/backup.err.log" />
-                <SummaryRow label="版本" value="0.8.0" />
+                <SummaryRow label="版本" value="0.9.1" />
               </div>
             </section>
           </section>
@@ -970,6 +1001,15 @@ function desktopSourceLabel(source: DesktopHelperStatus['source']): string {
 function desktopHelperStatusLabel(status: DesktopHelperStatus): string {
   if (!status.online) return 'helper 离线';
   return status.source === 'managed' ? '托管 helper 在线' : '外部 helper 在线';
+}
+
+function toolkitSourceLabel(source: DesktopToolkitStatus['source']): string {
+  return {
+    bundle: 'App 内置资源',
+    environment: '环境变量指定',
+    development: '开发目录',
+    unavailable: '不可用',
+  }[source];
 }
 
 type MetricCardProps = {

@@ -137,6 +137,12 @@ npm run desktop:dev
 npm run desktop:build
 ```
 
+检查已构建桌面产物的内置资源：
+
+```zsh
+npm run desktop:smoke
+```
+
 当前目标是本机可运行的未签名 `.app`；如果 Tauri 和本机打包环境支持，也会生成 `.dmg`。当前不包含 Apple Developer 签名、公证和自动更新。缺少 Rust 工具链时，`desktop:build` 会输出中文提示，并指向 `https://rustup.rs/`。
 
 桌面 App 启动后会检查 `127.0.0.1:37371`。如果发现外部 helper 已在线，只会连接它，退出 App 时不会停止外部进程；如果由 App 启动托管 helper，退出时会尝试清理该 helper。0.9.0 起，打包产物会内置 `helper/`、`scripts/`、`config.example.env` 和 `examples/`，桌面 App 可以优先从 App Resources 中启动 helper。开发或调试时如需指定仓库根目录，可设置：
@@ -145,7 +151,7 @@ npm run desktop:build
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-GUI 的 `设置` 页会显示 helper 状态、启动/停止按钮、配置路径、历史路径、日志路径和版本信息。`日志` 页会显示最近一次真实备份结果，包括归档、sha256 和 manifest 路径，并提供复制与打开路径入口。恢复页仍只生成 `codexrestore --plan`，不会执行真实恢复。
+GUI 的 `设置` 页会显示 helper 状态、启动/停止按钮、内置 toolkit 来源、配置路径、历史路径、日志路径和版本信息。`日志` 页会显示最近一次真实备份结果，包括归档、sha256 和 manifest 路径，并提供复制与打开路径入口。恢复页仍只生成 `codexrestore --plan`，不会执行真实恢复。
 
 ## 浏览器模式和本地 helper
 

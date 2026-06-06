@@ -2,6 +2,8 @@
 
 公开发布前使用这份清单。以后 GitHub Release 的标题和说明正文统一只写中文，不写英文版 release notes。
 
+版本号规则：小修小补使用补丁号，例如 `0.9.1`；新增明显产品模块再升到下一个次版本，例如 `0.10.0`；等软件达到稳定可用、安装和恢复链路都成熟后再进入 `1.0.0`。
+
 ## 打 Tag 前
 
 - [ ] 运行 `./tests/test-open-source-framework.sh`。
@@ -18,6 +20,7 @@
 - [ ] 运行 `cd gui && npm run build`。
 - [ ] 运行 `cd gui && npm run desktop:doctor`。
 - [ ] 运行 `cd gui && npm run desktop:build`；如果本机缺少 Rust 或 Tauri 依赖，确认错误信息能清楚说明缺失环境。
+- [ ] 运行 `cd gui && npm run desktop:smoke`。
 - [ ] 确认 `.app` Resources 中包含 `toolkit/helper/server.mjs` 和 `toolkit/scripts/codexbackup.sh`。
 - [ ] 运行 `./scripts/codexbackup.sh --doctor --target local`。
 - [ ] 启动 `node helper/server.mjs`，打开 GUI，选择 `HTTP 助手`，确认 `检查助手` 显示在线；验证后停止 helper。

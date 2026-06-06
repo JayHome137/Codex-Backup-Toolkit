@@ -14,6 +14,15 @@ export type DesktopHelperStatus = {
   source: HelperSource;
 };
 
+export type DesktopToolkitStatus = {
+  available: boolean;
+  helperPath?: string;
+  lastError?: string;
+  rootPath?: string;
+  scriptsPath?: string;
+  source: 'bundle' | 'environment' | 'development' | 'unavailable';
+};
+
 export type DesktopBridge = {
   helperRequest<T = unknown>(request: DesktopHelperRequest): Promise<T>;
   helperStart(): Promise<DesktopHelperStatus>;
@@ -21,6 +30,7 @@ export type DesktopBridge = {
   helperStop(): Promise<DesktopHelperStatus>;
   isDesktop: boolean;
   openPath(path: string): Promise<{ status: 'ok' }>;
+  toolkitStatus(): Promise<DesktopToolkitStatus>;
 };
 
 export type DesktopHelperRequest = {
@@ -58,6 +68,9 @@ export function createDesktopBridge(options: BridgeOptions = {}): DesktopBridge 
     isDesktop: true,
     openPath(path: string): Promise<{ status: 'ok' }> {
       return invoke<{ status: 'ok' }>('open_path', { path });
+    },
+    toolkitStatus(): Promise<DesktopToolkitStatus> {
+      return invoke<DesktopToolkitStatus>('toolkit_status');
     },
   };
 }
@@ -135,6 +148,9 @@ function createUnavailableBridge(): DesktopBridge {
     isDesktop: false,
     async openPath(): Promise<never> {
       throw new Error('ERR_DESKTOP_UNAVAILABLE: 当前不是 Tauri 桌面环境。');
+    },
+    async toolkitStatus(): Promise<DesktopToolkitStatus> {
+      return { available: false, lastError: '当前不是 Tauri 桌面环境。', source: 'unavailable' };
     },
   };
 }

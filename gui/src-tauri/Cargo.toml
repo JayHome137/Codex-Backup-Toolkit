@@ -1,6 +1,6 @@
 [package]
 name = "codex-backup-toolkit"
-version = "0.9.0"
+version = "0.9.1"
 description = "CodexBackup desktop app"
 authors = ["jayhome137"]
 edition = "2021"

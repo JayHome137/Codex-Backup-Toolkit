@@ -22,10 +22,12 @@ describe('desktop bridge', () => {
     await bridge.helperStatus();
     await bridge.helperStart();
     await bridge.helperStop();
+    await bridge.toolkitStatus();
 
     expect(invokeMock).toHaveBeenCalledWith('helper_status');
     expect(invokeMock).toHaveBeenCalledWith('helper_start');
     expect(invokeMock).toHaveBeenCalledWith('helper_stop');
+    expect(invokeMock).toHaveBeenCalledWith('toolkit_status');
   });
 
   it('sends helper requests through the desktop helper api', async () => {
