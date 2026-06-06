@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, Compass, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, Compass, Download, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
@@ -14,6 +14,7 @@ import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtoc
 import { createLocalBridgeRunner } from './lib/localBridge';
 import { parseDoctorOutput, type DoctorReport } from './lib/doctorReport';
 import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopDiagnostics, type DesktopHelperStatus, type DesktopPaths, type DesktopToolkitStatus } from './lib/desktopBridge';
+import { buildPostInstallExperience, type PostInstallExperience, type PostInstallItem } from './lib/postInstallExperience';
 import {
   buildBackupCommand,
   buildDoctorCommand,
@@ -85,7 +86,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.16.0';
+const appVersion = '0.17.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -181,6 +182,12 @@ function App() {
     isDesktop: desktopBridge.isDesktop,
     toolkitAvailable: desktopToolkitStatus.available,
   }), [backupHealth, blockingChecks.length, config, desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, doctorReport, helperStatus]);
+  const postInstallExperience = useMemo(() => buildPostInstallExperience({
+    appVersion: displayedAppVersion,
+    helperOnline: helperStatus === 'online' || desktopHelperStatus.online,
+    isDesktop: desktopBridge.isDesktop,
+    toolkitAvailable: desktopToolkitStatus.available,
+  }), [desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, displayedAppVersion, helperStatus]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -712,6 +719,25 @@ function App() {
               runningDoctor={runningCommand === commands.doctor}
             />
             <TargetDoctorPanel report={doctorReport} />
+          </section>
+        )}
+
+        {activeSection === 'install' && (
+          <section className="view-stack">
+            <PostInstallPanel
+              experience={postInstallExperience}
+              onCopy={copyText}
+              onOpenGuide={() => setActiveSection('guide')}
+              onOpenSettings={() => setActiveSection('settings')}
+            />
+            <DesktopReadinessPanel
+              appVersion={displayedAppVersion}
+              helperStatus={desktopHelperStatus}
+              isDesktop={desktopBridge.isDesktop}
+              onOpenSettings={() => setActiveSection('settings')}
+              paths={desktopPaths}
+              toolkitStatus={desktopToolkitStatus}
+            />
           </section>
         )}
 
@@ -1361,6 +1387,71 @@ function FirstRunJourneyPanel({
   );
 }
 
+function PostInstallPanel({
+  experience,
+  onCopy,
+  onOpenGuide,
+  onOpenSettings,
+}: {
+  experience: PostInstallExperience;
+  onCopy: (text: string) => Promise<void>;
+  onOpenGuide: () => void;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Download size={16} aria-hidden="true" />
+          <span>安装后验证</span>
+        </div>
+        <StatusBadge status="warning" label="未签名 DMG" />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="当前版本" value={experience.assetName.replace('CodexBackup_', '').replace('_aarch64.dmg', '')} />
+          <SummaryRow label="Release" value={experience.releaseUrl} />
+          <SummaryRow label="DMG" value={experience.assetName} />
+          <SummaryRow label="校验文件" value={experience.checksumAssetName} />
+          <SummaryRow label="校验命令" value={experience.checksumCommand} />
+        </div>
+        <div className="readiness-copy">
+          <strong>下载后的第一轮确认</strong>
+          <p>{experience.summary}</p>
+          <div className="action-row">
+            <button className="button button--primary" onClick={() => void onCopy(experience.checksumCommand)} type="button">
+              <ClipboardCheck size={15} aria-hidden="true" />
+              复制校验命令
+            </button>
+            <button className="button button--tertiary" onClick={() => void onCopy(experience.releaseUrl)} type="button">
+              <Download size={15} aria-hidden="true" />
+              复制 Release 地址
+            </button>
+            <button className="button button--tertiary" onClick={onOpenGuide} type="button">打开引导</button>
+            <button className="button button--tertiary" onClick={onOpenSettings} type="button">打开设置</button>
+          </div>
+        </div>
+      </div>
+      <div className="check-list check-list--grid">
+        {experience.items.map((item) => <PostInstallItemCard item={item} key={item.id} />)}
+      </div>
+    </section>
+  );
+}
+
+function PostInstallItemCard({ item }: { item: PostInstallItem }) {
+  const Icon = item.status === 'ok' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${item.status}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{item.label}</strong>
+        <span>{item.detail}</span>
+      </div>
+    </div>
+  );
+}
+
 function FirstRunJourneyStepItem({ onAction, step }: { onAction: () => void; step: FirstRunJourneyStep }) {
   const Icon = step.status === 'ready' ? CheckCircle2 : TriangleAlert;
   return (
@@ -1694,6 +1785,7 @@ function sectionTitle(section: SectionId): string {
   return {
     overview: '概览',
     guide: '首启引导',
+    install: '安装验证',
     health: '备份健康',
     targets: '目标端',
     schedule: '计划校验',
