@@ -267,6 +267,8 @@ Since 0.18.0, the `Install` screen also explains how to read successful and fail
 
 Since 0.19.0, the `Targets` screen includes a setup guide. For local, SMB/NAS, WebDAV, and rclone targets it shows setup steps, the read-only doctor validation command, next action, common failure causes, and safety boundaries. The guide reuses the existing `codexbackup --doctor` path; it does not store plaintext passwords, add helper APIs, install, uninstall, or mutate scheduled jobs.
 
+Since 0.23.0, the GUI includes four maturity flows for the first public desktop loop: target doctor advice, first real-backup acceptance, restore-plan guidance, and a release trust checklist. These flows explain what to check next, show archive/sha256/manifest proof from helper history, clarify what `codexrestore --plan` does and does not do, and keep unsigned-build/checksum/manual-smoke limitations visible. They do not add real restore execution, scheduled-task mutation, signing, notarization, or auto-update.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:

@@ -6,15 +6,18 @@ import { StatusBadge } from './components/StatusBadge';
 import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction, buildSyncLocalAuthoritativeAction } from './lib/actions';
 import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
+import { buildBackupAcceptance, type BackupAcceptance, type BackupAcceptanceCheck } from './lib/backupAcceptance';
 import { buildBackupHealth, type BackupHealth } from './lib/backupHealth';
 import { buildFirstRunJourney, type FirstRunJourney, type FirstRunJourneyStep } from './lib/firstRunJourney';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type AutomationStatus, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
+import { buildDoctorAdvice, type DoctorAdvice, type DoctorAdviceCard } from './lib/doctorAdvice';
 import { parseDoctorOutput, type DoctorReport } from './lib/doctorReport';
 import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopDiagnostics, type DesktopHelperStatus, type DesktopPaths, type DesktopToolkitStatus } from './lib/desktopBridge';
 import { buildPostInstallExperience, type PostInstallExperience, type PostInstallItem } from './lib/postInstallExperience';
+import { buildRestorePlanGuide, type RestorePlanGuide } from './lib/restorePlanGuide';
 import { buildTargetSetupGuide, type TargetSetupGuide, type TargetSetupStep } from './lib/targetSetupGuide';
 import {
   buildBackupCommand,
@@ -87,7 +90,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.19.0';
+const appVersion = '0.23.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -164,8 +167,10 @@ function App() {
   const helperActionLabel = helperAction ? helperActionLabels[helperAction] : null;
   const helperBannerMessage = helperActionLabel ? `${helperActionLabel}中...` : helperMessage;
   const latestBackupEntry = helperHistory.find((entry) => entry.action === 'backup' || entry.action === 'syncLocalAuthoritative') ?? null;
+  const backupAcceptance = useMemo(() => buildBackupAcceptance(helperHistory), [helperHistory]);
   const desktopPaths = desktopDiagnostics?.paths ?? fallbackDesktopPaths;
   const displayedAppVersion = desktopDiagnostics?.version ?? appVersion;
+  const doctorAdvice = useMemo(() => buildDoctorAdvice(doctorReport, config), [config, doctorReport]);
   const backupHealth = useMemo(() => buildBackupHealth({
     automationStatus,
     config,
@@ -190,6 +195,7 @@ function App() {
     toolkitAvailable: desktopToolkitStatus.available,
   }), [desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, displayedAppVersion, helperStatus]);
   const targetSetupGuide = useMemo(() => buildTargetSetupGuide(config, configChecks), [config, configChecks]);
+  const restorePlanGuide = useMemo(() => buildRestorePlanGuide(actions.restorePlan), [actions.restorePlan]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -615,6 +621,7 @@ function App() {
             />
 
             <TargetDoctorPanel report={doctorReport} />
+            <DoctorAdvicePanel advice={doctorAdvice} />
 
             <div className="two-column">
               <section className="panel">
@@ -721,6 +728,7 @@ function App() {
               runningDoctor={runningCommand === commands.doctor}
             />
             <TargetDoctorPanel report={doctorReport} />
+            <DoctorAdvicePanel advice={doctorAdvice} />
           </section>
         )}
 
@@ -765,6 +773,7 @@ function App() {
               onRunDoctor={() => runPreview(commands.doctor, '目标端检查命令')}
               runningDoctor={runningCommand === commands.doctor}
             />
+            <DoctorAdvicePanel advice={doctorAdvice} />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -922,6 +931,7 @@ function App() {
                 </button>
               </div>
             </section>
+            <RestorePlanGuidePanel guide={restorePlanGuide} />
             <CommandPreview command={commands.restore} title="恢复预案命令" onCopy={copyText} />
           </section>
         )}
@@ -947,6 +957,7 @@ function App() {
               </div>
             </section>
             <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} onRestorePlan={useArchiveForRestorePlan} />
+            <BackupAcceptancePanel acceptance={backupAcceptance} onOpenRestore={() => setActiveSection('restore')} />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -1469,6 +1480,15 @@ function PostInstallPanel({
         </div>
         <StepList steps={experience.smokeSteps} />
       </section>
+      <section className="sub-panel">
+        <div className="panel-title">
+          <ShieldCheck size={16} aria-hidden="true" />
+          <span>发布可信度</span>
+        </div>
+        <div className="check-list check-list--grid">
+          {experience.trustChecklist.map((item) => <PostInstallItemCard item={item} key={item.id} />)}
+        </div>
+      </section>
     </section>
   );
 }
@@ -1585,6 +1605,166 @@ function targetSetupLevelLabel(level: TargetSetupGuide['level']): string {
     blocked: '有阻断项',
     'needs-action': '待验证',
     ready: '可验证',
+  }[level];
+}
+
+function DoctorAdvicePanel({ advice }: { advice: DoctorAdvice }) {
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Compass size={16} aria-hidden="true" />
+          <span>目标端处理建议</span>
+        </div>
+        <StatusBadge status={adviceStatus(advice.level)} label={doctorAdviceLevelLabel(advice.level)} />
+      </div>
+      <div className="summary-list">
+        <SummaryRow label="摘要" value={advice.summary} />
+        <SummaryRow label="安全边界" value={advice.safetyNote} />
+      </div>
+      <div className="check-list check-list--grid">
+        {advice.cards.map((card) => <DoctorAdviceCardItem card={card} key={`${card.label}-${card.detail}`} />)}
+      </div>
+      <div className="history-list">
+        {advice.nextActions.map((action) => (
+          <div className="history-item" key={action}>
+            <div>
+              <strong>下一步</strong>
+              <span>{action}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DoctorAdviceCardItem({ card }: { card: DoctorAdviceCard }) {
+  const Icon = card.status === 'ok' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${card.status}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{card.label}</strong>
+        <span>{card.detail}</span>
+      </div>
+    </div>
+  );
+}
+
+function BackupAcceptancePanel({ acceptance, onOpenRestore }: { acceptance: BackupAcceptance; onOpenRestore: () => void }) {
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <ClipboardCheck size={16} aria-hidden="true" />
+          <span>首次备份验收</span>
+        </div>
+        <StatusBadge status={backupAcceptanceStatus(acceptance.level)} label={backupAcceptanceLevelLabel(acceptance.level)} />
+      </div>
+      <div className="summary-list">
+        <SummaryRow label="结论" value={acceptance.summary} />
+        <SummaryRow label="归档" value={acceptance.archivePath ?? '尚未确认'} />
+      </div>
+      <div className="check-list check-list--grid">
+        {acceptance.checks.map((check) => <BackupAcceptanceCheckItem check={check} key={check.id} />)}
+      </div>
+      <div className="action-row">
+        <button className="button button--tertiary" onClick={onOpenRestore} type="button">
+          <RotateCcw size={15} aria-hidden="true" />
+          打开恢复预案
+        </button>
+      </div>
+      <StepList steps={acceptance.nextActions} />
+    </section>
+  );
+}
+
+function BackupAcceptanceCheckItem({ check }: { check: BackupAcceptanceCheck }) {
+  const Icon = check.status === 'ok' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${check.status}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{check.label}</strong>
+        <span>{check.detail}</span>
+      </div>
+    </div>
+  );
+}
+
+function RestorePlanGuidePanel({ guide }: { guide: RestorePlanGuide }) {
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <ShieldCheck size={16} aria-hidden="true" />
+          <span>{guide.title}</span>
+        </div>
+        <StatusBadge status="warning" label="只读预案" />
+      </div>
+      <div className="two-column two-column--tight">
+        <section className="sub-panel">
+          <div className="panel-title">
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <span>会做什么</span>
+          </div>
+          <StepList steps={guide.willDo} />
+        </section>
+        <section className="sub-panel">
+          <div className="panel-title">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>不会做什么</span>
+          </div>
+          <StepList steps={guide.willNotDo} />
+        </section>
+      </div>
+      <div className="two-column two-column--tight">
+        <section className="sub-panel">
+          <div className="panel-title">
+            <ClipboardCheck size={16} aria-hidden="true" />
+            <span>需要准备</span>
+          </div>
+          <StepList steps={guide.needs} />
+        </section>
+        <section className="sub-panel">
+          <div className="panel-title">
+            <ShieldCheck size={16} aria-hidden="true" />
+            <span>风险提示</span>
+          </div>
+          <StepList steps={guide.riskNotes} />
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function adviceStatus(level: DoctorAdvice['level']): CommandResult['status'] {
+  if (level === 'blocked') return 'error';
+  if (level === 'ready') return 'success';
+  return 'warning';
+}
+
+function doctorAdviceLevelLabel(level: DoctorAdvice['level']): string {
+  return {
+    blocked: '需要处理',
+    'needs-action': '建议复核',
+    ready: '可验收',
+    waiting: '待检查',
+  }[level];
+}
+
+function backupAcceptanceStatus(level: BackupAcceptance['level']): CommandResult['status'] {
+  if (level === 'accepted') return 'success';
+  if (level === 'blocked') return 'error';
+  return 'warning';
+}
+
+function backupAcceptanceLevelLabel(level: BackupAcceptance['level']): string {
+  return {
+    accepted: '已通过',
+    blocked: '待修正',
+    pending: '待备份',
   }[level];
 }
 

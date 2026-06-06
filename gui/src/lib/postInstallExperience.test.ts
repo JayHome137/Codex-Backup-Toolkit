@@ -62,4 +62,22 @@ describe('post install experience', () => {
     expect(experience.summary).toContain('首次运行闭环');
     expect(experience.items.find((item) => item.id === 'runtime')).toMatchObject({ status: 'ok' });
   });
+
+  it('builds a release trust checklist without claiming signing or auto-update support', () => {
+    const experience = buildPostInstallExperience({
+      appVersion: '0.23.0',
+      helperOnline: true,
+      isDesktop: true,
+      toolkitAvailable: true,
+    });
+
+    expect(experience.trustChecklist.map((item) => item.id)).toEqual([
+      'release-assets',
+      'checksum-published',
+      'manual-smoke',
+      'known-limits',
+    ]);
+    expect(experience.trustChecklist.find((item) => item.id === 'known-limits')?.detail).toContain('未加入 Apple 签名、公证和自动更新');
+    expect(experience.trustChecklist.map((item) => item.detail).join(' ')).not.toMatch(/执行真实恢复|安装定时任务|卸载定时任务/);
+  });
 });

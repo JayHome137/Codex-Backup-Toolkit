@@ -7,7 +7,7 @@ export type PostInstallRuntime = {
 
 export type PostInstallItem = {
   detail: string;
-  id: 'download' | 'checksum' | 'unsigned' | 'first-open' | 'runtime' | 'safety';
+  id: 'download' | 'checksum' | 'unsigned' | 'first-open' | 'runtime' | 'safety' | 'release-assets' | 'checksum-published' | 'manual-smoke' | 'known-limits';
   label: string;
   status: 'ok' | 'warning';
 };
@@ -19,6 +19,7 @@ export type PostInstallExperience = {
   checksumFailureText: string;
   checksumSuccessText: string;
   items: PostInstallItem[];
+  trustChecklist: PostInstallItem[];
   macosOpenSteps: string[];
   releaseUrl: string;
   smokeSteps: string[];
@@ -87,6 +88,32 @@ export function buildPostInstallExperience(runtime: PostInstallRuntime): PostIns
       '打开健康页刷新健康状态，确认 helper 历史和只读自动化状态能读取。',
       '需要真实验证时，回到概览页手动确认后执行一次受控真实备份。',
       '恢复页仍只生成恢复预案，不修改文件。',
+    ],
+    trustChecklist: [
+      {
+        detail: `Release 应同时包含 ${assetName} 和 ${checksumAssetName}，下载后先校验再打开。`,
+        id: 'release-assets',
+        label: 'Release 产物完整',
+        status: 'ok',
+      },
+      {
+        detail: `校验文件使用 ${runtime.appVersion} 版本 DMG 生成，用户本机用 shasum 回读确认。`,
+        id: 'checksum-published',
+        label: '校验可回读',
+        status: 'ok',
+      },
+      {
+        detail: '首次验收仍依赖引导、设置、健康、目标端检查、手动真实备份和恢复预案这组 smoke 流程。',
+        id: 'manual-smoke',
+        label: '人工验收路径',
+        status: 'ok',
+      },
+      {
+        detail: '当前版本仍未加入 Apple 签名、公证和自动更新；这些是后续 1.0 前的可信度增强项。',
+        id: 'known-limits',
+        label: '已知限制明确',
+        status: 'warning',
+      },
     ],
     summary: runtimeReady ? '桌面 App 已具备下载后验证和首次运行闭环。' : '下载和校验说明已就绪，首次运行后请完成引导页检查。',
   };
