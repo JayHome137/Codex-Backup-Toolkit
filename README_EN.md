@@ -249,7 +249,7 @@ Development or custom runs can still point the helper launcher at the repo root 
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-The `Settings` screen shows helper status, start/stop controls, desktop diagnostics, bundled toolkit source, config path, history path, log paths, and version information, with open-path actions for the config directory, log directory, and toolkit directory. The `Logs` screen now shows the latest real backup result with archive, sha256, and manifest paths plus copy/open actions. Restore still only generates `codexrestore --plan`; it does not execute real restore.
+Since 0.11.0, the overview screen shows a desktop readiness check with version, helper status, toolkit source, and unsigned-build safety guidance. The `Settings` screen shows a first-launch checklist, helper status, start/stop controls, desktop diagnostics, bundled toolkit source, config path, history path, log paths, and version information, with open-path actions for the config directory, log directory, and toolkit directory. The `Logs` screen now shows the latest real backup result with archive, sha256, and manifest paths plus copy/open actions. Restore still only generates `codexrestore --plan`; it does not execute real restore.
 
 ## Browser Mode And Local Helper
 

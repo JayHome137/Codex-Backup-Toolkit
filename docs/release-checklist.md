@@ -49,14 +49,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.10.1
+git tag v0.11.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.10.1` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.11.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -65,6 +65,7 @@ git push origin main --tags
 - [ ] 说明未包含 Apple 签名、公证和自动更新。
 - [ ] 说明桌面 App 可以托管 helper，也可以连接外部 helper；退出时只停止自己启动的托管 helper。
 - [ ] 说明桌面 App 增加诊断入口和托管 helper 日志，便于定位配置、历史、日志和 toolkit 路径。
+- [ ] 说明桌面 App 增加首次启动核对和概览页桌面就绪检查，便于确认 helper、toolkit、路径和未签名状态。
 - [ ] 说明 GUI 通过 HTTP helper 或桌面 helper 可以执行真实备份，但仍不会执行恢复、安装或卸载。
 - [ ] 说明 `codexrestore --plan` 可以生成恢复预案，不会修改文件。
 - [ ] 说明 helper 增加结构化 action、配置持久化、Keychain secret 接口和备份历史。

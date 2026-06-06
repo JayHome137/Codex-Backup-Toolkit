@@ -305,6 +305,39 @@ button:disabled {
   background: rgba(255, 197, 51, 0.06);
 }
 
+.readiness-panel {
+  border-color: rgba(87, 193, 255, 0.22);
+}
+
+.readiness-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(260px, 0.72fr);
+  gap: 12px;
+}
+
+.readiness-copy {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 10px;
+}
+
+.readiness-copy strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.readiness-copy p {
+  margin: 0;
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .panel-header {
   display: flex;
   align-items: center;
@@ -359,6 +392,10 @@ button:disabled {
 
 .check-list--compact {
   margin-top: 12px;
+}
+
+.check-list--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .check-item {
@@ -654,6 +691,8 @@ input[type="checkbox"] {
   .metric-grid,
   .two-column,
   .form-grid,
+  .readiness-layout,
+  .check-list--grid,
   .summary-row,
   .summary-row--action,
   .artifact-row {

@@ -164,7 +164,7 @@ npm run desktop:smoke
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-GUI 的 `设置` 页会显示 helper 状态、启动/停止按钮、桌面诊断、内置 toolkit 来源、配置路径、历史路径、日志路径和版本信息，并提供打开配置目录、日志目录和 toolkit 目录的入口。`日志` 页会显示最近一次真实备份结果，包括归档、sha256 和 manifest 路径，并提供复制与打开路径入口。恢复页仍只生成 `codexrestore --plan`，不会执行真实恢复。
+0.11.0 起，概览页会显示 `桌面就绪检查`，集中展示版本、helper 状态、toolkit 来源和未签名安全提示。`设置` 页会显示 `首次启动核对`、helper 状态、启动/停止按钮、桌面诊断、内置 toolkit 来源、配置路径、历史路径、日志路径和版本信息，并提供打开配置目录、日志目录和 toolkit 目录的入口。`日志` 页会显示最近一次真实备份结果，包括归档、sha256 和 manifest 路径，并提供复制与打开路径入口。恢复页仍只生成 `codexrestore --plan`，不会执行真实恢复。
 
 0.10.1 起，桌面 App 已接入正式图标资源。当前图标采用黑底玻璃质感备份图标方向，包含多尺寸 PNG 和 `icon.icns`，用于 `.app`、Dock、Finder 和 DMG 展示。
 

@@ -405,7 +405,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('helper 离线')).toBeInTheDocument();
+      expect(screen.getAllByText('helper 离线').length).toBeGreaterThan(0);
       expect(screen.getByText(/请先在本机启动 helper/)).toBeInTheDocument();
     });
 
@@ -540,7 +540,7 @@ describe('App', () => {
   it('shows helper lifecycle controls and product paths in Settings', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /设置/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^设置$/i }));
 
     expect(screen.getByText('桌面 helper')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /启动 helper/i })).toBeInTheDocument();
@@ -548,7 +548,28 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.10.0')).toBeInTheDocument();
+    expect(screen.getByText('0.11.0')).toBeInTheDocument();
+  });
+
+  it('shows desktop readiness on the overview page for first launch', () => {
+    render(<App />);
+
+    expect(screen.getByText('桌面就绪检查')).toBeInTheDocument();
+    expect(screen.getByText('未签名桌面版本')).toBeInTheDocument();
+    expect(screen.getAllByText(/不会修改已有定时备份任务/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /打开设置/i })).toBeInTheDocument();
+  });
+
+  it('shows a first-launch checklist in Settings', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^设置$/i }));
+
+    expect(screen.getByText('首次启动核对')).toBeInTheDocument();
+    expect(screen.getByText('helper 状态')).toBeInTheDocument();
+    expect(screen.getByText('toolkit 来源')).toBeInTheDocument();
+    expect(screen.getByText('配置和历史路径')).toBeInTheDocument();
+    expect(screen.getByText('真实恢复仍为预案')).toBeInTheDocument();
   });
 
   it('keeps real backup confirmation disabled in desktop mode outside Tauri', () => {

@@ -34,6 +34,7 @@ Status: current scope.
 - Tauri macOS desktop shell, desktop helper lifecycle bridge, settings page, and latest backup result display. Status: added for 0.8.0.
 - Bundled helper/scripts resources for packaged desktop builds. Status: added for 0.9.0.
 - Desktop diagnostics, managed helper log files, settings path open actions, and desktop real-backup confirmation hardening. Status: added for 0.10.0.
+- Desktop first-launch readiness panel and settings checklist. Status: added for 0.11.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.

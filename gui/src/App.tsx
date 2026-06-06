@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
 import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
@@ -52,6 +52,13 @@ type RunPreviewOptions = {
   refreshHelperHistory?: boolean;
 };
 
+type FirstLaunchItem = {
+  detail: string;
+  id: string;
+  label: string;
+  status: 'ok' | 'warning';
+};
+
 const helperActionLabels: Record<Exclude<HelperActionState, null>, string> = {
   'config-load': '加载配置',
   'config-save': '保存配置',
@@ -71,7 +78,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.10.0';
+const appVersion = '0.11.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -491,6 +498,15 @@ function App() {
               <MetricCard icon={CalendarCheck2} label="计划" value="03:00 / 每 3 天" tone="yellow" />
             </div>
 
+            <DesktopReadinessPanel
+              appVersion={displayedAppVersion}
+              helperStatus={desktopHelperStatus}
+              isDesktop={desktopBridge.isDesktop}
+              onOpenSettings={() => setActiveSection('settings')}
+              paths={desktopPaths}
+              toolkitStatus={desktopToolkitStatus}
+            />
+
             <div className="two-column">
               <section className="panel">
                 <div className="panel-header">
@@ -779,6 +795,12 @@ function App() {
 
         {activeSection === 'settings' && (
           <section className="view-stack">
+            <FirstLaunchChecklist
+              helperStatus={desktopHelperStatus}
+              isDesktop={desktopBridge.isDesktop}
+              paths={desktopPaths}
+              toolkitStatus={desktopToolkitStatus}
+            />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -937,6 +959,135 @@ function HelperConnectionBanner({
       </button>
     </section>
   );
+}
+
+function DesktopReadinessPanel({
+  appVersion,
+  helperStatus,
+  isDesktop,
+  onOpenSettings,
+  paths,
+  toolkitStatus,
+}: {
+  appVersion: string;
+  helperStatus: DesktopHelperStatus;
+  isDesktop: boolean;
+  onOpenSettings: () => void;
+  paths: DesktopPaths;
+  toolkitStatus: DesktopToolkitStatus;
+}) {
+  const readinessItems = buildFirstLaunchItems({ helperStatus, isDesktop, paths, toolkitStatus });
+  const readyCount = readinessItems.filter((item) => item.status === 'ok').length;
+
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <ClipboardCheck size={16} aria-hidden="true" />
+          <span>桌面就绪检查</span>
+        </div>
+        <StatusBadge status={readyCount >= 3 ? 'success' : 'warning'} label={`${readyCount}/${readinessItems.length} 已就绪`} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="版本" value={appVersion} />
+          <SummaryRow label="helper" value={desktopHelperStatusLabel(helperStatus)} />
+          <SummaryRow label="toolkit" value={toolkitStatus.available ? toolkitSourceLabel(toolkitStatus.source) : '未就绪'} />
+          <SummaryRow label="安全边界" value="不会修改已有定时备份任务" />
+        </div>
+        <div className="readiness-copy">
+          <strong>未签名桌面版本</strong>
+          <p>当前 `.app/.dmg` 仍未签名、未公证。首次打开可能需要在 macOS 系统设置中允许打开；GUI 仍只执行受控备份和恢复预案，不会修改已有定时备份任务。</p>
+          <button className="button button--tertiary" onClick={onOpenSettings} type="button">
+            <Activity size={15} aria-hidden="true" />
+            打开设置
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FirstLaunchChecklist({
+  helperStatus,
+  isDesktop,
+  paths,
+  toolkitStatus,
+}: {
+  helperStatus: DesktopHelperStatus;
+  isDesktop: boolean;
+  paths: DesktopPaths;
+  toolkitStatus: DesktopToolkitStatus;
+}) {
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <ClipboardCheck size={16} aria-hidden="true" />
+          <span>首次启动核对</span>
+        </div>
+      </div>
+      <div className="check-list check-list--grid">
+        {buildFirstLaunchItems({ helperStatus, isDesktop, paths, toolkitStatus }).map((item) => {
+          const Icon = item.status === 'ok' ? CheckCircle2 : TriangleAlert;
+          return (
+            <div className={`check-item check-item--${item.status}`} key={item.label}>
+              <Icon size={15} aria-hidden="true" />
+              <div>
+                <strong>{item.label}</strong>
+                <span>{item.detail}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function buildFirstLaunchItems({
+  helperStatus,
+  isDesktop,
+  paths,
+  toolkitStatus,
+}: {
+  helperStatus: DesktopHelperStatus;
+  isDesktop: boolean;
+  paths: DesktopPaths;
+  toolkitStatus: DesktopToolkitStatus;
+}): FirstLaunchItem[] {
+  return [
+    {
+      id: 'desktop-runtime',
+      label: '桌面运行环境',
+      status: isDesktop ? 'ok' : 'warning',
+      detail: isDesktop ? '当前运行在 Tauri 桌面 App 中。' : '当前是浏览器开发模式；桌面专属启动、停止和打开路径能力会禁用。',
+    },
+    {
+      id: 'helper-status',
+      label: 'helper 状态',
+      status: helperStatus.online ? 'ok' : 'warning',
+      detail: helperStatus.online ? desktopStatusMessage(helperStatus) : 'helper 离线时，配置保存、Keychain、历史读取和真实备份按钮会按离线规则禁用。',
+    },
+    {
+      id: 'toolkit-source',
+      label: 'toolkit 来源',
+      status: toolkitStatus.available ? 'ok' : 'warning',
+      detail: toolkitStatus.available ? `当前来源：${toolkitSourceLabel(toolkitStatus.source)}。` : toolkitStatus.lastError ?? '尚未定位内置 toolkit；请刷新诊断或检查桌面构建资源。',
+    },
+    {
+      id: 'config-history-paths',
+      label: '配置和历史路径',
+      status: paths.configPath && paths.historyPath ? 'ok' : 'warning',
+      detail: `${paths.configPath} / ${paths.historyPath}`,
+    },
+    {
+      id: 'restore-plan-only',
+      label: '真实恢复仍为预案',
+      status: 'ok',
+      detail: '恢复页只生成 codexrestore --plan，不执行真实恢复，也不会创建或覆盖文件。',
+    },
+  ];
 }
 
 function helperStatusLabel(status: HelperConnectionStatus): string {
