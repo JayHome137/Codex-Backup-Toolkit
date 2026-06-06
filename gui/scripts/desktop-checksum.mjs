@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
-const version = process.env.npm_package_version ?? '0.11.0';
+const version = process.env.npm_package_version ?? '0.12.0';
 const dmgPath = join('src-tauri', 'target', 'release', 'bundle', 'dmg', `CodexBackup_${version}_aarch64.dmg`);
 const checksumPath = `${dmgPath}.sha256`;
 

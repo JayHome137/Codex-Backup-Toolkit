@@ -36,6 +36,19 @@ describe('App', () => {
     });
   });
 
+  it('shows structured target check results after running doctor', async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('目标端检查')).toBeInTheDocument();
+      expect(screen.getByText('4 项检查，0 个失败，0 个警告。')).toBeInTheDocument();
+      expect(screen.getByText('zsh 可用')).toBeInTheDocument();
+      expect(screen.getByText('tar 可用')).toBeInTheDocument();
+    });
+  });
+
   it('copies command previews to the clipboard', async () => {
     render(<App />);
 
@@ -548,7 +561,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.11.0')).toBeInTheDocument();
+    expect(screen.getByText('0.12.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {
@@ -614,6 +627,42 @@ describe('App', () => {
       expect(screen.getByText('/tmp/CodexBackups/codex-backup-mac.tar.gz.sha256')).toBeInTheDocument();
       expect(screen.getByText('/tmp/CodexBackups/codex-backup-mac.manifest.txt')).toBeInTheDocument();
     });
+  });
+
+  it('generates a restore plan from a backup history archive without executing restore', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({
+      schema: 'codex-backup-helper.v1',
+      version: 1,
+      status: 'ok',
+      history: {
+        version: 1,
+        entries: [{
+          action: 'backup',
+          target: 'local',
+          status: 'success',
+          startedAt: '2026-06-06T00:00:00.000Z',
+          finishedAt: '2026-06-06T00:00:01.000Z',
+          exitCode: 0,
+          archivePaths: ['/tmp/CodexBackups/codex-backup-mac.tar.gz'],
+        }],
+      },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /生成恢复预案/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /生成恢复预案/i }));
+
+    expect(screen.getByRole('group', { name: /恢复来源/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('归档路径')).toHaveValue('/tmp/CodexBackups/codex-backup-mac.tar.gz');
+    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --plan --archive \/tmp\/CodexBackups\/codex-backup-mac\.tar\.gz/).length).toBeGreaterThan(0);
   });
 });
 

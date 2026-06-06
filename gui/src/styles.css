@@ -635,7 +635,8 @@ input[type="checkbox"] {
 }
 
 .backup-result,
-.artifact-list {
+.artifact-list,
+.doctor-result {
   display: grid;
   gap: 10px;
 }
@@ -665,6 +666,7 @@ input[type="checkbox"] {
 
 .artifact-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 

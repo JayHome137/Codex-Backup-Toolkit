@@ -10,6 +10,7 @@ import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
+import { parseDoctorOutput, type DoctorReport } from './lib/doctorReport';
 import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopDiagnostics, type DesktopHelperStatus, type DesktopPaths, type DesktopToolkitStatus } from './lib/desktopBridge';
 import {
   buildBackupCommand,
@@ -78,7 +79,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.11.0';
+const appVersion = '0.12.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -90,6 +91,7 @@ function App() {
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [helperHistory, setHelperHistory] = useState<BackupHistoryEntry[]>([]);
+  const [doctorReport, setDoctorReport] = useState<DoctorReport | null>(null);
   const [runnerMode, setRunnerMode] = useState<RunnerMode>('mock');
   const [secretDraft, setSecretDraft] = useState<SecretDraft>(defaultSecretDraft(defaultConfig));
   const [helperStatus, setHelperStatus] = useState<HelperConnectionStatus>('unknown');
@@ -167,6 +169,9 @@ function App() {
     const activeRunner = runnerMode === 'desktopHelper' ? desktopHelperRunner : runnerMode === 'httpHelper' ? httpHelperRunner : runnerMode === 'localBridge' ? localBridgeRunner : runner;
     const result = await activeRunner.run(command, action);
     setLastResult(result);
+    if (command.includes('--doctor')) {
+      setDoctorReport(parseDoctorOutput(result.output));
+    }
     setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
     if (options.refreshHelperHistory && result.status === 'success') {
       await refreshHelperHistoryAfterBackup();
@@ -438,6 +443,14 @@ function App() {
     await openBackupPath(path);
   };
 
+  const useArchiveForRestorePlan = (path: string) => {
+    setRestoreSource('archive');
+    setArchivePath(path);
+    setRestoreEncrypted(path.endsWith('.age'));
+    setActiveSection('restore');
+    setLastResult({ status: 'warning', output: `已从备份历史选择归档，只生成恢复预案，不执行真实恢复：\n${path}` });
+  };
+
   const status = lastResult?.status ?? 'idle';
 
   return (
@@ -506,6 +519,8 @@ function App() {
               paths={desktopPaths}
               toolkitStatus={desktopToolkitStatus}
             />
+
+            <TargetDoctorPanel report={doctorReport} />
 
             <div className="two-column">
               <section className="panel">
@@ -747,7 +762,7 @@ function App() {
                 <SummaryRow label="安装路径" value="~/Library/Application Support/CodexBackupToolkit/" />
               </div>
             </section>
-            <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} />
+            <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} onRestorePlan={useArchiveForRestorePlan} />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -1045,6 +1060,44 @@ function FirstLaunchChecklist({
   );
 }
 
+function TargetDoctorPanel({ report }: { report: DoctorReport | null }) {
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <ShieldCheck size={16} aria-hidden="true" />
+          <span>目标端检查</span>
+        </div>
+        {report && <StatusBadge status={report.status} label={statusLabel(report.status)} />}
+      </div>
+      {!report ? (
+        <p className="muted-copy">运行检查后会把 doctor 输出整理成目标端、依赖和路径状态。这里只展示检查结果，不会创建备份、恢复文件或修改定时任务。</p>
+      ) : (
+        <div className="doctor-result">
+          <div className="summary-list">
+            <SummaryRow label="目标端" value={report.target} />
+            <SummaryRow label="摘要" value={report.summary} />
+          </div>
+          <div className="check-list check-list--grid">
+            {report.checks.map((check, index) => {
+              const Icon = check.status === 'ok' ? CheckCircle2 : TriangleAlert;
+              return (
+                <div className={`check-item check-item--${check.status}`} key={`${check.status}-${check.detail}-${index}`}>
+                  <Icon size={15} aria-hidden="true" />
+                  <div>
+                    <strong>{check.label}</strong>
+                    <span>{check.detail}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function buildFirstLaunchItems({
   helperStatus,
   isDesktop,
@@ -1116,10 +1169,12 @@ function LatestBackupResult({
   entry,
   onCopy,
   onOpen,
+  onRestorePlan,
 }: {
   entry: BackupHistoryEntry | null;
   onCopy: (text: string) => Promise<void>;
   onOpen: (path: string) => Promise<void>;
+  onRestorePlan: (path: string) => void;
 }) {
   const artifacts = entry ? getBackupArtifacts(entry.archivePaths) : null;
 
@@ -1144,7 +1199,7 @@ function LatestBackupResult({
           </div>
           {artifacts ? (
             <div className="artifact-list">
-              <ArtifactRow label="归档" path={artifacts.archivePath} onCopy={onCopy} onOpen={onOpen} />
+              <ArtifactRow label="归档" path={artifacts.archivePath} onCopy={onCopy} onOpen={onOpen} onRestorePlan={onRestorePlan} />
               <ArtifactRow label="sha256" path={artifacts.checksumPath} onCopy={onCopy} onOpen={onOpen} />
               <ArtifactRow label="manifest" path={artifacts.manifestPath} onCopy={onCopy} onOpen={onOpen} />
             </div>
@@ -1157,13 +1212,31 @@ function LatestBackupResult({
   );
 }
 
-function ArtifactRow({ label, path, onCopy, onOpen }: { label: string; path: string; onCopy: (text: string) => Promise<void>; onOpen: (path: string) => Promise<void> }) {
+function ArtifactRow({
+  label,
+  onCopy,
+  onOpen,
+  onRestorePlan,
+  path,
+}: {
+  label: string;
+  onCopy: (text: string) => Promise<void>;
+  onOpen: (path: string) => Promise<void>;
+  onRestorePlan?: (path: string) => void;
+  path: string;
+}) {
   return (
     <div className="artifact-row">
       <span>{label}</span>
       <code>{path}</code>
       <div className="artifact-actions">
         <button className="button button--tertiary" onClick={() => onCopy(path)} type="button">复制</button>
+        {onRestorePlan && (
+          <button className="button button--tertiary" onClick={() => onRestorePlan(path)} type="button">
+            <RotateCcw size={14} aria-hidden="true" />
+            生成恢复预案
+          </button>
+        )}
         <button className="button button--tertiary" onClick={() => onOpen(path)} type="button">
           <FolderOpen size={14} aria-hidden="true" />
           打开
