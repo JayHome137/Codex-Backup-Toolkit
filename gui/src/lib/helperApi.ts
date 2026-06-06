@@ -18,6 +18,21 @@ export type BackupHistoryEntry = {
   target: string;
 };
 
+export type AutomationStatus = {
+  installDir: string;
+  installDirExists: boolean;
+  label: string;
+  lastError?: string;
+  loaded: boolean;
+  plistExists: boolean;
+  plistPath: string;
+  schedule: string;
+  scheduledScriptExists: boolean;
+  scheduledScriptPath: string;
+  stderrLogPath: string;
+  stdoutLogPath: string;
+};
+
 type HelperOkResponse = {
   schema: 'codex-backup-helper.v1';
   version: 1;
@@ -93,6 +108,12 @@ export function createHelperApi(baseUrl = 'http://127.0.0.1:37371', fetcher: typ
       if (!isHistoryResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 历史响应不符合协议。');
       return body.history.entries;
     },
+
+    async loadAutomationStatus(): Promise<AutomationStatus> {
+      const body = await request('/automation', { method: 'GET' });
+      if (!isAutomationResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 自动化状态响应不符合协议。');
+      return body.automation;
+    },
   };
 }
 
@@ -109,6 +130,23 @@ function isConfigResponse(value: unknown): value is HelperOkResponse & { config:
 function isHistoryResponse(value: unknown): value is HelperOkResponse & { history: { entries: BackupHistoryEntry[]; version: 1 } } {
   const body = value as Partial<HelperOkResponse> & { history?: { entries?: unknown } };
   return isOkResponse(value) && !!body.history && Array.isArray(body.history.entries);
+}
+
+function isAutomationResponse(value: unknown): value is HelperOkResponse & { automation: AutomationStatus } {
+  const body = value as Partial<HelperOkResponse> & { automation?: Partial<AutomationStatus> };
+  return isOkResponse(value)
+    && !!body.automation
+    && typeof body.automation.label === 'string'
+    && typeof body.automation.loaded === 'boolean'
+    && typeof body.automation.plistExists === 'boolean'
+    && typeof body.automation.installDirExists === 'boolean'
+    && typeof body.automation.scheduledScriptExists === 'boolean'
+    && typeof body.automation.plistPath === 'string'
+    && typeof body.automation.installDir === 'string'
+    && typeof body.automation.scheduledScriptPath === 'string'
+    && typeof body.automation.stdoutLogPath === 'string'
+    && typeof body.automation.stderrLogPath === 'string'
+    && typeof body.automation.schedule === 'string';
 }
 
 function messageFromErrorBody(value: unknown): string {

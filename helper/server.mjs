@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { classifyHelperCommand, schema } from './allowlist.mjs';
+import { createAutomationStatusReader } from './automation-status.mjs';
 import { createConfigStore } from './config-store.mjs';
 import { createShellExecutor } from './executor.mjs';
 import { buildBackupHistoryEntry, createHistoryStore } from './history-store.mjs';
@@ -17,13 +18,14 @@ export async function createHelperServer({
   configStore = createConfigStore(),
   historyStore = createHistoryStore(),
   keychain = createKeychain({ executor }),
+  automationStatus = createAutomationStatusReader(),
 } = {}) {
   if (host !== defaultHost) {
     throw new Error('Helper host must be 127.0.0.1.');
   }
 
   const server = http.createServer((request, response) => {
-    void handleRequest({ configStore, executor, historyStore, keychain, request, response, host });
+    void handleRequest({ automationStatus, configStore, executor, historyStore, keychain, request, response, host });
   });
 
   await new Promise((resolve, reject) => {
@@ -48,7 +50,7 @@ export async function createHelperServer({
   };
 }
 
-async function handleRequest({ configStore, executor, historyStore, keychain, request, response, host }) {
+async function handleRequest({ automationStatus, configStore, executor, historyStore, keychain, request, response, host }) {
   setCommonHeaders(response, request.headers.origin);
 
   if (request.method === 'OPTIONS') {
@@ -110,6 +112,19 @@ async function handleRequest({ configStore, executor, historyStore, keychain, re
     }
     try {
       writeJson(response, 200, { schema, version: 1, status: 'ok', history: await historyStore.read() });
+    } catch (error) {
+      writeError(response, 500, 'ERR_HELPER_FAILED', error instanceof Error ? error.message : String(error));
+    }
+    return;
+  }
+
+  if (url.pathname === '/automation') {
+    if (request.method !== 'GET') {
+      writeError(response, 405, 'ERR_HELPER_FAILED', 'Method not allowed.');
+      return;
+    }
+    try {
+      writeJson(response, 200, { schema, version: 1, status: 'ok', automation: await automationStatus.read() });
     } catch (error) {
       writeError(response, 500, 'ERR_HELPER_FAILED', error instanceof Error ? error.message : String(error));
     }

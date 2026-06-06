@@ -37,7 +37,7 @@ CODEX_BACKUP_HELPER_PORT=37372 node helper/server.mjs
 
 GUI 选择 `HTTP 助手` 时默认连接 `http://127.0.0.1:37371`。
 
-GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。0.6.0 起，GUI 会把 `/health` 结果显示为顶部 helper 状态；当 helper 离线时，配置、Keychain 和真实历史相关按钮会暂时禁用，直到后续健康检查恢复在线。0.7.0 起，GUI 的真实备份入口需要先确认目标端、加密状态、保留策略和 helper 状态摘要，确认后才会向 `/run` 发送结构化 `backup` action；成功后会自动读取 `/history`。0.8.0 起，Tauri 桌面 App 可通过 `helper_status`、`helper_start`、`helper_stop` 和 `helper_request` 管理或连接 helper；App 只停止自己启动的托管 helper，发现外部 helper 在线时只连接、不接管。
+GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会执行 shell 命令。0.6.0 起，GUI 会把 `/health` 结果显示为顶部 helper 状态；当 helper 离线时，配置、Keychain 和真实历史相关按钮会暂时禁用，直到后续健康检查恢复在线。0.7.0 起，GUI 的真实备份入口需要先确认目标端、加密状态、保留策略和 helper 状态摘要，确认后才会向 `/run` 发送结构化 `backup` action；成功后会自动读取 `/history`。0.8.0 起，Tauri 桌面 App 可通过 `helper_status`、`helper_start`、`helper_stop` 和 `helper_request` 管理或连接 helper；App 只停止自己启动的托管 helper，发现外部 helper 在线时只连接、不接管。0.13.0 起，GUI 可调用 `GET /automation` 读取只读 launchd 状态；该端点不安装、不卸载、不加载、不修改任何任务。
 
 ### `GET /health`
 
@@ -85,6 +85,34 @@ GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会
 
 ```text
 ~/Library/Application Support/CodexBackupToolkit/history.json
+```
+
+### `GET /automation`
+
+读取只读 launchd 自动化状态。它返回 label、加载状态、plist 路径、安装目录、计划脚本路径、日志路径和计划说明。实现只做路径存在性检查和 `launchctl print gui/<uid>/<label>`，不会调用 install、uninstall、validate、bootstrap、bootout、enable 或 kickstart。
+
+示例响应：
+
+```json
+{
+  "schema": "codex-backup-helper.v1",
+  "version": 1,
+  "status": "ok",
+  "automation": {
+    "label": "dev.codexbackup.toolkit",
+    "loaded": false,
+    "plistExists": true,
+    "installDirExists": true,
+    "scheduledScriptExists": true,
+    "plistPath": "/Users/me/Library/LaunchAgents/dev.codexbackup.toolkit.plist",
+    "installDir": "/Users/me/Library/Application Support/CodexBackupToolkit",
+    "scheduledScriptPath": "/Users/me/Library/Application Support/CodexBackupToolkit/scripts/codexscheduledbackup.sh",
+    "stdoutLogPath": "/Users/me/Library/Logs/CodexBackup/backup.out.log",
+    "stderrLogPath": "/Users/me/Library/Logs/CodexBackup/backup.err.log",
+    "schedule": "03:00 / 每 3 天",
+    "lastError": "Job is not loaded"
+  }
+}
 ```
 
 不支持的路径和方法会返回 JSON 错误。浏览器 CORS 只对本地 HTTP origin 开放，例如 `127.0.0.1`、`localhost` 和 `::1`。
@@ -180,8 +208,9 @@ GUI 的 `检查助手` 只调用 `GET /health`，不会调用 `/run`，也不会
 
 - `gui/src/lib/localBridge.ts`: allowlist 分类和本地桥接 runner。
 - `gui/src/lib/helperProtocol.ts`: `/run` 请求/响应类型、请求构造、mock transport 和 HTTP transport。
-- `gui/src/lib/helperApi.ts`: `/config`、`/secret`、`/history` 的 GUI API client。
+- `gui/src/lib/helperApi.ts`: `/config`、`/secret`、`/history`、`/automation` 的 GUI API client。
 - `helper/server.mjs`: 手动启动的 loopback HTTP helper。
+- `helper/automation-status.mjs`: 只读 launchd 自动化状态读取器。
 - `helper/allowlist.mjs`: helper 侧 allowlist。
 - `helper/executor.mjs`: 仅在 helper 侧 allowlist 通过后使用的 shell executor。
 

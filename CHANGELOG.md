@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.0 - 2026-06-06
+
+- helper 新增只读 `GET /automation` 端点，展示 macOS launchd 备份任务的 label、加载状态、plist、安装目录、执行脚本、日志路径和计划信息。
+- GUI `计划` 页新增 `自动化状态` 面板，可刷新真实自动化状态，但不提供安装、卸载、加载或修改任务入口。
+- Tauri 桌面 bridge 允许代理只读 `/automation` 请求，继续拒绝自动化相关的修改方法。
+- 桌面打包资源新增 `helper/automation-status.mjs`，避免 packaged helper 缺少只读状态模块。
+- 新增 helper、GUI API、desktop bridge、Tauri allowlist 和计划页 UI 测试。
+- GUI/Tauri 版本升至 `0.13.0`。
+
 ## 0.12.0 - 2026-06-06
 
 - 概览页新增 `目标端检查`，把 `codexbackup --doctor` 输出解析成结构化检查项和摘要。

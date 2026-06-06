@@ -42,7 +42,7 @@ describe('desktop bridge', () => {
         desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
       },
       toolkit: { available: false, source: 'unavailable' },
-      version: '0.12.0',
+      version: '0.13.0',
     });
   });
 
@@ -59,6 +59,33 @@ describe('desktop bridge', () => {
 
     await expect(api.loadHistory()).resolves.toEqual([]);
     expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/history' } });
+  });
+
+  it('loads automation status through the desktop helper api', async () => {
+    const invokeMock = vi.fn(async (_command: string, payload: unknown) => ({
+      schema: 'codex-backup-helper.v1',
+      version: 1,
+      status: 'ok',
+      automation: {
+        label: 'dev.codexbackup.toolkit',
+        loaded: true,
+        plistExists: true,
+        installDirExists: true,
+        scheduledScriptExists: true,
+        plistPath: '/Users/test/Library/LaunchAgents/dev.codexbackup.toolkit.plist',
+        installDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+        scheduledScriptPath: '/Users/test/Library/Application Support/CodexBackupToolkit/scripts/codexscheduledbackup.sh',
+        stdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+        stderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+        schedule: '03:00 / 每 3 天',
+      },
+      payload,
+    }));
+    const invoke = async <T,>(command: string, payload?: Record<string, unknown>): Promise<T> => invokeMock(command, payload) as Promise<T>;
+    const api = createDesktopHelperApi(createDesktopBridge({ invoke }));
+
+    await expect(api.loadAutomationStatus()).resolves.toMatchObject({ label: 'dev.codexbackup.toolkit', loaded: true });
+    expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/automation' } });
   });
 
   it('sends run requests through the desktop helper transport', async () => {

@@ -168,6 +168,8 @@ CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 
 0.12.0 起，概览页会把 `codexbackup --doctor` 输出整理成 `目标端检查` 结果，展示目标端、通过项、警告和失败项。`日志` 页会显示最近一次真实备份结果，包括归档、sha256 和 manifest 路径，并提供复制、打开路径和 `生成恢复预案` 入口。恢复页仍只生成 `codexrestore --plan`，不会执行真实恢复。
 
+0.13.0 起，`计划` 页新增只读 `自动化状态` 面板，可通过 helper 读取 launchd 任务的 label、加载状态、plist 路径、安装路径、执行脚本、日志路径和计划信息。这个入口只做读取，不会安装、卸载、加载或修改已有定时备份任务。
+
 0.10.1 起，桌面 App 已接入正式图标资源。当前图标采用黑底玻璃质感备份图标方向，包含多尺寸 PNG 和 `icon.icns`，用于 `.app`、Dock、Finder 和 DMG 展示。
 
 ## 浏览器模式和本地 helper
@@ -188,9 +190,9 @@ npm run dev
 node helper/server.mjs
 ```
 
-helper 默认只监听 `127.0.0.1:37371`。GUI 顶部会显示 helper 未确认、检查中、在线或离线状态；helper 离线时，加载/保存配置、Keychain 密钥和真实历史按钮会暂时禁用，避免误操作。GUI 选择 `HTTP 助手` 或 `桌面` helper 后，可以执行环境检查、加载/保存配置、保存/删除 Keychain 密钥、读取真实备份历史、受控真实备份、恢复预案和隔离的计划校验。真实备份需要先确认摘要，再点击 `执行真实备份`，成功后会自动刷新 helper 备份历史并更新最新备份结果。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
+helper 默认只监听 `127.0.0.1:37371`。GUI 顶部会显示 helper 未确认、检查中、在线或离线状态；helper 离线时，加载/保存配置、Keychain 密钥和真实历史按钮会暂时禁用，避免误操作。GUI 选择 `HTTP 助手` 或 `桌面` helper 后，可以执行环境检查、加载/保存配置、保存/删除 Keychain 密钥、读取真实备份历史、读取只读自动化状态、受控真实备份、恢复预案和隔离的计划校验。真实备份需要先确认摘要，再点击 `执行真实备份`，成功后会自动刷新 helper 备份历史并更新最新备份结果。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
 
-helper 仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。备份历史会保存到 `~/Library/Application Support/CodexBackupToolkit/history.json`。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
+helper 仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。自动化状态读取使用 `GET /automation`，只读取路径存在性和 `launchctl print` 状态，不会调用安装、卸载、加载或卸载命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。备份历史会保存到 `~/Library/Application Support/CodexBackupToolkit/history.json`。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
 
 ## 加密与安全
 

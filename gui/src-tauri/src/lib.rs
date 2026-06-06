@@ -355,6 +355,7 @@ fn validate_helper_request(request: &HelperRequest) -> Result<(), String> {
             | ("POST", "/secret")
             | ("DELETE", "/secret")
             | ("GET", "/history")
+            | ("GET", "/automation")
             | ("POST", "/run")
     );
     if allowed {
@@ -599,6 +600,26 @@ mod tests {
         assert!(paths
             .desktop_helper_stderr_log_path
             .ends_with("Library/Logs/CodexBackup/desktop-helper.err.log"));
+    }
+
+    #[test]
+    fn allows_read_only_automation_helper_request() {
+        assert!(validate_helper_request(&HelperRequest {
+            method: "GET".to_string(),
+            path: "/automation".to_string(),
+            body: None,
+        })
+        .is_ok());
+    }
+
+    #[test]
+    fn rejects_mutating_automation_helper_request() {
+        assert!(validate_helper_request(&HelperRequest {
+            method: "POST".to_string(),
+            path: "/automation".to_string(),
+            body: None,
+        })
+        .is_err());
     }
 
     fn toolkit_status_from_candidates(candidates: Vec<ToolkitCandidate>) -> ToolkitStatus {

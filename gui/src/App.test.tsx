@@ -561,7 +561,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.12.0')).toBeInTheDocument();
+    expect(screen.getByText('0.13.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {
@@ -583,6 +583,52 @@ describe('App', () => {
     expect(screen.getByText('toolkit 来源')).toBeInTheDocument();
     expect(screen.getByText('配置和历史路径')).toBeInTheDocument();
     expect(screen.getByText('真实恢复仍为预案')).toBeInTheDocument();
+  });
+
+  it('shows read-only automation status on the schedule page', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toBe('http://127.0.0.1:37371/automation');
+      return jsonResponse({
+        schema: 'codex-backup-helper.v1',
+        version: 1,
+        status: 'ok',
+        automation: {
+          label: 'dev.codexbackup.toolkit',
+          loaded: false,
+          plistExists: true,
+          installDirExists: true,
+          scheduledScriptExists: false,
+          plistPath: '/Users/test/Library/LaunchAgents/dev.codexbackup.toolkit.plist',
+          installDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+          scheduledScriptPath: '/Users/test/Library/Application Support/CodexBackupToolkit/scripts/codexscheduledbackup.sh',
+          stdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+          stderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+          schedule: '03:00 / 每 3 天',
+          lastError: 'Job is not loaded',
+        },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^计划$/i }));
+    expect(screen.getByText('自动化状态')).toBeInTheDocument();
+    expect(screen.getByText(/只读检查/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /安装任务/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /卸载任务/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /刷新自动化状态/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('dev.codexbackup.toolkit')).toBeInTheDocument();
+      expect(screen.getAllByText('未加载').length).toBeGreaterThan(0);
+      expect(screen.getByText('03:00 / 每 3 天')).toBeInTheDocument();
+      expect(screen.getByText('/Users/test/Library/LaunchAgents/dev.codexbackup.toolkit.plist')).toBeInTheDocument();
+      expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit')).toBeInTheDocument();
+      expect(screen.getByText('/Users/test/Library/Logs/CodexBackup/backup.out.log')).toBeInTheDocument();
+      expect(screen.getByText('Job is not loaded')).toBeInTheDocument();
+    });
   });
 
   it('keeps real backup confirmation disabled in desktop mode outside Tauri', () => {

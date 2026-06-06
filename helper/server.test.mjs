@@ -231,6 +231,44 @@ test('secret endpoint saves and deletes Keychain secrets through injected keycha
   ]);
 });
 
+test('automation endpoint exposes read-only launchd status', async () => {
+  const automationStatus = {
+    read: async () => ({
+      label: 'dev.codexbackup.toolkit',
+      loaded: false,
+      plistExists: true,
+      installDirExists: true,
+      scheduledScriptExists: false,
+      plistPath: '/Users/test/Library/LaunchAgents/dev.codexbackup.toolkit.plist',
+      installDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+      scheduledScriptPath: '/Users/test/Library/Application Support/CodexBackupToolkit/scripts/codexscheduledbackup.sh',
+      stdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+      stderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+      schedule: '03:00 / 每 3 天',
+      lastError: 'Job is not loaded',
+    }),
+  };
+
+  await withHelper(async () => ({ exitCode: 0, stdout: '', stderr: '' }), async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/automation');
+
+    assert.equal(response.status, 200);
+    assert.equal(body.schema, schema);
+    assert.equal(body.version, 1);
+    assert.equal(body.status, 'ok');
+    assert.deepEqual(body.automation, await automationStatus.read());
+  }, { automationStatus });
+});
+
+test('automation endpoint rejects mutating methods', async () => {
+  await withHelper(async () => ({ exitCode: 0, stdout: '', stderr: '' }), async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/automation', { method: 'POST', body: '{}' });
+
+    assert.equal(response.status, 405);
+    assert.equal(body.status, 'error');
+  });
+});
+
 test('server module starts as a CLI even when the repository path contains spaces', async () => {
   const child = spawn(process.execPath, ['helper/server.mjs'], {
     cwd: process.cwd(),

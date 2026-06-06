@@ -60,6 +60,37 @@ describe('helper API client', () => {
     ]);
   });
 
+  it('loads read-only automation status', async () => {
+    const fetcher = vi.fn(async () => jsonResponse({
+      schema: 'codex-backup-helper.v1',
+      version: 1,
+      status: 'ok',
+      automation: {
+        label: 'dev.codexbackup.toolkit',
+        loaded: false,
+        plistExists: true,
+        installDirExists: true,
+        scheduledScriptExists: false,
+        plistPath: '/Users/test/Library/LaunchAgents/dev.codexbackup.toolkit.plist',
+        installDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+        scheduledScriptPath: '/Users/test/Library/Application Support/CodexBackupToolkit/scripts/codexscheduledbackup.sh',
+        stdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+        stderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+        schedule: '03:00 / 每 3 天',
+        lastError: 'Job is not loaded',
+      },
+    }));
+    const api = createHelperApi('http://127.0.0.1:37371', fetcher as typeof fetch);
+
+    await expect(api.loadAutomationStatus()).resolves.toMatchObject({
+      label: 'dev.codexbackup.toolkit',
+      loaded: false,
+      plistExists: true,
+      schedule: '03:00 / 每 3 天',
+    });
+    expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:37371/automation', expect.objectContaining({ method: 'GET' }));
+  });
+
   it('throws typed unavailable errors for invalid helper responses', async () => {
     const api = createHelperApi('http://127.0.0.1:37371', async () => jsonResponse({ status: 'ok' }));
 

@@ -253,6 +253,8 @@ Since 0.11.0, the overview screen shows a desktop readiness check with version, 
 
 Since 0.12.0, the overview screen parses `codexbackup --doctor` output into a structured target check with target, passed checks, warnings, and failures. The `Logs` screen shows the latest real backup result with archive, sha256, and manifest paths plus copy/open actions and a restore-plan entry point. Restore still only generates `codexrestore --plan`; it does not execute real restore.
 
+Since 0.13.0, the `Schedule` screen includes a read-only automation status panel. Through the helper it can display the launchd label, loaded state, plist path, install path, scheduled script path, log paths, and schedule information. This surface only reads state; it does not install, uninstall, load, unload, or modify existing scheduled backup jobs.
+
 ## Browser Mode And Local Helper
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:
@@ -269,7 +271,7 @@ Default local URL:
 http://127.0.0.1:5173
 ```
 
-The current GUI focuses on configuration, persisted config, Keychain secret actions, safety checks, confirmed backup execution, latest backup result display, restore planning, helper connection state, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands after an explicit confirmation step, and can execute `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
+The current GUI focuses on configuration, persisted config, Keychain secret actions, safety checks, confirmed backup execution, latest backup result display, restore planning, helper connection state, read-only automation status, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands after an explicit confirmation step, and can execute `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
 
 The interface currently supports target forms, configuration checks, age encryption guidance, `config.env` previews, command copying, confirmed real backup execution, automatic helper history refresh after successful backups, latest/archive restore plans, mock/helper output, run history, helper online/offline status, disabled helper actions when the helper is offline, and clearer loading/error states for helper actions.
 
@@ -292,6 +294,7 @@ The helper also exposes opt-in product-state endpoints for the GUI:
 - `GET /config` and `PUT /config` persist sanitized config at `~/Library/Application Support/CodexBackupToolkit/config.json`; the GUI can now load and save this config directly.
 - `POST /secret` and `DELETE /secret` write/delete password-like values through macOS Keychain; the GUI can now manage SMB/WebDAV secrets through these endpoints.
 - `GET /history` returns recent backup history recorded by successful helper backup runs; the GUI can now display this history on the logs page.
+- `GET /automation` returns read-only launchd automation status; it only checks paths and `launchctl print`, and never installs, uninstalls, loads, unloads, or modifies scheduled jobs.
 
 After selecting `HTTP 助手` in the GUI, use `检查助手` to call `/health` first. This only confirms the helper is online; it does not run backup scripts or modify any scheduled job. If the helper is offline, config, Keychain, and real history buttons are disabled until a later health check succeeds. Real backup execution requires a visible confirmation summary before the `执行真实备份` button is enabled.
 

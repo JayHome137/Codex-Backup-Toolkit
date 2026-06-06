@@ -1,5 +1,5 @@
 import type { BackupConfig } from './config';
-import type { BackupHistoryEntry, DeleteSecretInput, SecretInput } from './helperApi';
+import type { AutomationStatus, BackupHistoryEntry, DeleteSecretInput, SecretInput } from './helperApi';
 import type { HelperRequest, HelperResponse, HelperTransport } from './helperProtocol';
 
 type InvokeFunction = <T = unknown>(command: string, args?: Record<string, unknown>) => Promise<T>;
@@ -55,7 +55,7 @@ export type DesktopBridge = {
 export type DesktopHelperRequest = {
   body?: unknown;
   method: 'GET' | 'PUT' | 'POST' | 'DELETE';
-  path: '/health' | '/config' | '/secret' | '/history' | '/run';
+  path: '/health' | '/config' | '/secret' | '/history' | '/automation' | '/run';
 };
 
 type BridgeOptions = {
@@ -128,6 +128,12 @@ export function createDesktopHelperApi(bridge: DesktopBridge) {
       if (!isHistoryResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 历史响应不符合协议。');
       return body.history.entries;
     },
+
+    async loadAutomationStatus(): Promise<AutomationStatus> {
+      const body = await bridge.helperRequest({ method: 'GET', path: '/automation' });
+      if (!isAutomationResponse(body)) throw new Error('ERR_HELPER_UNAVAILABLE: 自动化状态响应不符合协议。');
+      return body.automation;
+    },
   };
 }
 
@@ -185,7 +191,7 @@ function unavailableDiagnostics(): DesktopDiagnostics {
     helper: unavailableStatus(),
     paths: defaultDesktopPaths(),
     toolkit: { available: false, lastError: '当前不是 Tauri 桌面环境。', source: 'unavailable' },
-    version: '0.12.0',
+    version: '0.13.0',
   };
 }
 
@@ -224,6 +230,23 @@ function isConfigResponse(value: unknown): value is { config: BackupConfig; sche
 function isHistoryResponse(value: unknown): value is { history: { entries: BackupHistoryEntry[]; version: 1 }; schema: typeof schema; status: 'ok'; version: 1 } {
   const body = value as { history?: { entries?: unknown } };
   return isOkResponse(value) && !!body.history && Array.isArray(body.history.entries);
+}
+
+function isAutomationResponse(value: unknown): value is { automation: AutomationStatus; schema: typeof schema; status: 'ok'; version: 1 } {
+  const body = value as { automation?: Partial<AutomationStatus> };
+  return isOkResponse(value)
+    && !!body.automation
+    && typeof body.automation.label === 'string'
+    && typeof body.automation.loaded === 'boolean'
+    && typeof body.automation.plistExists === 'boolean'
+    && typeof body.automation.installDirExists === 'boolean'
+    && typeof body.automation.scheduledScriptExists === 'boolean'
+    && typeof body.automation.plistPath === 'string'
+    && typeof body.automation.installDir === 'string'
+    && typeof body.automation.scheduledScriptPath === 'string'
+    && typeof body.automation.stdoutLogPath === 'string'
+    && typeof body.automation.stderrLogPath === 'string'
+    && typeof body.automation.schedule === 'string';
 }
 
 function isHelperResponse(value: unknown): value is HelperResponse {

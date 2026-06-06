@@ -7,7 +7,7 @@ import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction
 import type { HelperAction } from './lib/actions';
 import { TargetForm } from './components/TargetForm';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
-import { createHelperApi, type BackupHistoryEntry } from './lib/helperApi';
+import { createHelperApi, type AutomationStatus, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
 import { createLocalBridgeRunner } from './lib/localBridge';
 import { parseDoctorOutput, type DoctorReport } from './lib/doctorReport';
@@ -46,7 +46,7 @@ type SecretDraft = {
 
 type HelperConnectionStatus = 'unknown' | 'checking' | 'online' | 'offline';
 
-type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret-delete' | 'history-load' | null;
+type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret-delete' | 'history-load' | 'automation-load' | null;
 type DesktopActionState = 'diagnostics' | 'status' | 'start' | 'stop' | null;
 
 type RunPreviewOptions = {
@@ -66,6 +66,7 @@ const helperActionLabels: Record<Exclude<HelperActionState, null>, string> = {
   'secret-save': '保存密钥',
   'secret-delete': '删除密钥',
   'history-load': '刷新历史',
+  'automation-load': '刷新自动化状态',
 };
 
 const fallbackDesktopPaths: DesktopPaths = {
@@ -79,7 +80,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.12.0';
+const appVersion = '0.13.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -91,6 +92,7 @@ function App() {
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [helperHistory, setHelperHistory] = useState<BackupHistoryEntry[]>([]);
+  const [automationStatus, setAutomationStatus] = useState<AutomationStatus | null>(null);
   const [doctorReport, setDoctorReport] = useState<DoctorReport | null>(null);
   const [runnerMode, setRunnerMode] = useState<RunnerMode>('mock');
   const [secretDraft, setSecretDraft] = useState<SecretDraft>(defaultSecretDraft(defaultConfig));
@@ -301,6 +303,24 @@ function App() {
       setHelperStatus('online');
       setHelperMessage(`helper 在线，已读取 ${entries.length} 条备份历史。`);
       setLastResult({ status: 'success', output: `已加载 ${entries.length} 条 helper 备份历史。` });
+    } catch (error) {
+      updateHelperFailureState(error);
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
+    } finally {
+      setHelperAction(null);
+      setRunningCommand(null);
+    }
+  };
+
+  const loadAutomationStatus = async () => {
+    setHelperAction('automation-load');
+    setRunningCommand('GET http://127.0.0.1:37371/automation');
+    try {
+      const status = await helperApi.loadAutomationStatus();
+      setAutomationStatus(status);
+      setHelperStatus('online');
+      setHelperMessage('helper 在线，已读取只读自动化状态。');
+      setLastResult({ status: 'success', output: `已刷新自动化状态：${status.label} / ${status.loaded ? '已加载' : '未加载'}` });
     } catch (error) {
       updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
@@ -664,6 +684,14 @@ function App() {
 
         {activeSection === 'schedule' && (
           <section className="view-stack">
+            <AutomationStatusPanel
+              disabled={helperActionsDisabled}
+              onOpen={openDesktopPath}
+              onRefresh={loadAutomationStatus}
+              paths={desktopPaths}
+              status={automationStatus}
+              refreshing={helperAction === 'automation-load'}
+            />
             <section className="panel panel--compact">
               <div className="panel-header">
                 <div className="panel-title">
@@ -1098,6 +1126,55 @@ function TargetDoctorPanel({ report }: { report: DoctorReport | null }) {
   );
 }
 
+function AutomationStatusPanel({
+  disabled,
+  onOpen,
+  onRefresh,
+  paths,
+  refreshing,
+  status,
+}: {
+  disabled: boolean;
+  onOpen: (path: string) => Promise<void>;
+  onRefresh: () => Promise<void>;
+  paths: DesktopPaths;
+  refreshing: boolean;
+  status: AutomationStatus | null;
+}) {
+  return (
+    <section className="panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <CalendarCheck2 size={16} aria-hidden="true" />
+          <span>自动化状态</span>
+        </div>
+        <StatusBadge status={status?.loaded ? 'success' : 'warning'} label={status ? (status.loaded ? '已加载' : '未加载') : '未刷新'} />
+      </div>
+      <p className="muted-copy">只读检查，不会安装、卸载、加载或修改已有任务。状态来自 helper 的 `/automation`，只读取路径状态和 `launchctl print` 输出。</p>
+      <div className="summary-list">
+        <SummaryRow label="Label" value={status?.label ?? 'dev.codexbackup.toolkit'} />
+        <SummaryRow label="加载状态" value={status ? (status.loaded ? '已加载' : '未加载') : '尚未刷新'} />
+        <SummaryRow label="计划" value={status?.schedule ?? '03:00 / 每 3 天'} />
+        <SummaryRow label="plist" value={status ? existsLabel(status.plistExists) : '尚未检查'} />
+        <SummaryRow label="安装目录" value={status ? existsLabel(status.installDirExists) : '尚未检查'} />
+        <SummaryRow label="执行脚本" value={status ? existsLabel(status.scheduledScriptExists) : '尚未检查'} />
+        <PathRow label="plist 路径" path={status?.plistPath ?? '~/Library/LaunchAgents/dev.codexbackup.toolkit.plist'} onOpen={onOpen} />
+        <PathRow label="安装路径" path={status?.installDir ?? paths.appSupportDir} onOpen={onOpen} />
+        <PathRow label="执行脚本路径" path={status?.scheduledScriptPath ?? `${paths.appSupportDir}/scripts/codexscheduledbackup.sh`} onOpen={onOpen} />
+        <PathRow label="标准输出" path={status?.stdoutLogPath ?? paths.automationStdoutLogPath} onOpen={onOpen} />
+        <PathRow label="错误输出" path={status?.stderrLogPath ?? paths.automationStderrLogPath} onOpen={onOpen} />
+      </div>
+      {status?.lastError && <p className="muted-copy">{status.lastError}</p>}
+      <div className="action-row">
+        <button className="button button--tertiary" disabled={disabled} onClick={onRefresh} type="button">
+          <Activity size={15} aria-hidden="true" />
+          {refreshing ? '刷新中' : '刷新自动化状态'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function buildFirstLaunchItems({
   helperStatus,
   isDesktop,
@@ -1141,6 +1218,10 @@ function buildFirstLaunchItems({
       detail: '恢复页只生成 codexrestore --plan，不执行真实恢复，也不会创建或覆盖文件。',
     },
   ];
+}
+
+function existsLabel(exists: boolean): string {
+  return exists ? '存在' : '未发现';
 }
 
 function helperStatusLabel(status: HelperConnectionStatus): string {
