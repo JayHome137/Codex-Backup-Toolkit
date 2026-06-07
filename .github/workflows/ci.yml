@@ -109,7 +109,19 @@ jobs:
 
       - name: Build Windows desktop installer
         working-directory: gui
-        run: npm run desktop:build:windows
+        shell: pwsh
+        run: |
+          $lastExitCode = 1
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            npm run desktop:build:windows
+            $lastExitCode = $LASTEXITCODE
+            if ($lastExitCode -eq 0) {
+              exit 0
+            }
+            Write-Warning "Windows desktop installer build failed on attempt $attempt with exit code $lastExitCode. Retrying after a short delay."
+            Start-Sleep -Seconds (15 * $attempt)
+          }
+          exit $lastExitCode
 
       - name: Smoke check Windows desktop installer
         working-directory: gui
