@@ -38,6 +38,7 @@ assert_file .gitignore
 assert_file config.example.env
 assert_file docs/security.md
 assert_file docs/cli-reference.md
+assert_file docs/windows.md
 assert_file docs/storage-targets.md
 assert_file docs/restore-guide.md
 assert_file docs/roadmap.md
@@ -55,8 +56,10 @@ assert_file gui/src/lib/desktopBridge.ts
 assert_file gui/scripts/desktop-check.mjs
 assert_file gui/scripts/desktop-checksum.mjs
 assert_file gui/scripts/desktop-smoke.mjs
+assert_file gui/scripts/windows-desktop-smoke.mjs
 assert_file gui/src-tauri/Cargo.toml
 assert_file gui/src-tauri/tauri.conf.json
+assert_file gui/src-tauri/tauri.windows.conf.json
 assert_file gui/src-tauri/src/lib.rs
 assert_file gui/src-tauri/icons/icon.icns
 assert_file gui/src-tauri/icons/icon.png
@@ -75,7 +78,14 @@ assert_file tests/test-remote-retention.sh
 assert_file tests/test-sync-local-authoritative.sh
 assert_file tests/test-scheduled-sync-mode.sh
 assert_file tests/test-profile-plan.sh
+assert_file tests/test-windows-preview.sh
 assert_file tests/test-restore-plan.sh
+
+assert_file scripts/windows/codexbackup.ps1
+assert_file scripts/windows/codexrestore.ps1
+assert_file scripts/windows/codexcredential.ps1
+assert_file scripts/windows/codexscheduledbackup.ps1
+assert_file scripts/windows/README.md
 
 assert_executable scripts/codexbackup.sh
 assert_executable scripts/codexrestore.sh
@@ -95,12 +105,12 @@ assert_contains README.md 'rclone'
 assert_contains README.md 'codexrestore.sh --latest'
 assert_contains README.md 'codexrestore.sh --plan'
 assert_contains README.md 'docs/cli-reference.md'
-assert_contains README.md 'Windows 支持已纳入后续路线'
+assert_contains README.md 'Windows 预览'
 assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
-assert_contains README_EN.md 'Windows support is now part of the roadmap'
+assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.28\.0"'
+assert_contains gui/package.json '"version": "0\.29\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -108,6 +118,7 @@ assert_file gui/src/lib/dailyUsageStatus.ts
 assert_contains gui/package.json '"desktop:build"'
 assert_contains gui/package.json '"desktop:checksum"'
 assert_contains gui/package.json '"desktop:smoke"'
+assert_contains gui/package.json '"desktop:smoke:windows"'
 assert_contains gui/src-tauri/tauri.conf.json '"productName": "CodexBackup"'
 assert_contains gui/src-tauri/tauri.conf.json '"../../helper/server\.mjs"'
 assert_contains gui/src-tauri/tauri.conf.json '"toolkit/helper/server\.mjs"'
@@ -152,6 +163,7 @@ assert_contains docs/cli-reference.md 'codexinstallautomation'
 assert_contains docs/cli-reference.md 'CODEX_BACKUP_SYNC_ENABLED'
 assert_contains docs/cli-reference.md '--profile-plan'
 assert_contains docs/cli-reference.md 'Windows'
+assert_contains docs/windows.md 'Windows 预览'
 assert_contains docs/roadmap.md 'Phase A\.2: Windows Support'
 assert_contains docs/restore-guide.md 'CODEX_BACKUP_TARGET=webdav'
 assert_contains docs/restore-guide.md 'CODEX_BACKUP_TARGET=rclone'
@@ -168,6 +180,7 @@ assert_contains .github/workflows/ci.yml 'test-remote-retention'
 assert_contains .github/workflows/ci.yml 'test-sync-local-authoritative'
 assert_contains .github/workflows/ci.yml 'test-scheduled-sync-mode'
 assert_contains .github/workflows/ci.yml 'test-profile-plan'
+assert_contains .github/workflows/ci.yml 'test-windows-preview'
 assert_contains .github/workflows/ci.yml 'helper/\*\.test\.mjs'
 
 for file in README.md config.example.env docs/*.md examples/*.env scripts/*.sh; do

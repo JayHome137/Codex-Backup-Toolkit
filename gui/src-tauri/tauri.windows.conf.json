@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CodexBackup",
+  "version": "0.29.0",
+  "identifier": "com.jayhome137.codexbackup",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../dist"
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "category": "Utility",
+    "shortDescription": "CodexBackup Windows preview",
+    "longDescription": "CodexBackup Windows preview package. Windows native validation is still pending.",
+    "resources": {
+      "../../helper": "toolkit/helper",
+      "../../scripts": "toolkit/scripts",
+      "../../config.example.env": "toolkit/config.example.env",
+      "../../examples": "toolkit/examples"
+    }
+  }
+}

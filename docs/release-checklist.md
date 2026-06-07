@@ -62,6 +62,8 @@
 - [ ] 确认 `docs/cli-reference.md` 覆盖当前 CLI 命令、环境变量和安全边界。
 - [ ] 确认 `codexbackup --profile-plan --platform win32` 仍标记为 `planned`，不把 Windows 真实备份写成当前已支持。
 - [ ] 确认 macOS dry-run、fingerprint 和真实备份 staging 都由 profile/archive plan 驱动，归档内路径仍兼容旧恢复流程。
+- [ ] 确认 Windows 预览说明没有写成 Windows 真实备份已稳定可用。
+- [ ] 确认 Windows Credential Manager 和 Task Scheduler 入口只支持 validate-only，不会修改真实系统状态。
 - [ ] 确认 README 和 README_EN 描述的是同一套发布行为。
 - [ ] 确认没有提交个人主机名、用户名、token、密码或备份归档。
 - [ ] 确认 `CHANGELOG.md` 已填写发布日期。
@@ -71,14 +73,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.28.0
+git tag v0.29.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.28.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.29.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -108,5 +110,7 @@ git push origin main --tags
 - [ ] 说明新增 CLI 参考文档，集中整理命令、环境变量和安全边界。
 - [ ] 说明新增 `--profile-plan --platform win32` 只读路径计划，Windows 真实备份仍未启用。
 - [ ] 说明 macOS 备份路径已改为 profile/archive plan 驱动，当前归档结构保持兼容。
+- [ ] 说明 Windows 预览新增 PowerShell 入口、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架和 Tauri Windows 打包配置。
+- [ ] 说明 Windows 原生环境验证和 Windows 安装包构建仍待完成。
 - [ ] 说明 WebDAV 和 rclone 已支持 `codexrestore --latest` 拉取最新归档。
 - [ ] 说明 WebDAV 和 rclone 远端保留策略默认关闭，只有设置 `CODEX_BACKUP_REMOTE_RETENTION=1` 才会删除旧远端归档。

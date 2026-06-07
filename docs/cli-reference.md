@@ -7,7 +7,7 @@
 | 平台 | 当前状态 | 说明 |
 | --- | --- | --- |
 | macOS | 已验证 | 当前 CLI、helper、launchd 自动化和 Tauri 桌面产物均以 macOS 为主。 |
-| Windows | 已纳入路线，尚未标记可用 | 后续需要补齐 Windows 路径发现、PowerShell/原生命令入口、计划任务、凭据保存、压缩/校验和桌面打包验证。 |
+| Windows | 预览，尚未完成原生验证 | 已加入 PowerShell 入口、路径计划、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架和 Tauri Windows 打包配置；Windows 原生验证仍待完成。 |
 
 除非文档明确说明某个版本已完成 Windows 支持，否则本文件中的脚本路径、日志路径、Keychain 和 `launchd` 描述都按 macOS 行为理解。
 
@@ -19,6 +19,10 @@
 | `scripts/codexrestore.sh` | 恢复最新备份或指定归档 | 真实恢复会改动本机文件；`--plan` 只读 |
 | `scripts/codexinstallautomation.sh` | 安装、卸载、查看或隔离验证 macOS 定时任务 | `install/uninstall` 会修改 launchd；`validate` 只做隔离验证 |
 | `scripts/codexscheduledbackup.sh` | launchd 调用的定时入口 | 按配置执行普通备份或一致性备份 |
+| `scripts/windows/codexbackup.ps1` | Windows 备份预览、环境检查和路径计划 | `-ProfilePlan`、`-Doctor`、`-DryRun` 只读；本地 zip 备份预览会创建归档 |
+| `scripts/windows/codexrestore.ps1` | Windows 恢复预案 | 只允许 `-Plan`，真实恢复未启用 |
+| `scripts/windows/codexcredential.ps1` | Windows Credential Manager 预览 | 只允许 `-ValidateOnly`，不保存或删除凭据 |
+| `scripts/windows/codexscheduledbackup.ps1` | Windows Task Scheduler 预览 | 只允许 `-ValidateOnly`，不安装、修改或删除任务 |
 
 ## `codexbackup`
 

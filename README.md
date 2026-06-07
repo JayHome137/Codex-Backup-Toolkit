@@ -14,7 +14,7 @@
 - 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天执行一次真实备份。
 - 支持默认关闭的本地为准一致性检查：按可选频率对比本地状态和最新备份，不一致时生成新的时间戳备份，并套用保留策略。
 - 提供 macOS 桌面 App 框架、浏览器开发模式和本地 helper，用于配置检查、helper 生命周期、配置保存、Keychain 密钥管理、受控真实备份执行、恢复预案、备份结果和安全边界验证。
-- Windows 支持已进入产品路线：后续会补齐 Windows 路径发现、PowerShell/原生命令入口、任务计划程序、凭据保存和桌面打包。
+- Windows 预览已加入：提供 PowerShell 入口、Windows 路径计划、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架，以及 Tauri Windows 打包配置；Windows 原生环境验证仍待完成。
 
 ## 快速开始
 
@@ -84,7 +84,7 @@ source ./config.env
 
 完整命令、选项和环境变量见 [CLI 参考](docs/cli-reference.md)。
 
-跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 CLI 和桌面产物仍按 macOS 验证；Windows 相关能力会在后续版本逐步加入。
+跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 macOS CLI 和桌面产物已本机验证；Windows 预览代码路径已加入，但仍需要在 Windows 原生环境完成最终验证。
 
 0.28.0 起，macOS 真实备份、dry-run 和 fingerprint 都会从同一份 profile/archive 计划读取路径；这不会改变当前 macOS 归档结构，但会让后续 Windows 路径接入更稳。你也可以先查看 Codex profile 路径计划：
 
@@ -94,6 +94,18 @@ source ./config.env
 ```
 
 `win32` 输出会标记为 `planned`，只用于后续实现和验证，不代表 Windows 真实备份已经启用。
+
+0.29.0 起可以查看 Windows 预览入口说明：
+
+```powershell
+pwsh -File .\scripts\windows\codexbackup.ps1 -ProfilePlan
+pwsh -File .\scripts\windows\codexbackup.ps1 -Doctor -Target local
+pwsh -File .\scripts\windows\codexrestore.ps1 -Plan -Archive "$HOME\CodexBackups\codex-backup-host-YYYYmmdd-HHMMSS.zip"
+pwsh -File .\scripts\windows\codexcredential.ps1 -ValidateOnly
+pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
+```
+
+完整说明见 [Windows 预览](docs/windows.md)。这些入口不会安装、修改或删除任务计划程序任务，也不会执行真实恢复。
 
 ## 自动备份
 
@@ -288,6 +300,7 @@ CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=24
 ```zsh
 ./tests/test-open-source-framework.sh
 ./tests/test-restore-plan.sh
+./tests/test-windows-preview.sh
 node --test helper/*.test.mjs
 cd gui && npm test && npm run build
 ```

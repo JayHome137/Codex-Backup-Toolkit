@@ -68,6 +68,26 @@ test('maps macOS profile sources into deterministic staging paths', () => {
   ]);
 });
 
+test('maps Windows profile sources into deterministic staging paths while keeping preview status', () => {
+  const plan = buildProfileArchivePlan({
+    appDataDir: 'C:/Users/Alice/AppData/Roaming',
+    documentsDir: 'C:/Users/Alice/Documents',
+    homeDir: 'C:/Users/Alice',
+    localAppDataDir: 'C:/Users/Alice/AppData/Local',
+    platform: 'win32',
+    profile: 'codex',
+    stagingDir: 'C:/Temp/codex-backup/staging',
+  });
+
+  assert.equal(plan.platform, 'win32');
+  assert.equal(plan.status, 'planned');
+  assert.deepEqual(plan.sources[1], {
+    archivePath: 'AppData/Roaming/Codex',
+    sourcePath: 'C:/Users/Alice/AppData/Roaming/Codex',
+    stagingPath: 'C:/Temp/codex-backup/staging/AppData/Roaming/Codex',
+  });
+});
+
 test('renders a CLI-readable profile plan', () => {
   const plan = buildProfilePathPlan({ homeDir: '/Users/alice', platform: 'darwin', profile: 'codex' });
   const text = profilePathPlanToText(plan);

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.0 - 2026-06-07
+
+- 新增 Windows 预览脚本目录 `scripts/windows/`，包含 `codexbackup.ps1`、`codexrestore.ps1`、`codexcredential.ps1` 和 `codexscheduledbackup.ps1`。
+- Windows `codexbackup.ps1` 支持 `-ProfilePlan`、`-Doctor`、`-DryRun` 和本地 zip 备份预览，并持续标记 `Status: preview`。
+- Windows `codexrestore.ps1` 只生成恢复预案，真实恢复执行仍未启用。
+- Windows Credential Manager 和 Task Scheduler 入口仅支持 `-ValidateOnly`，不会保存凭据或安装、修改、删除任务计划。
+- 新增 `docs/windows.md`、Windows preview smoke 测试和 Tauri Windows `msi/nsis` 打包配置。
+- 当前 macOS 构建仍是本机验证产物；Windows 原生运行和安装包构建仍需在 Windows 环境验证。
+- GUI/Tauri 版本升至 `0.29.0`。
+
 ## 0.28.0 - 2026-06-07
 
 - 新增 `buildProfileArchivePlan`，把 profile 路径计划映射为确定性的归档 staging 路径。

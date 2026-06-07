@@ -2,7 +2,7 @@
 
 `codexbackup` is currently a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote. Windows support is now part of the roadmap, but this version does not mark Windows as ready.
 
-The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows support will be added in later stages for path discovery, PowerShell/native command entrypoints, Task Scheduler, credential storage, and desktop packaging.
+The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows preview support now includes PowerShell entrypoints, Windows path planning, local zip backup preview, restore plans, Credential Manager and Task Scheduler validate-only skeletons, and Tauri Windows packaging config. Native Windows validation is still pending.
 
 ## What It Backs Up
 
@@ -99,7 +99,7 @@ See [storage-targets.md](docs/storage-targets.md) and the files in [examples](ex
 
 For a complete command, option, and environment variable reference, see [CLI reference](docs/cli-reference.md).
 
-For cross-platform status, see [roadmap.md](docs/roadmap.md). The current CLI and desktop artifacts are still validated on macOS.
+For cross-platform status, see [roadmap.md](docs/roadmap.md). The current macOS CLI and desktop artifacts are validated locally; Windows preview code paths are present but still need native Windows validation.
 
 Since 0.28.0, macOS real backup, dry-run, and fingerprint generation read paths from the same profile/archive plan. This keeps the current macOS archive layout unchanged while making later Windows path work safer. You can also inspect the Codex profile path plan before Windows backup execution is enabled:
 
@@ -109,6 +109,18 @@ Since 0.28.0, macOS real backup, dry-run, and fingerprint generation read paths 
 ```
 
 The `win32` output is marked as `planned`; it is for implementation and validation work, not a claim that Windows real backup is enabled.
+
+Since 0.29.0, Windows preview entrypoints are available:
+
+```powershell
+pwsh -File .\scripts\windows\codexbackup.ps1 -ProfilePlan
+pwsh -File .\scripts\windows\codexbackup.ps1 -Doctor -Target local
+pwsh -File .\scripts\windows\codexrestore.ps1 -Plan -Archive "$HOME\CodexBackups\codex-backup-host-YYYYmmdd-HHMMSS.zip"
+pwsh -File .\scripts\windows\codexcredential.ps1 -ValidateOnly
+pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
+```
+
+See [Windows preview](docs/windows.md). These entrypoints do not install, modify, or delete Task Scheduler tasks, and real restore execution remains disabled.
 
 Print supported targets:
 

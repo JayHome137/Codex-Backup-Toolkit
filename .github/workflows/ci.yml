@@ -56,6 +56,9 @@ jobs:
       - name: Run profile path plan check
         run: ./tests/test-profile-plan.sh
 
+      - name: Run Windows preview checks
+        run: ./tests/test-windows-preview.sh
+
       - name: Run local helper tests
         run: node --test helper/*.test.mjs
 
