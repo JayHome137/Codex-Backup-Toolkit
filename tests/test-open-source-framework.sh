@@ -80,6 +80,7 @@ assert_file tests/test-sync-local-authoritative.sh
 assert_file tests/test-scheduled-sync-mode.sh
 assert_file tests/test-profile-plan.sh
 assert_file tests/test-windows-preview.sh
+assert_file tests/windows-install-smoke.ps1
 assert_file tests/test-restore-plan.sh
 
 assert_file scripts/windows/codexbackup.ps1
@@ -111,7 +112,7 @@ assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.31\.0"'
+assert_contains gui/package.json '"version": "0\.32\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -187,6 +188,7 @@ assert_contains .github/workflows/ci.yml 'test-profile-plan'
 assert_contains .github/workflows/ci.yml 'test-windows-preview'
 assert_contains .github/workflows/ci.yml 'desktop:build:windows'
 assert_contains .github/workflows/ci.yml 'desktop:smoke:windows-installer'
+assert_contains .github/workflows/ci.yml 'windows-install-smoke\.ps1'
 assert_contains .github/workflows/ci.yml 'upload-artifact'
 assert_contains .github/workflows/ci.yml 'helper/\*\.test\.mjs'
 

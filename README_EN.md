@@ -2,7 +2,7 @@
 
 `codexbackup` is currently a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote. Windows support is now part of the roadmap, but this version does not mark Windows as ready.
 
-The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows preview support now includes PowerShell entrypoints, Windows path planning, local zip backup preview, restore plans, Credential Manager and Task Scheduler validate-only skeletons, and Tauri Windows packaging config. Native Windows preview validation and installer build checks now run in GitHub Actions, but Windows remains preview-only.
+The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows preview support now includes PowerShell entrypoints, Windows path planning, local zip backup preview, restore plans, Credential Manager and Task Scheduler validate-only skeletons, and Tauri Windows packaging config. Native Windows preview validation, installer build checks, and isolated install-layout smoke checks now run in GitHub Actions, but Windows remains preview-only.
 
 ## What It Backs Up
 
@@ -125,6 +125,8 @@ See [Windows preview](docs/windows.md). These entrypoints do not install, modify
 Since 0.30.0, GitHub Actions runs `tests/windows-native.ps1` on a `windows-latest` runner. It natively validates the Windows profile plan, doctor, local zip backup preview, sha256, manifest, restore plan, and validate-only safety boundaries.
 
 Since 0.31.0, the Windows runner also runs `npm run desktop:build:windows` and `npm run desktop:smoke:windows-installer` to build and smoke-check `.msi` or `.exe` installers. CI uploads the `codexbackup-windows-installers` artifact; signing, auto-update, and real restore execution are still disabled.
+
+Since 0.32.0, the Windows runner also runs `tests/windows-install-smoke.ps1`. It uses MSI administrative install mode to extract the installer into a temporary directory, checks `CodexBackup.exe`, bundled helper files, Windows PowerShell scripts, example config, and validate-only safety boundaries, then removes the temporary directory. It does not register a real installed app, write Task Scheduler jobs, or modify Credential Manager.
 
 Print supported targets:
 

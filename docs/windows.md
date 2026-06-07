@@ -2,7 +2,7 @@
 
 CodexBackup 从 `0.29.0` 起加入 Windows 预览代码路径。这个阶段的目标是补齐 PowerShell 入口、路径计划、恢复预案、凭据和任务计划的安全边界，以及 Tauri Windows 打包配置。
 
-当前状态：`0.30.0` 起，GitHub Actions 会在 `windows-latest` runner 上执行 `tests/windows-native.ps1`，验证 PowerShell 脚本的本地 zip 备份预览、sha256、manifest、恢复预案和 validate-only 安全边界。`0.31.0` 起，Windows runner 还会执行 `npm run desktop:build:windows` 并通过 `npm run desktop:smoke:windows-installer` 检查 `.msi` 或 `.exe` 安装包，随后上传 `codexbackup-windows-installers` artifact。SMB/WebDAV/rclone 原生验证、签名、自动更新和真实恢复执行仍待完成。因此公开说明仍应写成“Windows 预览”，不要写成 Windows 已完整成熟。
+当前状态：`0.30.0` 起，GitHub Actions 会在 `windows-latest` runner 上执行 `tests/windows-native.ps1`，验证 PowerShell 脚本的本地 zip 备份预览、sha256、manifest、恢复预案和 validate-only 安全边界。`0.31.0` 起，Windows runner 还会执行 `npm run desktop:build:windows` 并通过 `npm run desktop:smoke:windows-installer` 检查 `.msi` 或 `.exe` 安装包，随后上传 `codexbackup-windows-installers` artifact。`0.32.0` 起，Windows runner 还会执行 `tests/windows-install-smoke.ps1`，用 MSI 行政安装模式提取安装布局并检查内置资源，验证后自动清理临时目录。SMB/WebDAV/rclone 原生验证、签名、自动更新、真实系统安装后 smoke 和真实恢复执行仍待完成。因此公开说明仍应写成“Windows 预览”，不要写成 Windows 已完整成熟。
 
 ## 命令
 
@@ -66,6 +66,7 @@ pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
 - `codexscheduledbackup.ps1 -ValidateOnly`
 - Tauri Windows `.msi` / `.exe` 构建
 - Windows installer artifact smoke 检查
+- Windows MSI 隔离安装布局 smoke 检查
 
 ## 后续验证
 
@@ -73,4 +74,4 @@ pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
 
 - SMB、WebDAV、rclone 的只读 doctor 验证。
 - Task Scheduler 和 Credential Manager 的 validate-only 行为确认。
-- Windows 安装包签名和安装后 smoke 检查。
+- Windows 安装包签名和真实系统安装后 smoke 检查。

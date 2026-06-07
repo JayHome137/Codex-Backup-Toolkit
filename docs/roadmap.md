@@ -67,7 +67,7 @@ Status: planned. Current releases remain macOS-first until these items are imple
 - Windows credential storage replacement for macOS Keychain, such as Windows Credential Manager. Status: validate-only skeleton added for 0.29.0; mutation disabled.
 - Windows scheduled backup support through Task Scheduler, with validate-only checks that do not mutate existing tasks. Status: validate-only skeleton added for 0.29.0; install/uninstall disabled.
 - Windows local, SMB path, WebDAV, and rclone target verification. Status: local preview added for 0.29.0 and Windows runner validation added for 0.30.0; SMB/WebDAV/rclone native validation pending.
-- Windows desktop packaging and smoke checks for the Tauri app. Status: `msi`/`nsis` config and static smoke added for 0.29.0; Windows runner installer build and artifact upload added for 0.31.0; signing and install-after-download smoke pending.
+- Windows desktop packaging and smoke checks for the Tauri app. Status: `msi`/`nsis` config and static smoke added for 0.29.0; Windows runner installer build and artifact upload added for 0.31.0; isolated MSI install-layout smoke added for 0.32.0; signing and real installed-app smoke pending.
 - Documentation that clearly separates macOS and Windows commands, paths, logs, and safety boundaries. Status: `docs/windows.md` added for 0.29.0.
 
 ## Phase B: More AI Developer Tools

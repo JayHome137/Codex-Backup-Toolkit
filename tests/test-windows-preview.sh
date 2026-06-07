@@ -30,6 +30,7 @@ assert_file gui/src-tauri/icons/icon.ico
 assert_file gui/scripts/windows-desktop-smoke.mjs
 assert_file gui/scripts/windows-installer-smoke.mjs
 assert_file tests/windows-native.ps1
+assert_file tests/windows-install-smoke.ps1
 
 assert_contains scripts/windows/codexbackup.ps1 'param\('
 assert_contains scripts/windows/codexbackup.ps1 'ProfilePlan'
@@ -65,6 +66,10 @@ assert_contains gui/src-tauri/tauri.windows.conf.json '"icons/icon\.ico"'
 assert_contains gui/scripts/windows-installer-smoke.mjs '\.msi'
 assert_contains gui/scripts/windows-installer-smoke.mjs '\.exe'
 assert_contains gui/scripts/windows-installer-smoke.mjs 'desktop:build:windows'
+assert_contains tests/windows-install-smoke.ps1 'TARGETDIR='
+assert_contains tests/windows-install-smoke.ps1 'CodexBackup.exe'
+assert_contains tests/windows-install-smoke.ps1 'No scheduled tasks were changed'
+assert_contains tests/windows-install-smoke.ps1 'No credentials were changed'
 assert_contains gui/package.json 'desktop:smoke:windows'
 assert_contains gui/package.json 'desktop:build:windows'
 assert_contains gui/package.json 'desktop:smoke:windows-installer'
@@ -75,6 +80,7 @@ assert_contains .github/workflows/ci.yml 'tests\\windows-native\.ps1'
 assert_contains .github/workflows/ci.yml 'windows-native'
 assert_contains .github/workflows/ci.yml 'desktop:build:windows'
 assert_contains .github/workflows/ci.yml 'desktop:smoke:windows-installer'
+assert_contains .github/workflows/ci.yml 'windows-install-smoke\.ps1'
 assert_contains .github/workflows/ci.yml 'upload-artifact'
 assert_contains README.md 'windows-latest'
 assert_contains docs/windows.md 'tests/windows-native\.ps1'

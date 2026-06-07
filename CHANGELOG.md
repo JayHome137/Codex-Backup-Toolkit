@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.32.0 - 2026-06-07
+
+- Windows CI 新增隔离安装布局 smoke：`tests/windows-install-smoke.ps1`。
+- 安装布局 smoke 使用 MSI 行政安装模式把安装包提取到临时目录，检查 `CodexBackup.exe`、内置 helper、Windows PowerShell 脚本、示例配置和 validate-only 安全边界。
+- 验证完成后会自动清理临时目录，不注册真实系统应用，不写 Task Scheduler，也不修改 Credential Manager。
+- README、Windows 文档、路线图和发布清单同步标记 Windows 仍为预览，签名、真实系统安装后 smoke、远端目标原生验证和真实恢复仍待完成。
+- GUI/Tauri 版本升至 `0.32.0`。
+
 ## 0.31.0 - 2026-06-07
 
 - Windows CI 在 `windows-latest` runner 上新增 Tauri 安装包构建：`npm run desktop:build:windows`。

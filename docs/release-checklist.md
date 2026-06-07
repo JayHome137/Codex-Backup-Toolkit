@@ -65,7 +65,7 @@
 - [ ] 确认 Windows 预览说明没有写成 Windows 真实备份已稳定可用。
 - [ ] 确认 Windows Credential Manager 和 Task Scheduler 入口只支持 validate-only，不会修改真实系统状态。
 - [ ] 确认 GitHub Actions 的 `windows-native` job 已通过，且执行了 `tests/windows-native.ps1`。
-- [ ] 确认 GitHub Actions 的 Windows runner 已执行 `npm run desktop:build:windows` 和 `npm run desktop:smoke:windows-installer`。
+- [ ] 确认 GitHub Actions 的 Windows runner 已执行 `npm run desktop:build:windows`、`npm run desktop:smoke:windows-installer` 和 `tests/windows-install-smoke.ps1`。
 - [ ] 确认 Windows installer artifact `codexbackup-windows-installers` 已生成。
 - [ ] 确认 README 和 README_EN 描述的是同一套发布行为。
 - [ ] 确认没有提交个人主机名、用户名、token、密码或备份归档。
@@ -76,14 +76,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.31.0
+git tag v0.32.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.31.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.32.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -114,7 +114,7 @@ git push origin main --tags
 - [ ] 说明新增 `--profile-plan --platform win32` 只读路径计划，Windows 真实备份仍未启用。
 - [ ] 说明 macOS 备份路径已改为 profile/archive plan 驱动，当前归档结构保持兼容。
 - [ ] 说明 Windows 预览新增 PowerShell 入口、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架和 Tauri Windows 打包配置。
-- [ ] 说明 GitHub Actions 已加入 Windows runner 原生验证、Windows installer 构建和 artifact 上传。
-- [ ] 说明 Windows 仍是预览阶段，签名、安装后 smoke、SMB/WebDAV/rclone 原生验证和真实恢复执行仍待完成。
+- [ ] 说明 GitHub Actions 已加入 Windows runner 原生验证、Windows installer 构建、隔离安装布局 smoke 和 artifact 上传。
+- [ ] 说明 Windows 仍是预览阶段，签名、真实系统安装后 smoke、SMB/WebDAV/rclone 原生验证和真实恢复执行仍待完成。
 - [ ] 说明 WebDAV 和 rclone 已支持 `codexrestore --latest` 拉取最新归档。
 - [ ] 说明 WebDAV 和 rclone 远端保留策略默认关闭，只有设置 `CODEX_BACKUP_REMOTE_RETENTION=1` 才会删除旧远端归档。
