@@ -17,6 +17,7 @@
 - [ ] 运行 `./tests/test-remote-retention.sh`。
 - [ ] 运行 `./tests/test-sync-local-authoritative.sh`。
 - [ ] 运行 `./tests/test-scheduled-sync-mode.sh`。
+- [ ] 运行 `./tests/test-profile-plan.sh`。
 - [ ] 运行 `node --test helper/*.test.mjs`。
 - [ ] 运行 `cd gui && npm test`。
 - [ ] 运行 `cd gui && npm run build`。
@@ -59,7 +60,7 @@
 - [ ] 确认本轮验证没有加载、修改或卸载已有真实定时备份任务。
 - [ ] 确认 README 示例命令和当前脚本名称一致。
 - [ ] 确认 `docs/cli-reference.md` 覆盖当前 CLI 命令、环境变量和安全边界。
-- [ ] 确认 Windows 支持仍按路线图标记，不把未验证能力写成当前已支持。
+- [ ] 确认 `codexbackup --profile-plan --platform win32` 仍标记为 `planned`，不把 Windows 真实备份写成当前已支持。
 - [ ] 确认 README 和 README_EN 描述的是同一套发布行为。
 - [ ] 确认没有提交个人主机名、用户名、token、密码或备份归档。
 - [ ] 确认 `CHANGELOG.md` 已填写发布日期。
@@ -69,14 +70,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.26.1
+git tag v0.27.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.26.1` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.27.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -104,6 +105,6 @@ git push origin main --tags
 - [ ] 说明 GUI 增加设置页和最新备份结果展示，可查看归档、sha256 和 manifest 路径。
 - [ ] 说明 `codexbackup --config-guide` 是只读配置引导，不会创建备份或修改自动化。
 - [ ] 说明新增 CLI 参考文档，集中整理命令、环境变量和安全边界。
-- [ ] 说明 Windows 支持已纳入路线，但本版仍是 macOS-first 验证产物。
+- [ ] 说明新增 `--profile-plan --platform win32` 只读路径计划，Windows 真实备份仍未启用。
 - [ ] 说明 WebDAV 和 rclone 已支持 `codexrestore --latest` 拉取最新归档。
 - [ ] 说明 WebDAV 和 rclone 远端保留策略默认关闭，只有设置 `CODEX_BACKUP_REMOTE_RETENTION=1` 才会删除旧远端归档。

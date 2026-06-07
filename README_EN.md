@@ -101,6 +101,15 @@ For a complete command, option, and environment variable reference, see [CLI ref
 
 For cross-platform status, see [roadmap.md](docs/roadmap.md). The current CLI and desktop artifacts are still validated on macOS.
 
+Since 0.27.0, you can inspect the Codex profile path plan before Windows backup execution is enabled:
+
+```zsh
+./scripts/codexbackup.sh --profile-plan --platform darwin
+./scripts/codexbackup.sh --profile-plan --platform win32
+```
+
+The `win32` output is marked as `planned`; it is for implementation and validation work, not a claim that Windows real backup is enabled.
+
 Print supported targets:
 
 ```zsh

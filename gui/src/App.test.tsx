@@ -221,9 +221,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /安装/i }));
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.26.1_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.26.1_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.26.1_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.27.0_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.27.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.27.0_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -246,7 +246,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.26.1_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.27.0_aarch64.dmg.sha256');
     });
   });
 
@@ -956,7 +956,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.26.1')).toBeInTheDocument();
+    expect(screen.getByText('0.27.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {

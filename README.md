@@ -86,6 +86,15 @@ source ./config.env
 
 跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 CLI 和桌面产物仍按 macOS 验证；Windows 相关能力会在后续版本逐步加入。
 
+0.27.0 起可以先查看 Codex profile 路径计划：
+
+```zsh
+./scripts/codexbackup.sh --profile-plan --platform darwin
+./scripts/codexbackup.sh --profile-plan --platform win32
+```
+
+`win32` 输出会标记为 `planned`，只用于后续实现和验证，不代表 Windows 真实备份已经启用。
+
 ## 自动备份
 
 安装定时任务：

@@ -115,6 +115,13 @@ test('builds a local authoritative sync command with frequency controls', () => 
   ].join('\n'));
 });
 
+test('builds a read-only profile plan command for Windows path discovery', () => {
+  const action = { type: 'profilePlan', platform: 'win32', profile: 'codex' };
+
+  assert.deepEqual(classifyAction(action), { allowed: true, kind: 'profilePlan' });
+  assert.equal(buildCommandFromAction(action), './scripts/codexbackup.sh --profile-plan --platform win32');
+});
+
 test('rejects unsupported structured actions', () => {
   assert.deepEqual(classifyAction({ type: 'installAutomation' }), {
     allowed: false,

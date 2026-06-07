@@ -53,6 +53,9 @@ jobs:
       - name: Run scheduled sync mode check
         run: ./tests/test-scheduled-sync-mode.sh
 
+      - name: Run profile path plan check
+        run: ./tests/test-profile-plan.sh
+
       - name: Run local helper tests
         run: node --test helper/*.test.mjs
 

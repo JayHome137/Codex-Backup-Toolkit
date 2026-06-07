@@ -76,6 +76,17 @@ function syncCommandRequest(command = [
   };
 }
 
+function profilePlanRequest(command = './scripts/codexbackup.sh --profile-plan --platform win32') {
+  return {
+    schema,
+    version: 1,
+    requestId: 'test-profile-plan-1',
+    createdAt: '2026-06-07T00:00:00.000Z',
+    kind: 'profilePlan',
+    command,
+  };
+}
+
 function backupActionRequest() {
   return {
     schema,
@@ -448,6 +459,24 @@ test('run accepts raw local authoritative sync check requests and calls the inje
     assert.equal(calls[0].kind, 'sync');
     assert.equal(body.audit.commandKind, 'sync');
     assert.equal(body.stdout, 'Sync status: consistent');
+  });
+});
+
+test('run accepts read-only profile plan requests and calls the injected executor', async () => {
+  const calls = [];
+  await withHelper(async (request) => {
+    calls.push(request);
+    return { exitCode: 0, stdout: 'Codex profile path plan\nPlatform: win32\nStatus: planned', stderr: '' };
+  }, async (helper) => {
+    const { response, body } = await requestJson(helper.origin, '/run', {
+      method: 'POST',
+      body: JSON.stringify(profilePlanRequest()),
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(body.audit.commandKind, 'profilePlan');
+    assert.equal(body.stdout.includes('Status: planned'), true);
+    assert.equal(calls[0].command, './scripts/codexbackup.sh --profile-plan --platform win32');
   });
 });
 

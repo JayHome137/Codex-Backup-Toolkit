@@ -32,6 +32,7 @@
 ./scripts/codexbackup.sh --config-guide [--target local|smb|webdav|rclone]
 ./scripts/codexbackup.sh --sync-check [--target local|smb]
 ./scripts/codexbackup.sh --sync-local-authoritative [--target local|smb]
+./scripts/codexbackup.sh --profile-plan --platform darwin|win32
 ./scripts/codexbackup.sh --dry-run
 ./scripts/codexbackup.sh --list-targets
 ```
@@ -44,6 +45,8 @@
 - `--config-guide`：输出目标端配置、安全和加密建议，不创建文件、不访问网络、不修改自动化。
 - `--sync-check`：只读对比本地状态与最新备份 fingerprint。当前支持 `local` 和 `smb`。
 - `--sync-local-authoritative`：本地为准一致性备份。发现不一致时创建新时间戳归档，不从备份回写本机，不覆盖旧归档。
+- `--profile-plan`：只读输出 Codex profile 路径计划，不创建备份。
+- `--platform PLATFORM`：配合 `--profile-plan` 使用，支持 `darwin` 和 `win32`。
 - `--dry-run`：展示将要纳入备份的路径和目标端，不创建归档。
 - `--list-targets`：打印支持的目标端。
 - `-h` / `--help`：显示帮助。
@@ -56,7 +59,10 @@
 ./scripts/codexbackup.sh --target local --local-output "$HOME/CodexBackups"
 ./scripts/codexbackup.sh --sync-check --target local
 ./scripts/codexbackup.sh --sync-local-authoritative --target local
+./scripts/codexbackup.sh --profile-plan --platform win32
 ```
+
+`--profile-plan --platform win32` 当前会显示 `Status: planned`，只用于后续 Windows 支持开发和验证。
 
 返回值：
 

@@ -32,7 +32,7 @@ describe('buildFirstUsePath', () => {
       doctorAdvice: buildDoctorAdvice(readyDoctorReport, defaultConfig),
       helperOnline: true,
       installReadiness: buildInstallReadiness({
-        appVersion: '0.26.1',
+        appVersion: '0.27.0',
         backupAcceptance: acceptance,
         doctorReady: true,
         helperOnline: true,
@@ -56,7 +56,7 @@ describe('buildFirstUsePath', () => {
       doctorAdvice: buildDoctorAdvice(null, defaultConfig),
       helperOnline: false,
       installReadiness: buildInstallReadiness({
-        appVersion: '0.26.1',
+        appVersion: '0.27.0',
         backupAcceptance: acceptance,
         doctorReady: false,
         helperOnline: false,
@@ -87,7 +87,7 @@ describe('buildFirstUsePath', () => {
       }, blockedConfig),
       helperOnline: true,
       installReadiness: buildInstallReadiness({
-        appVersion: '0.26.1',
+        appVersion: '0.27.0',
         backupAcceptance: acceptance,
         doctorReady: false,
         helperOnline: true,

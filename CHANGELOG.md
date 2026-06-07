@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.27.0 - 2026-06-07
+
+- 新增 `helper/profile-paths.mjs`，提供 Codex profile 的跨平台路径计划能力。
+- 新增只读 CLI：`codexbackup --profile-plan --platform darwin|win32`，可查看 macOS 当前路径计划和 Windows 规划路径。
+- helper allowlist 新增只读 `profilePlan` action 和 raw 命令放行，仅允许 `darwin` 或 `win32`，不执行备份或恢复。
+- Windows 路径计划会标记为 `planned`，用于后续验证和实现，不把 Windows 真实备份标记为已可用。
+- 新增 profile path、helper action、helper server 和 CLI 测试。
+- GUI/Tauri 版本升至 `0.27.0`。
+
 ## 0.26.1 - 2026-06-07
 
 - 新增 `docs/cli-reference.md`，集中整理 `codexbackup`、`codexrestore`、`codexinstallautomation` 和定时入口的 CLI 用法。

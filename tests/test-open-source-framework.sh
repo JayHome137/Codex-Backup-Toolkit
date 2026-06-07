@@ -50,6 +50,7 @@ assert_file .github/ISSUE_TEMPLATE/bug_report.yml
 assert_file .github/ISSUE_TEMPLATE/feature_request.yml
 assert_file gui/package.json
 assert_file gui/src/lib/helperApi.ts
+assert_file helper/profile-paths.mjs
 assert_file gui/src/lib/desktopBridge.ts
 assert_file gui/scripts/desktop-check.mjs
 assert_file gui/scripts/desktop-checksum.mjs
@@ -73,6 +74,7 @@ assert_file tests/test-remote-latest-restore.sh
 assert_file tests/test-remote-retention.sh
 assert_file tests/test-sync-local-authoritative.sh
 assert_file tests/test-scheduled-sync-mode.sh
+assert_file tests/test-profile-plan.sh
 assert_file tests/test-restore-plan.sh
 
 assert_executable scripts/codexbackup.sh
@@ -98,7 +100,7 @@ assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows support is now part of the roadmap'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.26\.1"'
+assert_contains gui/package.json '"version": "0\.27\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -135,6 +137,7 @@ assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_RETENTION_DAYS'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_REMOTE_RETENTION'
 assert_contains scripts/codexbackup.sh '--sync-check'
 assert_contains scripts/codexbackup.sh '--sync-local-authoritative'
+assert_contains scripts/codexbackup.sh '--profile-plan'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS'
 assert_contains scripts/codexbackup.sh 'age'
@@ -147,6 +150,7 @@ assert_contains docs/cli-reference.md 'codexbackup'
 assert_contains docs/cli-reference.md 'codexrestore'
 assert_contains docs/cli-reference.md 'codexinstallautomation'
 assert_contains docs/cli-reference.md 'CODEX_BACKUP_SYNC_ENABLED'
+assert_contains docs/cli-reference.md '--profile-plan'
 assert_contains docs/cli-reference.md 'Windows'
 assert_contains docs/roadmap.md 'Phase A\.2: Windows Support'
 assert_contains docs/restore-guide.md 'CODEX_BACKUP_TARGET=webdav'
@@ -163,6 +167,7 @@ assert_contains .github/workflows/ci.yml 'test-remote-latest-restore'
 assert_contains .github/workflows/ci.yml 'test-remote-retention'
 assert_contains .github/workflows/ci.yml 'test-sync-local-authoritative'
 assert_contains .github/workflows/ci.yml 'test-scheduled-sync-mode'
+assert_contains .github/workflows/ci.yml 'test-profile-plan'
 assert_contains .github/workflows/ci.yml 'helper/\*\.test\.mjs'
 
 for file in README.md config.example.env docs/*.md examples/*.env scripts/*.sh; do

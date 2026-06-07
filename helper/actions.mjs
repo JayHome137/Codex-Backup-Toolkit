@@ -1,4 +1,5 @@
 const allowedTargets = new Set(['local', 'smb', 'webdav', 'rclone']);
+const allowedProfilePlanPlatforms = new Set(['darwin', 'win32']);
 
 export function classifyAction(action) {
   if (!action || typeof action !== 'object') {
@@ -15,6 +16,10 @@ export function classifyAction(action) {
 
   if (action.type === 'restorePlan') {
     return classifyRestorePlanAction(action);
+  }
+
+  if (action.type === 'profilePlan') {
+    return classifyProfilePlanAction(action);
   }
 
   return { allowed: false, reason: `Unsupported helper action: ${String(action.type)}.` };
@@ -36,6 +41,10 @@ export function buildCommandFromAction(action) {
 
   if (action.type === 'restorePlan') {
     return buildRestorePlanCommand(action);
+  }
+
+  if (action.type === 'profilePlan') {
+    return buildProfilePlanCommand(action);
   }
 
   throw new Error(`Unsupported helper action: ${String(action.type)}.`);
@@ -89,6 +98,18 @@ function classifyRestorePlanAction(action) {
     if (!targetCheck.allowed) return targetCheck;
   }
   return { allowed: true, kind: 'restorePlan' };
+}
+
+function classifyProfilePlanAction(action) {
+  const profile = action.profile ?? 'codex';
+  const platform = action.platform ?? 'darwin';
+  if (profile !== 'codex') {
+    return { allowed: false, reason: `Unsupported profile plan profile: ${String(profile)}.` };
+  }
+  if (!allowedProfilePlanPlatforms.has(platform)) {
+    return { allowed: false, reason: `Unsupported profile plan platform: ${String(platform)}.` };
+  }
+  return { allowed: true, kind: 'profilePlan' };
 }
 
 function buildBackupCommand(action) {
@@ -180,6 +201,11 @@ function buildRestorePlanCommand(action) {
   }
   const command = args.join(' ');
   return lines.length > 0 ? formatCommand(lines, command) : command;
+}
+
+function buildProfilePlanCommand(action) {
+  const platform = action.platform ?? 'darwin';
+  return `./scripts/codexbackup.sh --profile-plan --platform ${platform}`;
 }
 
 function formatCommand(lines, command) {

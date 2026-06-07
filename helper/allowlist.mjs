@@ -26,8 +26,8 @@ export function classifyHelperCommand(request) {
     return { ...classification, command: buildCommandFromAction(request.action) };
   }
 
-  if (request.kind !== 'doctor' && request.kind !== 'validate' && request.kind !== 'backup' && request.kind !== 'sync') {
-    return { allowed: false, reason: 'Only doctor, backup, sync, and isolated validate requests are allowed.' };
+  if (request.kind !== 'doctor' && request.kind !== 'validate' && request.kind !== 'backup' && request.kind !== 'sync' && request.kind !== 'profilePlan') {
+    return { allowed: false, reason: 'Only doctor, profile plan, backup, sync, and isolated validate requests are allowed.' };
   }
 
   if (typeof request.command !== 'string' || request.command.trim() === '') {
@@ -46,7 +46,23 @@ export function classifyHelperCommand(request) {
     return classifySyncCommand(request.command);
   }
 
+  if (request.kind === 'profilePlan') {
+    return classifyProfilePlanCommand(request.command);
+  }
+
   return classifyValidateCommand(request.command);
+}
+
+function classifyProfilePlanCommand(command) {
+  const lines = parseSafeCommandLines(command);
+  if (!lines.ok) return lines;
+
+  const match = lines.finalLine.match(/^\.\/scripts\/codexbackup\.sh --profile-plan --platform (darwin|win32)$/);
+  if (!match || Object.keys(lines.env).length > 0) {
+    return { allowed: false, reason: 'Only read-only codexbackup profile plan commands for darwin or win32 are allowed.' };
+  }
+
+  return { allowed: true, kind: 'profilePlan' };
 }
 
 function classifyDoctorCommand(command) {

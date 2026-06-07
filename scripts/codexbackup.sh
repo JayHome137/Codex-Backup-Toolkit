@@ -49,6 +49,8 @@ LIST_TARGETS=0
 CONFIG_GUIDE=0
 SYNC_CHECK=0
 SYNC_LOCAL_AUTHORITATIVE=0
+PROFILE_PLAN=0
+PROFILE_PLAN_PLATFORM="${CODEX_BACKUP_PROFILE_PLAN_PLATFORM:-darwin}"
 
 cleanup() {
   rm -rf "$WORK_DIR"
@@ -62,6 +64,7 @@ Usage: codexbackup [--target local|smb|webdav|rclone] [--local-output DIR]
        codexbackup --config-guide [--target local|smb|webdav|rclone]
        codexbackup --sync-check [--target local|smb|webdav|rclone]
        codexbackup --sync-local-authoritative [--target local|smb|webdav|rclone]
+       codexbackup --profile-plan --platform darwin|win32
        codexbackup --list-targets
 
 Creates a Codex Desktop backup archive and publishes it to the configured
@@ -75,6 +78,8 @@ Options:
   --sync-check         Compare local data with the latest backup fingerprint. Read-only.
   --sync-local-authoritative
                        If local data differs from the latest backup, create a new timestamped backup.
+  --profile-plan       Print the Codex profile path plan without backing up.
+  --platform PLATFORM  Platform for --profile-plan. Supported: darwin, win32.
   --dry-run            Show what would be backed up and where, without creating files.
   --list-targets       Print supported storage targets.
   -h, --help           Show this help.
@@ -115,6 +120,15 @@ while [[ $# -gt 0 ]]; do
     --sync-local-authoritative)
       SYNC_LOCAL_AUTHORITATIVE=1
       shift
+      ;;
+    --profile-plan)
+      PROFILE_PLAN=1
+      shift
+      ;;
+    --platform)
+      [[ $# -ge 2 ]] || { echo "Missing value for --platform" >&2; exit 2; }
+      PROFILE_PLAN_PLATFORM="$2"
+      shift 2
       ;;
     --dry-run)
       DRY_RUN=1
@@ -216,6 +230,33 @@ EOF
 
 if [[ "$CONFIG_GUIDE" -eq 1 ]]; then
   print_config_guide
+  exit 0
+fi
+
+print_profile_plan() {
+  case "$PROFILE_PLAN_PLATFORM" in
+    darwin|win32) ;;
+    *) echo "Unsupported profile plan platform: ${PROFILE_PLAN_PLATFORM}" >&2; exit 2 ;;
+  esac
+
+  node --input-type=module <<EOF
+import { buildProfilePathPlan, profilePathPlanToText } from './helper/profile-paths.mjs';
+
+const plan = buildProfilePathPlan({
+  appDataDir: process.env.APPDATA,
+  documentsDir: process.env.CODEX_BACKUP_DOCUMENTS_DIR,
+  homeDir: process.env.HOME || process.env.USERPROFILE,
+  localAppDataDir: process.env.LOCALAPPDATA,
+  platform: '${PROFILE_PLAN_PLATFORM}',
+  profile: '${PROFILE}',
+});
+
+process.stdout.write(profilePathPlanToText(plan));
+EOF
+}
+
+if [[ "$PROFILE_PLAN" -eq 1 ]]; then
+  print_profile_plan
   exit 0
 fi
 

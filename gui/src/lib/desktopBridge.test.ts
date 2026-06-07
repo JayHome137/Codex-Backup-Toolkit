@@ -42,7 +42,7 @@ describe('desktop bridge', () => {
         desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
       },
       toolkit: { available: false, source: 'unavailable' },
-      version: '0.26.1',
+      version: '0.27.0',
     });
   });
 

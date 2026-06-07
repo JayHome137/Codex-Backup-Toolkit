@@ -228,7 +228,7 @@ function buildResponse(request, options) {
     stderr: options.stderr,
     ...(options.errorCode ? { errorCode: options.errorCode } : {}),
     audit: {
-      commandKind: ['doctor', 'validate', 'backup', 'restorePlan', 'sync'].includes(request?.kind) ? request.kind : 'doctor',
+      commandKind: ['doctor', 'validate', 'backup', 'restorePlan', 'sync', 'profilePlan'].includes(request?.kind) ? request.kind : 'doctor',
       decision: options.decision,
       helper: helperName,
       startedAt: options.startedAt,
