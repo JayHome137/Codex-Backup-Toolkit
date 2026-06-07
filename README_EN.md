@@ -130,6 +130,8 @@ Since 0.32.0, the Windows runner also runs `tests/windows-install-smoke.ps1`. It
 
 Since 0.33.0, the macOS GUI includes a Diagnostics page. It summarizes desktop runtime readiness, helper state, bundled toolkit resources, config/history/log paths, first-backup proof, and release-smoke status. This page is read-only: it does not install, uninstall, load, or unload `launchd`, and it does not execute real restore.
 
+Since 0.34.0, the Diagnostics page also shows an actionable fix path. These actions only navigate to Overview, Settings, Schedule, or refresh read-only diagnostics. They do not install, uninstall, load, or modify `launchd`, do not execute real restore, and do not take over an external helper process.
+
 Before a macOS release, run the read-only release smoke check:
 
 ```zsh

@@ -94,7 +94,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.33.0';
+const appVersion = '0.34.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -836,7 +836,9 @@ function App() {
             <MacosDiagnosticsPanel
               diagnostics={desktopDiagnostics}
               helperStatus={desktopHelperStatus}
+              onOpenOverview={() => setActiveSection('overview')}
               onOpenLogs={() => setActiveSection('logs')}
+              onOpenSchedule={() => setActiveSection('schedule')}
               onOpenSettings={() => setActiveSection('settings')}
               onRefreshDiagnostics={() => refreshDesktopDiagnostics()}
               paths={desktopPaths}
@@ -2173,6 +2175,8 @@ function MacosDiagnosticsPanel({
   diagnostics,
   helperStatus,
   onOpenLogs,
+  onOpenOverview,
+  onOpenSchedule,
   onOpenSettings,
   onRefreshDiagnostics,
   paths,
@@ -2183,6 +2187,8 @@ function MacosDiagnosticsPanel({
   diagnostics: DesktopDiagnostics | null;
   helperStatus: DesktopHelperStatus;
   onOpenLogs: () => void;
+  onOpenOverview: () => void;
+  onOpenSchedule: () => void;
   onOpenSettings: () => void;
   onRefreshDiagnostics: () => Promise<void>;
   paths: DesktopPaths;
@@ -2224,6 +2230,21 @@ function MacosDiagnosticsPanel({
       <div className="check-list check-list--grid">
         {readiness.items.map((item) => <MacosReadinessItemCard item={item} key={item.id} />)}
       </div>
+      <section className="sub-panel">
+        <div className="panel-title">
+          <Compass size={16} aria-hidden="true" />
+          <span>建议修复路径</span>
+        </div>
+        <div className="check-list check-list--grid">
+          {readiness.fixPlan.map((fix) => (
+            <MacosReadinessFixCard
+              fix={fix}
+              key={fix.id}
+              onAction={macosReadinessFixAction(fix, { onOpenOverview, onOpenSchedule, onOpenSettings, onRefreshDiagnostics })}
+            />
+          ))}
+        </div>
+      </section>
       <div className="two-column two-column--tight">
         <section className="sub-panel">
           <div className="panel-title">
@@ -2265,6 +2286,40 @@ function MacosReadinessItemCard({ item }: { item: MacosReadinessItem }) {
       </div>
     </div>
   );
+}
+
+function MacosReadinessFixCard({ fix, onAction }: { fix: MacosReadiness['fixPlan'][number]; onAction: () => void }) {
+  return (
+    <div className="check-item check-item--warning">
+      <Compass size={15} aria-hidden="true" />
+      <div>
+        <strong>{fix.action}</strong>
+        <span>{fix.detail}</span>
+        <span>{fix.safeBoundary}</span>
+        <button className="inline-action" onClick={onAction} type="button">前往处理</button>
+      </div>
+    </div>
+  );
+}
+
+function macosReadinessFixAction(
+  fix: MacosReadiness['fixPlan'][number],
+  actions: {
+    onOpenOverview: () => void;
+    onOpenSchedule: () => void;
+    onOpenSettings: () => void;
+    onRefreshDiagnostics: () => Promise<void>;
+  },
+): () => void {
+  return {
+    'check-automation': actions.onOpenSchedule,
+    'first-backup': actions.onOpenOverview,
+    'keep-records': () => void actions.onRefreshDiagnostics(),
+    'open-desktop': actions.onOpenSettings,
+    'refresh-diagnostics': () => void actions.onRefreshDiagnostics(),
+    'release-smoke': () => void actions.onRefreshDiagnostics(),
+    'start-helper': actions.onOpenSettings,
+  }[fix.id];
 }
 
 function macosReadinessStatus(level: MacosReadiness['level']): CommandResult['status'] {

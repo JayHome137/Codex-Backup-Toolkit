@@ -54,6 +54,7 @@ Status: current scope.
 - Cross-platform Codex profile path plan with macOS supported paths and planned Windows paths. Status: added for 0.27.0.
 - Profile-driven archive staging for macOS dry-run, fingerprint, and real backup copying. Status: added for 0.28.0.
 - macOS diagnostics center and read-only release smoke script for `.app/.dmg`, sha256, icons, and bundled toolkit resources. Status: added for 0.33.0.
+- Actionable macOS diagnostic fix path for first-run readiness, helper startup guidance, read-only schedule review, first backup acceptance, and release smoke follow-up. Status: added for 0.34.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.

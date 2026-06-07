@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.34.0 - 2026-06-07
+
+- macOS `诊断` 页新增 `建议修复路径`，把桌面运行、helper、toolkit、路径、计划状态、首次备份验收和 release smoke 的缺口转成可点击的下一步。
+- `buildMacosReadiness` 新增结构化 `fixPlan`，每条建议都包含动作、说明、安全边界和目标页面，避免只给静态状态。
+- 诊断建议继续保持安全边界：只跳转页面或刷新只读诊断，不安装、卸载、加载或修改 `launchd`，不执行真实恢复，不接管外部 helper。
+- GUI 测试和 macOS readiness 测试覆盖修复路径展示、导航和安全边界。
+- GUI/Tauri 版本升至 `0.34.0`。
+
 ## 0.33.0 - 2026-06-07
 
 - macOS GUI 新增 `诊断` 入口，集中展示桌面运行时、helper、内置 toolkit、产品路径、首次备份证明和发布 smoke 状态。

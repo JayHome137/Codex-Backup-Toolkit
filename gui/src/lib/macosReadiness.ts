@@ -7,6 +7,14 @@ export type MacosReadinessItem = {
   status: 'ok' | 'warning' | 'blocked';
 };
 
+export type MacosReadinessFix = {
+  action: string;
+  detail: string;
+  id: 'open-desktop' | 'start-helper' | 'refresh-diagnostics' | 'check-automation' | 'first-backup' | 'release-smoke' | 'keep-records';
+  safeBoundary: string;
+  target: 'settings' | 'diagnostics' | 'schedule' | 'overview' | 'release-checklist';
+};
+
 export type MacosReadinessInput = {
   automationLoaded: boolean;
   backupAccepted: boolean;
@@ -21,6 +29,7 @@ export type MacosReadinessInput = {
 };
 
 export type MacosReadiness = {
+  fixPlan: MacosReadinessFix[];
   items: MacosReadinessItem[];
   level: MacosReadinessLevel;
   nextActions: string[];
@@ -72,6 +81,7 @@ export function buildMacosReadiness(input: MacosReadinessInput): MacosReadiness 
   const level = items.some((item) => item.status === 'blocked') ? 'blocked' : score === items.length ? 'ready' : 'needs-action';
 
   return {
+    fixPlan: fixPlan(input, items),
     items,
     level,
     nextActions: nextActions(input, items),
@@ -96,6 +106,74 @@ function nextActions(input: MacosReadinessInput, items: MacosReadinessItem[]): s
   return actions.length > 0 && items.some((item) => item.status !== 'ok')
     ? actions
     : ['保持当前 macOS 验证记录，继续按发布清单验收。'];
+}
+
+function fixPlan(input: MacosReadinessInput, items: MacosReadinessItem[]): MacosReadinessFix[] {
+  const fixes: MacosReadinessFix[] = [];
+  if (!input.isDesktop) {
+    fixes.push({
+      action: '打开桌面 App 版本',
+      detail: '浏览器开发模式可以预览界面，但不能托管 helper 或打开本机路径。',
+      id: 'open-desktop',
+      safeBoundary: '只切换运行入口，不会修改备份任务。',
+      target: 'settings',
+    });
+  }
+  if (!input.helperOnline) {
+    fixes.push({
+      action: '在设置页启动 helper',
+      detail: 'helper 在线后，配置保存、历史读取、健康状态和受控真实备份才会可用。',
+      id: 'start-helper',
+      safeBoundary: '只启动桌面 App 托管的本地 helper，不接管外部进程。',
+      target: 'settings',
+    });
+  }
+  if (!input.toolkitAvailable || !pathsReady(input)) {
+    fixes.push({
+      action: '刷新桌面诊断',
+      detail: '重新读取内置 toolkit、配置路径、历史路径和日志路径。',
+      id: 'refresh-diagnostics',
+      safeBoundary: '只读检查路径和资源，不安装或卸载 launchd。',
+      target: 'diagnostics',
+    });
+  }
+  if (!input.automationLoaded) {
+    fixes.push({
+      action: '读取计划状态',
+      detail: '确认已有备份节奏、plist 路径和日志位置，仍不做安装或卸载。',
+      id: 'check-automation',
+      safeBoundary: '只读取自动化状态，不加载、不卸载、不重写定时任务。',
+      target: 'schedule',
+    });
+  }
+  if (!input.backupAccepted) {
+    fixes.push({
+      action: '完成首次真实备份验收',
+      detail: '在概览页手动确认真实备份，成功后回到日志或诊断页刷新历史。',
+      id: 'first-backup',
+      safeBoundary: '真实备份需要手动确认，恢复仍只生成预案。',
+      target: 'overview',
+    });
+  }
+  if (!input.releaseSmokeAvailable) {
+    fixes.push({
+      action: '运行发布 smoke 检查',
+      detail: '检查 .app/.dmg、sha256、图标和内置资源是否完整。',
+      id: 'release-smoke',
+      safeBoundary: '只读检查构建产物，不启动 App、不连接 helper。',
+      target: 'release-checklist',
+    });
+  }
+
+  return fixes.length > 0 && items.some((item) => item.status !== 'ok')
+    ? fixes
+    : [{
+      action: '保持验证记录',
+      detail: '继续按发布清单保留 CI、DMG checksum、桌面 smoke 和首次备份证据。',
+      id: 'keep-records',
+      safeBoundary: '不扩大权限边界。',
+      target: 'release-checklist',
+    }];
 }
 
 function summaryFor(level: MacosReadinessLevel): string {

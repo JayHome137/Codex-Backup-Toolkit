@@ -113,7 +113,7 @@ assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.33\.0"'
+assert_contains gui/package.json '"version": "0\.34\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -123,7 +123,9 @@ assert_contains gui/package.json '"desktop:build:windows"'
 assert_contains gui/package.json '"desktop:checksum"'
 assert_contains gui/package.json '"desktop:smoke"'
 assert_contains gui/src/App.tsx 'macOS 诊断中心'
+assert_contains gui/src/App.tsx '建议修复路径'
 assert_contains gui/src/lib/macosReadiness.ts 'buildMacosReadiness'
+assert_contains gui/src/lib/macosReadiness.ts 'MacosReadinessFix'
 assert_contains tests/test-macos-release-smoke.sh 'no launchd install/uninstall/load/unload'
 assert_contains gui/package.json '"desktop:smoke:windows"'
 assert_contains gui/package.json '"desktop:smoke:windows-installer"'
