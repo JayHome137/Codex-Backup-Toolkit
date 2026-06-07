@@ -30,6 +30,7 @@ const requiredFiles = [
   join(iconRoot, '512x512.png'),
   join(iconRoot, '1024x1024.png'),
   join(iconRoot, 'icon.icns'),
+  join(iconRoot, 'icon.ico'),
   join(iconRoot, 'icon.png'),
   dmgPath,
   checksumPath,

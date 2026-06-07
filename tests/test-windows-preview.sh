@@ -26,6 +26,7 @@ assert_file scripts/windows/codexscheduledbackup.ps1
 assert_file scripts/windows/README.md
 assert_file docs/windows.md
 assert_file gui/src-tauri/tauri.windows.conf.json
+assert_file gui/src-tauri/icons/icon.ico
 assert_file gui/scripts/windows-desktop-smoke.mjs
 assert_file gui/scripts/windows-installer-smoke.mjs
 assert_file tests/windows-native.ps1
@@ -60,6 +61,7 @@ assert_contains docs/windows.md '签名.*安装后 smoke'
 assert_contains docs/windows.md '待完成'
 
 assert_contains gui/src-tauri/tauri.windows.conf.json '"targets": \["msi", "nsis"\]'
+assert_contains gui/src-tauri/tauri.windows.conf.json '"icons/icon\.ico"'
 assert_contains gui/scripts/windows-installer-smoke.mjs '\.msi'
 assert_contains gui/scripts/windows-installer-smoke.mjs '\.exe'
 assert_contains gui/scripts/windows-installer-smoke.mjs 'desktop:build:windows'

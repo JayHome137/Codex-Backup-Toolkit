@@ -212,7 +212,7 @@ CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 
 0.26.0 起，概览页和健康页新增 `日常使用状态`，把首次真实使用路径、最近备份、健康度和自动化读取结果聚合成日常可用、需要关注或有阻断项。它只读取现有状态、跳转页面或刷新健康信息，不重新扫描归档，不新增 helper API，不执行真实恢复，也不会安装、卸载或修改已有定时任务。
 
-0.10.1 起，桌面 App 已接入正式图标资源。当前图标采用黑底玻璃质感备份图标方向，包含多尺寸 PNG 和 `icon.icns`，用于 `.app`、Dock、Finder 和 DMG 展示。
+0.10.1 起，桌面 App 已接入正式图标资源。当前图标采用黑底玻璃质感备份图标方向，包含多尺寸 PNG、`icon.icns` 和 `icon.ico`，用于 `.app`、Dock、Finder、DMG 和 Windows 安装包资源。
 
 ## 浏览器模式和本地 helper
 

@@ -13,8 +13,9 @@
     "active": true,
     "targets": ["msi", "nsis"],
     "category": "Utility",
+    "icon": ["icons/icon.ico"],
     "shortDescription": "CodexBackup Windows preview",
-    "longDescription": "CodexBackup Windows preview package. Windows native validation is still pending.",
+    "longDescription": "CodexBackup Windows preview package. Signing, install-after-download smoke, remote target validation, and real restore execution are still pending.",
     "resources": {
       "../../helper": "toolkit/helper",
       "../../scripts": "toolkit/scripts",

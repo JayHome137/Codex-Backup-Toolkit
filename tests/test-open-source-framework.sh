@@ -62,6 +62,7 @@ assert_file gui/src-tauri/tauri.conf.json
 assert_file gui/src-tauri/tauri.windows.conf.json
 assert_file gui/src-tauri/src/lib.rs
 assert_file gui/src-tauri/icons/icon.icns
+assert_file gui/src-tauri/icons/icon.ico
 assert_file gui/src-tauri/icons/icon.png
 assert_file gui/src-tauri/icons/128x128.png
 assert_file gui/src-tauri/icons/512x512.png
@@ -125,6 +126,7 @@ assert_contains gui/src-tauri/tauri.conf.json '"productName": "CodexBackup"'
 assert_contains gui/src-tauri/tauri.conf.json '"../../helper/server\.mjs"'
 assert_contains gui/src-tauri/tauri.conf.json '"toolkit/helper/server\.mjs"'
 assert_contains gui/src-tauri/tauri.conf.json '"icons/icon\.icns"'
+assert_contains gui/src-tauri/tauri.windows.conf.json '"icons/icon\.ico"'
 assert_contains gui/src-tauri/tauri.conf.json '"../../scripts"'
 assert_contains gui/src-tauri/tauri.conf.json '"toolkit/scripts"'
 assert_contains gui/src-tauri/src/lib.rs 'helper_start'

@@ -13,6 +13,7 @@ const requiredFiles = [
   join(repoRoot, 'scripts', 'windows', 'codexcredential.ps1'),
   join(repoRoot, 'scripts', 'windows', 'codexscheduledbackup.ps1'),
   join(repoRoot, 'docs', 'windows.md'),
+  join(guiRoot, 'src-tauri', 'icons', 'icon.ico'),
 ];
 
 const missing = requiredFiles.filter((file) => !existsSync(file));
@@ -25,6 +26,11 @@ if (missing.length > 0) {
 const config = readFileSync(join(guiRoot, 'src-tauri', 'tauri.windows.conf.json'), 'utf8');
 if (!config.includes('"targets": ["msi", "nsis"]')) {
   console.error('Windows Tauri 配置未启用 msi/nsis targets。');
+  process.exit(1);
+}
+
+if (!config.includes('"icons/icon.ico"')) {
+  console.error('Windows Tauri 配置未引用 icon.ico。');
   process.exit(1);
 }
 

@@ -26,7 +26,7 @@
 - [ ] 运行 `cd gui && npm run desktop:checksum`。
 - [ ] 运行 `cd gui && npm run desktop:smoke`；必须在 checksum 生成完成后再运行，避免并行检查时误报缺少 `.sha256`。
 - [ ] 确认 `.app` Resources 中包含 `toolkit/helper/server.mjs` 和 `toolkit/scripts/codexbackup.sh`。
-- [ ] 确认 `.app` Resources 中包含 `icon.icns`，且 `gui/src-tauri/icons/` 中多尺寸图标齐全。
+- [ ] 确认 `.app` Resources 中包含 `icon.icns`，Windows 配置引用 `icon.ico`，且 `gui/src-tauri/icons/` 中多尺寸图标齐全。
 - [ ] 运行 `./scripts/codexbackup.sh --doctor --target local`。
 - [ ] 启动 `node helper/server.mjs`，打开 GUI，选择 `HTTP 助手`，确认 `检查助手` 显示在线；验证后停止 helper。
 - [ ] 在 GUI 概览页确认 `HTTP 助手` 模式下可以看到 `真实备份确认`，且必须先点击 `确认真实备份` 才能点击 `执行真实备份`。
