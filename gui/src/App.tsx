@@ -12,6 +12,7 @@ import { buildDailyUsageStatus, type DailyUsageCard, type DailyUsageStatus } fro
 import { buildFirstRunJourney, type FirstRunJourney, type FirstRunJourneyStep } from './lib/firstRunJourney';
 import { buildFirstUsePath, type FirstUsePath, type FirstUsePathStep } from './lib/firstUsePath';
 import { buildInstallReadiness, type InstallReadiness, type InstallReadinessStep } from './lib/installReadiness';
+import { buildMacosReadiness, type MacosReadiness, type MacosReadinessItem } from './lib/macosReadiness';
 import { createMockCommandRunner, type CommandResult } from './lib/commands';
 import { createHelperApi, type AutomationStatus, type BackupHistoryEntry } from './lib/helperApi';
 import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtocol';
@@ -93,7 +94,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.27.0';
+const appVersion = '0.33.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -218,6 +219,18 @@ function App() {
     firstUsePath,
     health: backupHealth,
   }), [backupHealth, firstUsePath]);
+  const macosReadiness = useMemo(() => buildMacosReadiness({
+    automationLoaded: Boolean(automationStatus?.loaded),
+    backupAccepted: backupAcceptance.level === 'accepted',
+    configPath: desktopPaths.configPath,
+    helperOnline: helperStatus === 'online' || desktopHelperStatus.online,
+    historyPath: desktopPaths.historyPath,
+    isDesktop: desktopBridge.isDesktop,
+    logDir: desktopPaths.logDir,
+    releaseSmokeAvailable: true,
+    toolkitAvailable: desktopToolkitStatus.available,
+    version: displayedAppVersion,
+  }), [automationStatus?.loaded, backupAcceptance.level, desktopBridge.isDesktop, desktopHelperStatus.online, desktopPaths.configPath, desktopPaths.historyPath, desktopPaths.logDir, desktopToolkitStatus.available, displayedAppVersion, helperStatus]);
 
   useEffect(() => {
     if (!desktopBridge.isDesktop) {
@@ -814,6 +827,22 @@ function App() {
               onOpenSettings={() => setActiveSection('settings')}
               onOpenTargets={() => setActiveSection('targets')}
               refreshing={healthBusy}
+            />
+          </section>
+        )}
+
+        {activeSection === 'diagnostics' && (
+          <section className="view-stack">
+            <MacosDiagnosticsPanel
+              diagnostics={desktopDiagnostics}
+              helperStatus={desktopHelperStatus}
+              onOpenLogs={() => setActiveSection('logs')}
+              onOpenSettings={() => setActiveSection('settings')}
+              onRefreshDiagnostics={() => refreshDesktopDiagnostics()}
+              paths={desktopPaths}
+              readiness={macosReadiness}
+              refreshing={desktopAction === 'diagnostics'}
+              toolkitStatus={desktopToolkitStatus}
             />
           </section>
         )}
@@ -2140,6 +2169,118 @@ function firstRunJourneyLevelLabel(level: FirstRunJourney['level']): string {
   }[level];
 }
 
+function MacosDiagnosticsPanel({
+  diagnostics,
+  helperStatus,
+  onOpenLogs,
+  onOpenSettings,
+  onRefreshDiagnostics,
+  paths,
+  readiness,
+  refreshing,
+  toolkitStatus,
+}: {
+  diagnostics: DesktopDiagnostics | null;
+  helperStatus: DesktopHelperStatus;
+  onOpenLogs: () => void;
+  onOpenSettings: () => void;
+  onRefreshDiagnostics: () => Promise<void>;
+  paths: DesktopPaths;
+  readiness: MacosReadiness;
+  refreshing: boolean;
+  toolkitStatus: DesktopToolkitStatus;
+}) {
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <ClipboardCheck size={16} aria-hidden="true" />
+          <span>macOS 诊断中心</span>
+        </div>
+        <StatusBadge status={macosReadinessStatus(readiness.level)} label={`${readiness.score}/${readiness.items.length} 已就绪`} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="macOS 桌面成熟度" value={macosReadinessLevelLabel(readiness.level)} />
+          <SummaryRow label="结论" value={readiness.summary} />
+          <SummaryRow label="helper" value={desktopHelperStatusLabel(helperStatus)} />
+          <SummaryRow label="toolkit" value={toolkitStatus.available ? toolkitSourceLabel(toolkitStatus.source) : '未就绪'} />
+          <SummaryRow label="最近诊断" value={diagnostics ? `版本 ${diagnostics.version}` : '尚未刷新桌面诊断'} />
+          <SummaryRow label="安全边界" value={readiness.safetyNote} />
+        </div>
+        <div className="readiness-copy">
+          <strong>面向发布前的本机状态汇总</strong>
+          <p>诊断中心聚合桌面运行时、helper、toolkit、路径、首次备份证明和发布 smoke 状态。这里不触发恢复，也不修改自动化任务。</p>
+          <div className="action-row">
+            <button className="button button--primary" disabled={refreshing} onClick={() => void onRefreshDiagnostics()} type="button">
+              <ShieldCheck size={15} aria-hidden="true" />
+              {refreshing ? '诊断中' : '刷新桌面诊断'}
+            </button>
+            <button className="button button--tertiary" onClick={onOpenSettings} type="button">打开设置</button>
+            <button className="button button--tertiary" onClick={onOpenLogs} type="button">打开日志</button>
+          </div>
+        </div>
+      </div>
+      <div className="check-list check-list--grid">
+        {readiness.items.map((item) => <MacosReadinessItemCard item={item} key={item.id} />)}
+      </div>
+      <div className="two-column two-column--tight">
+        <section className="sub-panel">
+          <div className="panel-title">
+            <FolderOpen size={16} aria-hidden="true" />
+            <span>诊断路径</span>
+          </div>
+          <div className="summary-list">
+            <SummaryRow label="配置" value={paths.configPath} />
+            <SummaryRow label="历史" value={paths.historyPath} />
+            <SummaryRow label="日志目录" value={paths.logDir} />
+            <SummaryRow label="桌面 helper 错误" value={paths.desktopHelperStderrLogPath} />
+            <SummaryRow label="自动化错误" value={paths.automationStderrLogPath} />
+          </div>
+        </section>
+        <section className="sub-panel">
+          <div className="panel-title">
+            <ClipboardCheck size={16} aria-hidden="true" />
+            <span>macOS release smoke</span>
+          </div>
+          <div className="summary-list">
+            <SummaryRow label="本机命令" value="npm run desktop:build && npm run desktop:checksum && npm run desktop:smoke" />
+            <SummaryRow label="安全边界" value="不安装、不卸载、不加载或卸载 launchd；不执行真实恢复。" />
+          </div>
+          <StepList steps={readiness.nextActions} />
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function MacosReadinessItemCard({ item }: { item: MacosReadinessItem }) {
+  const Icon = item.status === 'ok' ? CheckCircle2 : TriangleAlert;
+  return (
+    <div className={`check-item check-item--${item.status === 'blocked' ? 'error' : item.status}`}>
+      <Icon size={15} aria-hidden="true" />
+      <div>
+        <strong>{item.label}</strong>
+        <span>{item.detail}</span>
+      </div>
+    </div>
+  );
+}
+
+function macosReadinessStatus(level: MacosReadiness['level']): CommandResult['status'] {
+  if (level === 'ready') return 'success';
+  if (level === 'blocked') return 'error';
+  return 'warning';
+}
+
+function macosReadinessLevelLabel(level: MacosReadiness['level']): string {
+  return {
+    blocked: '有阻断项',
+    'needs-action': '待完善',
+    ready: 'macOS 可验收',
+  }[level];
+}
+
 function FirstLaunchChecklist({
   helperStatus,
   isDesktop,
@@ -2432,6 +2573,7 @@ function sectionTitle(section: SectionId): string {
     guide: '首启引导',
     install: '安装验证',
     health: '备份健康',
+    diagnostics: 'macOS 诊断',
     targets: '目标端',
     schedule: '计划校验',
     restore: '恢复预览',

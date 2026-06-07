@@ -1,6 +1,6 @@
-import { ArchiveRestore, Clock3, Compass, DatabaseBackup, Download, FileText, Gauge, HardDrive, HeartPulse, Settings } from 'lucide-react';
+import { ArchiveRestore, Clock3, Compass, DatabaseBackup, Download, FileText, Gauge, HardDrive, HeartPulse, ScanSearch, Settings } from 'lucide-react';
 
-export type SectionId = 'overview' | 'guide' | 'install' | 'health' | 'targets' | 'schedule' | 'restore' | 'logs' | 'settings';
+export type SectionId = 'overview' | 'guide' | 'install' | 'health' | 'diagnostics' | 'targets' | 'schedule' | 'restore' | 'logs' | 'settings';
 
 type SidebarProps = {
   activeSection: SectionId;
@@ -12,6 +12,7 @@ const items = [
   { id: 'guide', label: '引导', icon: Compass },
   { id: 'install', label: '安装', icon: Download },
   { id: 'health', label: '健康', icon: HeartPulse },
+  { id: 'diagnostics', label: '诊断', icon: ScanSearch },
   { id: 'targets', label: '目标端', icon: HardDrive },
   { id: 'schedule', label: '计划', icon: Clock3 },
   { id: 'restore', label: '恢复', icon: ArchiveRestore },

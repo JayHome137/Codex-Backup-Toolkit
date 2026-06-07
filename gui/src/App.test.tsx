@@ -221,9 +221,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /安装/i }));
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.27.0_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.27.0_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.27.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.33.0_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.33.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.33.0_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -246,8 +246,29 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.27.0_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.33.0_aarch64.dmg.sha256');
     });
+  });
+
+  it('shows a macOS diagnostic center without exposing automation mutation or real restore controls', () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /诊断/i }));
+
+    expect(screen.getByText('macOS 诊断中心')).toBeInTheDocument();
+    expect(screen.getByText('macOS 桌面成熟度')).toBeInTheDocument();
+    expect(screen.getByText('helper 运行状态')).toBeInTheDocument();
+    expect(screen.getByText('内置资源')).toBeInTheDocument();
+    expect(screen.getByText('发布验收脚本')).toBeInTheDocument();
+    expect(screen.getByText(/macOS 诊断只读取状态和路径/)).toBeInTheDocument();
+    expect(screen.getByText('诊断路径')).toBeInTheDocument();
+    expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.err.log')).toBeInTheDocument();
+    expect(screen.getByText('macOS release smoke')).toBeInTheDocument();
+    expect(screen.getByText('npm run desktop:build && npm run desktop:checksum && npm run desktop:smoke')).toBeInTheDocument();
+    expect(screen.getByText('不安装、不卸载、不加载或卸载 launchd；不执行真实恢复。')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /卸载定时任务/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
   });
 
   it('lets the install readiness panel navigate to settings, targets, logs, and restore', async () => {
@@ -956,7 +977,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.27.0')).toBeInTheDocument();
+    expect(screen.getByText('0.33.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {

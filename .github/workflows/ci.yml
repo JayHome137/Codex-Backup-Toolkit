@@ -74,6 +74,25 @@ jobs:
         working-directory: gui
         run: npm run build
 
+      - name: Check macOS desktop build environment
+        working-directory: gui
+        run: npm run desktop:doctor
+
+      - name: Build macOS desktop app
+        working-directory: gui
+        run: npm run desktop:build
+
+      - name: Check macOS desktop checksum
+        working-directory: gui
+        run: npm run desktop:checksum
+
+      - name: Smoke check macOS desktop bundle
+        working-directory: gui
+        run: npm run desktop:smoke
+
+      - name: Smoke check macOS release layout
+        run: ./tests/test-macos-release-smoke.sh
+
   windows-native:
     runs-on: windows-latest
     steps:

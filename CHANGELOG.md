@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.33.0 - 2026-06-07
+
+- macOS GUI 新增 `诊断` 入口，集中展示桌面运行时、helper、内置 toolkit、产品路径、首次备份证明和发布 smoke 状态。
+- 新增 `buildMacosReadiness` 诊断模型和测试，用于判断 macOS 桌面端是否达到日常使用和发布验收基础。
+- 新增 `tests/test-macos-release-smoke.sh`，只读检查 `.app`、`.dmg`、sha256、图标和打包内置 helper/scripts 资源。
+- 发布验收继续保持安全边界：不安装、卸载、加载或卸载 launchd，不执行真实恢复，不触碰已有真实定时备份任务。
+- README、路线图、安全说明和发布清单同步记录 macOS 产品化完善状态。
+- GUI/Tauri 版本升至 `0.33.0`。
+
 ## 0.32.0 - 2026-06-07
 
 - Windows CI 新增隔离安装布局 smoke：`tests/windows-install-smoke.ps1`。

@@ -79,6 +79,7 @@ assert_file tests/test-remote-retention.sh
 assert_file tests/test-sync-local-authoritative.sh
 assert_file tests/test-scheduled-sync-mode.sh
 assert_file tests/test-profile-plan.sh
+assert_file tests/test-macos-release-smoke.sh
 assert_file tests/test-windows-preview.sh
 assert_file tests/windows-install-smoke.ps1
 assert_file tests/test-restore-plan.sh
@@ -112,7 +113,7 @@ assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.32\.0"'
+assert_contains gui/package.json '"version": "0\.33\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -121,6 +122,9 @@ assert_contains gui/package.json '"desktop:build"'
 assert_contains gui/package.json '"desktop:build:windows"'
 assert_contains gui/package.json '"desktop:checksum"'
 assert_contains gui/package.json '"desktop:smoke"'
+assert_contains gui/src/App.tsx 'macOS 诊断中心'
+assert_contains gui/src/lib/macosReadiness.ts 'buildMacosReadiness'
+assert_contains tests/test-macos-release-smoke.sh 'no launchd install/uninstall/load/unload'
 assert_contains gui/package.json '"desktop:smoke:windows"'
 assert_contains gui/package.json '"desktop:smoke:windows-installer"'
 assert_contains gui/src-tauri/tauri.conf.json '"productName": "CodexBackup"'
@@ -186,6 +190,11 @@ assert_contains .github/workflows/ci.yml 'test-sync-local-authoritative'
 assert_contains .github/workflows/ci.yml 'test-scheduled-sync-mode'
 assert_contains .github/workflows/ci.yml 'test-profile-plan'
 assert_contains .github/workflows/ci.yml 'test-windows-preview'
+assert_contains .github/workflows/ci.yml 'desktop:doctor'
+assert_contains .github/workflows/ci.yml 'desktop:build'
+assert_contains .github/workflows/ci.yml 'desktop:checksum'
+assert_contains .github/workflows/ci.yml 'desktop:smoke'
+assert_contains .github/workflows/ci.yml 'test-macos-release-smoke\.sh'
 assert_contains .github/workflows/ci.yml 'desktop:build:windows'
 assert_contains .github/workflows/ci.yml 'desktop:smoke:windows-installer'
 assert_contains .github/workflows/ci.yml 'windows-install-smoke\.ps1'

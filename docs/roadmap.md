@@ -53,6 +53,7 @@ Status: current scope.
 - Complete CLI reference for commands, options, environment variables, outputs, and safety boundaries. Status: added for 0.26.1.
 - Cross-platform Codex profile path plan with macOS supported paths and planned Windows paths. Status: added for 0.27.0.
 - Profile-driven archive staging for macOS dry-run, fingerprint, and real backup copying. Status: added for 0.28.0.
+- macOS diagnostics center and read-only release smoke script for `.app/.dmg`, sha256, icons, and bundled toolkit resources. Status: added for 0.33.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
@@ -85,6 +86,6 @@ The default should remain conservative: each profile must document exactly what 
 
 ## Phase C: GUI
 
-The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports browser development mode and a Tauri macOS desktop shell, first-run validation guide, install-readiness acceptance, first real-use path, daily usage status, configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, helper online/offline state, disabled helper actions while offline, desktop helper start/stop/status/diagnostics, managed helper log paths, settings path open actions, confirmed real backup execution, local-authoritative consistency checks, backup health scoring, target doctor advice, first real-backup acceptance, automatic helper history refresh, latest backup result display, restore-plan guidance, read-only launchd automation status, release trust checklist, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
+The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports browser development mode and a Tauri macOS desktop shell, first-run validation guide, install-readiness acceptance, first real-use path, daily usage status, macOS diagnostics center, configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, helper online/offline state, disabled helper actions while offline, desktop helper start/stop/status/diagnostics, managed helper log paths, settings path open actions, confirmed real backup execution, local-authoritative consistency checks, backup health scoring, target doctor advice, first real-backup acceptance, automatic helper history refresh, latest backup result display, restore-plan guidance, read-only launchd automation status, release trust checklist, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
 
 See `docs/gui-design.md` for the visual direction.

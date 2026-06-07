@@ -128,6 +128,16 @@ Since 0.31.0, the Windows runner also runs `npm run desktop:build:windows` and `
 
 Since 0.32.0, the Windows runner also runs `tests/windows-install-smoke.ps1`. It uses MSI administrative install mode to extract the installer into a temporary directory, checks `CodexBackup.exe`, bundled helper files, Windows PowerShell scripts, example config, and validate-only safety boundaries, then removes the temporary directory. It does not register a real installed app, write Task Scheduler jobs, or modify Credential Manager.
 
+Since 0.33.0, the macOS GUI includes a Diagnostics page. It summarizes desktop runtime readiness, helper state, bundled toolkit resources, config/history/log paths, first-backup proof, and release-smoke status. This page is read-only: it does not install, uninstall, load, or unload `launchd`, and it does not execute real restore.
+
+Before a macOS release, run the read-only release smoke check:
+
+```zsh
+./tests/test-macos-release-smoke.sh
+```
+
+It checks the current `.app/.dmg`, sha256, icon, and bundled helper/scripts/config/examples resources without starting the app, loading system jobs, or changing existing scheduled backups.
+
 Print supported targets:
 
 ```zsh

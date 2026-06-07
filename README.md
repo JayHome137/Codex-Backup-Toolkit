@@ -197,7 +197,17 @@ npm run desktop:smoke
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-当前 GUI 已覆盖桌面就绪检查、设置页 helper 管理、目标端设置向导、目标端 doctor 结果、目标端处理建议、健康页、日常使用状态、首启引导、安装验证、安装落地验收、首次真实使用路径、发布可信度清单、真实备份确认、首次备份验收、最新备份结果、helper 历史、只读自动化状态、本地为准一致性检查和恢复预案。
+当前 GUI 已覆盖桌面就绪检查、macOS 诊断中心、设置页 helper 管理、目标端设置向导、目标端 doctor 结果、目标端处理建议、健康页、日常使用状态、首启引导、安装验证、安装落地验收、首次真实使用路径、发布可信度清单、真实备份确认、首次备份验收、最新备份结果、helper 历史、只读自动化状态、本地为准一致性检查和恢复预案。
+
+0.33.0 起，GUI 新增 `诊断` 页，用于集中查看 macOS 桌面成熟度、helper 运行状态、内置资源、配置/历史/日志路径、首次备份证明和发布验收脚本状态。它只读取已有状态和路径，不会安装、卸载、加载或卸载 `launchd`，也不会执行真实恢复。
+
+macOS 发布前可运行只读 release smoke：
+
+```zsh
+./tests/test-macos-release-smoke.sh
+```
+
+该脚本检查当前 `.app/.dmg`、sha256、图标、内置 helper/scripts/config/examples 资源，不启动 App，不加载系统任务，不修改已有自动备份。
 
 0.23.0 起，GUI 会把短期成熟产品所需的四个判断流程补齐：
 

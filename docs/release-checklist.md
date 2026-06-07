@@ -25,6 +25,7 @@
 - [ ] 运行 `cd gui && npm run desktop:build`；如果本机缺少 Rust 或 Tauri 依赖，确认错误信息能清楚说明缺失环境。
 - [ ] 运行 `cd gui && npm run desktop:checksum`。
 - [ ] 运行 `cd gui && npm run desktop:smoke`；必须在 checksum 生成完成后再运行，避免并行检查时误报缺少 `.sha256`。
+- [ ] 运行 `./tests/test-macos-release-smoke.sh`；必须在 `desktop:build`、`desktop:checksum` 和 `desktop:smoke` 后运行，避免检查旧产物。
 - [ ] 确认 `.app` Resources 中包含 `toolkit/helper/server.mjs` 和 `toolkit/scripts/codexbackup.sh`。
 - [ ] 确认 `.app` Resources 中包含 `icon.icns`，Windows 配置引用 `icon.ico`，且 `gui/src-tauri/icons/` 中多尺寸图标齐全。
 - [ ] 运行 `./scripts/codexbackup.sh --doctor --target local`。
@@ -48,6 +49,8 @@
 - [ ] 在 GUI 安装页确认 `安装落地验收` 展示下载校验、首次打开、桌面运行时、目标端检查、首次备份验收和恢复边界，并且只做跳转不执行真实恢复或修改定时任务。
 - [ ] 在 GUI 概览页和引导页确认 `首次真实使用路径` 展示安装验收、目标端配置、doctor 检查、手动确认备份、首次备份验收和恢复边界，并且只做跳转或只读 doctor 检查。
 - [ ] 在 GUI 概览页和健康页确认 `日常使用状态` 展示首次使用、最近备份、健康度和自动化状态，并且只做跳转或刷新健康信息，不执行真实恢复或修改定时任务。
+- [ ] 在 GUI 诊断页确认 `macOS 诊断中心` 展示桌面成熟度、helper、toolkit、配置/历史/日志路径、首次备份证明和 macOS release smoke 状态。
+- [ ] 确认 GUI 诊断页只提供刷新诊断、打开设置和打开日志，不提供安装任务、卸载任务、加载任务、卸载任务或执行真实恢复按钮。
 - [ ] 确认未设置 `CODEX_BACKUP_SYNC_ENABLED=1` 时，定时脚本仍执行普通备份，不改变既有定时任务行为。
 - [ ] 打开桌面 App，确认 helper 可以自动启动或在 `设置` 页一键启动。
 - [ ] 确认 `设置` 页 `刷新诊断` 能显示 helper、toolkit、配置、历史、日志和版本信息。
@@ -76,14 +79,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.32.0
+git tag v0.33.0
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.32.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.33.0` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -98,6 +101,8 @@ git push origin main --tags
 - [ ] 说明新增本地为准一致性检查，默认关闭，频率可选，不会从备份回写本机，不会覆盖旧归档。
 - [ ] 说明 GUI 新增只读健康页，可查看健康度评分、最近备份摘要、归档路径、检查项和建议动作。
 - [ ] 说明 GUI 新增日常使用状态，可汇总首次使用、最近备份、健康度和自动化状态，且只读取现有状态、不修改任务。
+- [ ] 说明 GUI 新增 macOS 诊断中心，可汇总桌面成熟度、helper、toolkit、路径、首次备份证明和 release smoke 状态，且只读取现有状态、不修改任务。
+- [ ] 说明新增 `tests/test-macos-release-smoke.sh`，可只读检查 `.app/.dmg`、sha256、图标和打包内置资源。
 - [ ] 说明 GUI 新增首启引导页，串联桌面环境、目标端、doctor、helper 健康、备份证明和恢复边界。
 - [ ] 说明 GUI 新增安装后验证页，可查看 Release 地址、DMG/sha256 文件名、校验命令、未签名限制和首次打开流程。
 - [ ] 说明安装页补充校验结果判断、macOS 未签名 App 打开步骤和安装后 smoke 检查清单。
