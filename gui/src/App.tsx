@@ -95,7 +95,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.35.1';
+const appVersion = '0.35.2';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');

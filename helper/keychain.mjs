@@ -43,5 +43,5 @@ function statusFromResult(result) {
 }
 
 function quote(value) {
-  return `"${String(value).replaceAll('"', '\\"')}"`;
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }

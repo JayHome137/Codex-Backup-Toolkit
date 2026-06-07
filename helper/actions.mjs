@@ -154,20 +154,20 @@ function appendEncryptionEnv(lines, config) {
   if (!config.encrypt) return;
 
   lines.push('CODEX_BACKUP_ENCRYPTION=age');
-  if (stringValue(config.ageRecipient)) lines.push(`CODEX_BACKUP_AGE_RECIPIENT=${config.ageRecipient.trim()}`);
+  if (stringValue(config.ageRecipient)) lines.push(`CODEX_BACKUP_AGE_RECIPIENT=${quote(config.ageRecipient.trim())}`);
   if (stringValue(config.ageRecipientFile)) lines.push(`CODEX_BACKUP_AGE_RECIPIENT_FILE=${quote(config.ageRecipientFile.trim())}`);
 }
 
 function appendTargetEnv(lines, target, config) {
   if (target === 'local') lines.push(`CODEX_BACKUP_LOCAL_DIR=${quote(config.localDir.trim())}`);
   if (target === 'smb') {
-    lines.push(`CODEX_BACKUP_SMB_HOST=${config.smbHost.trim()}`);
-    lines.push(`CODEX_BACKUP_SMB_USER=${config.smbUser.trim()}`);
-    lines.push(`CODEX_BACKUP_SMB_SHARE=${config.smbShare.trim()}`);
+    lines.push(`CODEX_BACKUP_SMB_HOST=${quote(config.smbHost.trim())}`);
+    lines.push(`CODEX_BACKUP_SMB_USER=${quote(config.smbUser.trim())}`);
+    lines.push(`CODEX_BACKUP_SMB_SHARE=${quote(config.smbShare.trim())}`);
   }
   if (target === 'webdav') {
     lines.push(`CODEX_BACKUP_WEBDAV_URL=${quote(config.webdavUrl.trim())}`);
-    lines.push(`CODEX_BACKUP_WEBDAV_USER=${config.webdavUser.trim()}`);
+    lines.push(`CODEX_BACKUP_WEBDAV_USER=${quote(config.webdavUser.trim())}`);
   }
   if (target === 'rclone') lines.push(`CODEX_BACKUP_RCLONE_REMOTE=${quote(config.rcloneRemote.trim())}`);
 }
@@ -179,13 +179,13 @@ function buildRestorePlanCommand(action) {
     lines.push(`CODEX_BACKUP_TARGET=${action.target}`);
     if (action.target === 'local') lines.push(`CODEX_BACKUP_LOCAL_DIR=${quote(config.localDir.trim())}`);
     if (action.target === 'smb') {
-      lines.push(`CODEX_BACKUP_SMB_HOST=${config.smbHost.trim()}`);
-      lines.push(`CODEX_BACKUP_SMB_USER=${config.smbUser.trim()}`);
-      lines.push(`CODEX_BACKUP_SMB_SHARE=${config.smbShare.trim()}`);
+      lines.push(`CODEX_BACKUP_SMB_HOST=${quote(config.smbHost.trim())}`);
+      lines.push(`CODEX_BACKUP_SMB_USER=${quote(config.smbUser.trim())}`);
+      lines.push(`CODEX_BACKUP_SMB_SHARE=${quote(config.smbShare.trim())}`);
     }
     if (action.target === 'webdav') {
       lines.push(`CODEX_BACKUP_WEBDAV_URL=${quote(config.webdavUrl.trim())}`);
-      lines.push(`CODEX_BACKUP_WEBDAV_USER=${config.webdavUser.trim()}`);
+      lines.push(`CODEX_BACKUP_WEBDAV_USER=${quote(config.webdavUser.trim())}`);
     }
     if (action.target === 'rclone') lines.push(`CODEX_BACKUP_RCLONE_REMOTE=${quote(config.rcloneRemote.trim())}`);
   }
@@ -213,7 +213,7 @@ function formatCommand(lines, command) {
 }
 
 function quote(value) {
-  return `"${String(value).replaceAll('"', '\\"')}"`;
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
 function validateTargetConfig(actionLabel, target, config) {

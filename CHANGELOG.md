@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.35.2 - 2026-06-07
+
+- 修复 helper 结构化 action 的 shell 参数引用问题，避免 `backup`、`syncLocalAuthoritative` 和 `restorePlan` 中的路径、账号、远端地址等配置值触发 shell 命令替换。
+- 修复 helper Keychain 接口的 shell 参数引用问题，避免 `service`、`account` 或 `secret` 值触发 shell 命令替换。
+- 新增真实 shell 隔离测试，验证注入样例不会创建标记文件，且正常 helper action 和 Keychain 操作仍可运行。
+- GUI/Tauri 版本升至 `0.35.2`。
+
 ## 0.35.1 - 2026-06-07
 
 - `desktop:smoke:windows-installer` 新增 `CODEXBACKUP_WINDOWS_INSTALLER_DIR`，可直接检查下载后的 Windows installer artifact，不再只能读取本机 Tauri bundle 目录。

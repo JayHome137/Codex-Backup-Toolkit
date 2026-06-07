@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { createShellExecutor } from './executor.mjs';
 import { createHelperServer } from './server.mjs';
+
+async function pathExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const schema = 'codex-backup-helper.v1';
 
@@ -500,6 +509,37 @@ test('run builds commands from structured backup actions before calling the exec
     assert.equal(body.stdout, 'backup action ok');
     assert.equal(body.audit.commandKind, 'backup');
   });
+});
+
+test('structured backup action values are shell-quoted before real execution', async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'codex-backup-helper-quote-'));
+  const markerPath = join(tempDir, 'shell-substitution-created');
+  try {
+    const scriptsDir = join(tempDir, 'scripts');
+    await mkdir(scriptsDir);
+    await writeFile(
+      join(scriptsDir, 'codexbackup.sh'),
+      '#!/bin/zsh\nprintf "local dir: %s\\n" "$CODEX_BACKUP_LOCAL_DIR"\n',
+      { mode: 0o755 },
+    );
+
+    const unsafe = backupActionRequest();
+    unsafe.action.config.localDir = `/tmp/CodexBackups$(touch ${markerPath})`;
+
+    await withHelper(createShellExecutor({ cwd: tempDir }), async (helper) => {
+      const { response, body } = await requestJson(helper.origin, '/run', {
+        method: 'POST',
+        body: JSON.stringify(unsafe),
+      });
+
+      assert.equal(response.status, 200);
+      assert.equal(body.status, 'ok');
+      assert.equal(body.stdout, `local dir: /tmp/CodexBackups$(touch ${markerPath})\n`);
+      assert.equal(await pathExists(markerPath), false);
+    });
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test('run records backup history and exposes it through history endpoint', async () => {

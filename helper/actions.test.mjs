@@ -22,7 +22,7 @@ test('builds a backup command from a structured local action', () => {
     'CODEX_BACKUP_RETENTION_DAYS=30 \\',
     'CODEX_BACKUP_REMOTE_RETENTION=0 \\',
     'CODEX_BACKUP_ENCRYPT=0 \\',
-    'CODEX_BACKUP_LOCAL_DIR="/tmp/CodexBackups" \\',
+    "CODEX_BACKUP_LOCAL_DIR='/tmp/CodexBackups' \\",
     './scripts/codexbackup.sh --target local',
   ].join('\n'));
 });
@@ -62,7 +62,7 @@ test('builds a restore plan command without allowing restore execution', () => {
   assert.deepEqual(classifyAction(action), { allowed: true, kind: 'restorePlan' });
   assert.equal(
     buildCommandFromAction(action),
-    './scripts/codexrestore.sh --plan --archive "/tmp/codex-backup.tar.gz.age" --age-identity "/tmp/age-identity.txt"',
+    "./scripts/codexrestore.sh --plan --archive '/tmp/codex-backup.tar.gz.age' --age-identity '/tmp/age-identity.txt'",
   );
 });
 
@@ -80,8 +80,8 @@ test('builds a latest restore plan command with target config', () => {
   assert.deepEqual(classifyAction(action), { allowed: true, kind: 'restorePlan' });
   assert.equal(buildCommandFromAction(action), [
     'CODEX_BACKUP_TARGET=webdav \\',
-    'CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/CodexBackup" \\',
-    'CODEX_BACKUP_WEBDAV_USER=backup-user \\',
+    "CODEX_BACKUP_WEBDAV_URL='https://webdav.example.com/CodexBackup' \\",
+    "CODEX_BACKUP_WEBDAV_USER='backup-user' \\",
     './scripts/codexrestore.sh --plan --latest',
   ].join('\n'));
 });
@@ -110,7 +110,7 @@ test('builds a local authoritative sync command with frequency controls', () => 
     'CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=12 \\',
     'CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=24 \\',
     'CODEX_BACKUP_ENCRYPT=0 \\',
-    'CODEX_BACKUP_LOCAL_DIR="/tmp/CodexBackups" \\',
+    "CODEX_BACKUP_LOCAL_DIR='/tmp/CodexBackups' \\",
     './scripts/codexbackup.sh --sync-local-authoritative --target local',
   ].join('\n'));
 });
