@@ -132,6 +132,8 @@ Since 0.33.0, the macOS GUI includes a Diagnostics page. It summarizes desktop r
 
 Since 0.34.0, the Diagnostics page also shows an actionable fix path. These actions only navigate to Overview, Settings, Schedule, or refresh read-only diagnostics. They do not install, uninstall, load, or modify `launchd`, do not execute real restore, and do not take over an external helper process.
 
+Since 0.35.0, the Overview page includes a First Launch Recommendation card. It prioritizes the next entry point across desktop runtime, helper, target blockers, read-only doctor checks, first real-backup acceptance, read-only schedule review, and health refresh. The recommendation only navigates inside the GUI or runs the existing read-only doctor command; it does not modify scheduled backup jobs or execute real restore.
+
 Before a macOS release, run the read-only release smoke check:
 
 ```zsh

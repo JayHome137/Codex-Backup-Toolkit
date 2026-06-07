@@ -9,6 +9,7 @@ import { TargetForm } from './components/TargetForm';
 import { buildBackupAcceptance, type BackupAcceptance, type BackupAcceptanceCheck } from './lib/backupAcceptance';
 import { buildBackupHealth, type BackupHealth } from './lib/backupHealth';
 import { buildDailyUsageStatus, type DailyUsageCard, type DailyUsageStatus } from './lib/dailyUsageStatus';
+import { buildFirstLaunchGuidance, type FirstLaunchGuidance } from './lib/firstLaunchGuidance';
 import { buildFirstRunJourney, type FirstRunJourney, type FirstRunJourneyStep } from './lib/firstRunJourney';
 import { buildFirstUsePath, type FirstUsePath, type FirstUsePathStep } from './lib/firstUsePath';
 import { buildInstallReadiness, type InstallReadiness, type InstallReadinessStep } from './lib/installReadiness';
@@ -94,7 +95,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.34.0';
+const appVersion = '0.35.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -219,6 +220,17 @@ function App() {
     firstUsePath,
     health: backupHealth,
   }), [backupHealth, firstUsePath]);
+  const firstLaunchGuidance = useMemo(() => buildFirstLaunchGuidance({
+    automationLoaded: Boolean(automationStatus?.loaded),
+    backupAcceptance,
+    backupHealth,
+    doctorAdvice,
+    firstUsePath,
+    helperOnline: helperStatus === 'online' || desktopHelperStatus.online,
+    isDesktop: desktopBridge.isDesktop,
+    targetSetupGuide,
+    toolkitAvailable: desktopToolkitStatus.available,
+  }), [automationStatus?.loaded, backupAcceptance, backupHealth, desktopBridge.isDesktop, desktopHelperStatus.online, desktopToolkitStatus.available, doctorAdvice, firstUsePath, helperStatus, targetSetupGuide]);
   const macosReadiness = useMemo(() => buildMacosReadiness({
     automationLoaded: Boolean(automationStatus?.loaded),
     backupAccepted: backupAcceptance.level === 'accepted',
@@ -645,6 +657,19 @@ function App() {
               <MetricCard icon={ShieldCheck} label="模式" value="仅预览" tone="green" />
               <MetricCard icon={CalendarCheck2} label="计划" value="03:00 / 每 3 天" tone="yellow" />
             </div>
+
+            <FirstLaunchGuidancePanel
+              guidance={firstLaunchGuidance}
+              onAction={firstLaunchGuidanceAction(firstLaunchGuidance, {
+                onOpenHealth: () => setActiveSection('health'),
+                onOpenOverview: () => setActiveSection('overview'),
+                onOpenSchedule: () => setActiveSection('schedule'),
+                onOpenSettings: () => setActiveSection('settings'),
+                onOpenTargets: () => setActiveSection('targets'),
+                onRunDoctor: () => runPreview(commands.doctor, '目标端检查命令'),
+              })}
+              runningDoctor={runningCommand === commands.doctor}
+            />
 
             <DesktopReadinessPanel
               appVersion={displayedAppVersion}
@@ -1427,6 +1452,80 @@ function DailyUsageCardItem({ card }: { card: DailyUsageCard }) {
       </div>
     </div>
   );
+}
+
+function FirstLaunchGuidancePanel({
+  guidance,
+  onAction,
+  runningDoctor,
+}: {
+  guidance: FirstLaunchGuidance;
+  onAction: () => void;
+  runningDoctor: boolean;
+}) {
+  const buttonDisabled = guidance.id === 'run-doctor' && runningDoctor;
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Compass size={16} aria-hidden="true" />
+          <span>首次打开推荐</span>
+        </div>
+        <StatusBadge status={firstLaunchGuidanceStatus(guidance.level)} label={firstLaunchGuidanceLevelLabel(guidance.level)} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="当前推荐动作" value={guidance.actionLabel} />
+          <SummaryRow label="结论" value={guidance.summary} />
+          <SummaryRow label="安全边界" value={guidance.safetyNote} />
+        </div>
+        <div className="readiness-copy">
+          <strong>{guidance.summary}</strong>
+          <p>{guidance.detail}</p>
+          <button className="button button--primary" disabled={buttonDisabled} onClick={onAction} type="button">
+            <Compass size={15} aria-hidden="true" />
+            {buttonDisabled ? '检查中' : '执行推荐动作'}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function firstLaunchGuidanceAction(
+  guidance: FirstLaunchGuidance,
+  actions: {
+    onOpenHealth: () => void;
+    onOpenOverview: () => void;
+    onOpenSchedule: () => void;
+    onOpenSettings: () => void;
+    onOpenTargets: () => void;
+    onRunDoctor: () => Promise<void>;
+  },
+): () => void {
+  return {
+    'daily-health': actions.onOpenHealth,
+    'first-backup': actions.onOpenOverview,
+    'fix-target': actions.onOpenTargets,
+    'open-desktop': actions.onOpenSettings,
+    'review-schedule': actions.onOpenSchedule,
+    'run-doctor': () => void actions.onRunDoctor(),
+    'start-helper': actions.onOpenSettings,
+  }[guidance.id];
+}
+
+function firstLaunchGuidanceStatus(level: FirstLaunchGuidance['level']): CommandResult['status'] {
+  if (level === 'ready') return 'success';
+  if (level === 'blocked') return 'error';
+  return 'warning';
+}
+
+function firstLaunchGuidanceLevelLabel(level: FirstLaunchGuidance['level']): string {
+  return {
+    attention: '建议处理',
+    blocked: '优先处理',
+    ready: '可日常使用',
+  }[level];
 }
 
 function DesktopReadinessPanel({

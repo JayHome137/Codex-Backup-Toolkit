@@ -55,6 +55,7 @@ Status: current scope.
 - Profile-driven archive staging for macOS dry-run, fingerprint, and real backup copying. Status: added for 0.28.0.
 - macOS diagnostics center and read-only release smoke script for `.app/.dmg`, sha256, icons, and bundled toolkit resources. Status: added for 0.33.0.
 - Actionable macOS diagnostic fix path for first-run readiness, helper startup guidance, read-only schedule review, first backup acceptance, and release smoke follow-up. Status: added for 0.34.0.
+- First launch recommendation on Overview that prioritizes desktop runtime, helper, target blockers, read-only doctor, first backup acceptance, schedule review, and health refresh. Status: added for 0.35.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.

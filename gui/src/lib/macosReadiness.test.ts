@@ -13,7 +13,7 @@ describe('macOS readiness', () => {
       logDir: '/Users/test/Library/Logs/CodexBackup',
       releaseSmokeAvailable: true,
       toolkitAvailable: true,
-      version: '0.34.0',
+      version: '0.35.0',
     });
 
     expect(readiness.level).toBe('ready');
@@ -49,7 +49,7 @@ describe('macOS readiness', () => {
       logDir: '',
       releaseSmokeAvailable: false,
       toolkitAvailable: false,
-      version: '0.34.0',
+      version: '0.35.0',
     });
 
     expect(readiness.level).toBe('blocked');

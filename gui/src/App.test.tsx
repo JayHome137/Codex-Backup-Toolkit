@@ -89,6 +89,11 @@ describe('App', () => {
   it('shows a first real-use path on overview and navigates to the required screens', async () => {
     render(<App />);
 
+    expect(screen.getByText('首次打开推荐')).toBeInTheDocument();
+    expect(screen.getByText('当前推荐动作')).toBeInTheDocument();
+    expect(screen.getAllByText('打开设置').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/不会修改已有定时备份任务/).length).toBeGreaterThan(0);
+
     expect(screen.getByText('首次真实使用路径')).toBeInTheDocument();
     expect(screen.getByText('选择并配置目标端')).toBeInTheDocument();
     expect(screen.getByText('运行目标端 doctor')).toBeInTheDocument();
@@ -97,6 +102,11 @@ describe('App', () => {
     expect(screen.getAllByText(/不会执行真实恢复/).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /执行推荐动作/i }));
+    expect(screen.getByText('桌面 helper')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /概览/i }));
 
     fireEvent.click(screen.getByRole('button', { name: /路径步骤 2/ }));
     expect(screen.getByText('目标端配置')).toBeInTheDocument();
@@ -221,9 +231,9 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /安装/i }));
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.34.0_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.34.0_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.34.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.35.0_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.35.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.35.0_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -246,7 +256,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.34.0_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.35.0_aarch64.dmg.sha256');
     });
   });
 
@@ -987,7 +997,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.34.0')).toBeInTheDocument();
+    expect(screen.getByText('0.35.0')).toBeInTheDocument();
   });
 
   it('shows desktop readiness on the overview page for first launch', () => {

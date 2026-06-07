@@ -53,6 +53,7 @@ assert_file gui/package.json
 assert_file gui/src/lib/helperApi.ts
 assert_file helper/profile-paths.mjs
 assert_file gui/src/lib/desktopBridge.ts
+assert_file gui/src/lib/firstLaunchGuidance.ts
 assert_file gui/scripts/desktop-check.mjs
 assert_file gui/scripts/desktop-checksum.mjs
 assert_file gui/scripts/desktop-smoke.mjs
@@ -113,7 +114,7 @@ assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.34\.0"'
+assert_contains gui/package.json '"version": "0\.35\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -124,6 +125,8 @@ assert_contains gui/package.json '"desktop:checksum"'
 assert_contains gui/package.json '"desktop:smoke"'
 assert_contains gui/src/App.tsx 'macOS 诊断中心'
 assert_contains gui/src/App.tsx '建议修复路径'
+assert_contains gui/src/App.tsx '首次打开推荐'
+assert_contains gui/src/lib/firstLaunchGuidance.ts 'buildFirstLaunchGuidance'
 assert_contains gui/src/lib/macosReadiness.ts 'buildMacosReadiness'
 assert_contains gui/src/lib/macosReadiness.ts 'MacosReadinessFix'
 assert_contains tests/test-macos-release-smoke.sh 'no launchd install/uninstall/load/unload'
