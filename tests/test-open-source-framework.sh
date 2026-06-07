@@ -110,15 +110,17 @@ assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.30\.0"'
+assert_contains gui/package.json '"version": "0\.31\.0"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
 assert_file gui/src/lib/dailyUsageStatus.ts
 assert_contains gui/package.json '"desktop:build"'
+assert_contains gui/package.json '"desktop:build:windows"'
 assert_contains gui/package.json '"desktop:checksum"'
 assert_contains gui/package.json '"desktop:smoke"'
 assert_contains gui/package.json '"desktop:smoke:windows"'
+assert_contains gui/package.json '"desktop:smoke:windows-installer"'
 assert_contains gui/src-tauri/tauri.conf.json '"productName": "CodexBackup"'
 assert_contains gui/src-tauri/tauri.conf.json '"../../helper/server\.mjs"'
 assert_contains gui/src-tauri/tauri.conf.json '"toolkit/helper/server\.mjs"'
@@ -181,6 +183,9 @@ assert_contains .github/workflows/ci.yml 'test-sync-local-authoritative'
 assert_contains .github/workflows/ci.yml 'test-scheduled-sync-mode'
 assert_contains .github/workflows/ci.yml 'test-profile-plan'
 assert_contains .github/workflows/ci.yml 'test-windows-preview'
+assert_contains .github/workflows/ci.yml 'desktop:build:windows'
+assert_contains .github/workflows/ci.yml 'desktop:smoke:windows-installer'
+assert_contains .github/workflows/ci.yml 'upload-artifact'
 assert_contains .github/workflows/ci.yml 'helper/\*\.test\.mjs'
 
 for file in README.md config.example.env docs/*.md examples/*.env scripts/*.sh; do

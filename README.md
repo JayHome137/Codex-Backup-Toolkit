@@ -14,7 +14,7 @@
 - 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天执行一次真实备份。
 - 支持默认关闭的本地为准一致性检查：按可选频率对比本地状态和最新备份，不一致时生成新的时间戳备份，并套用保留策略。
 - 提供 macOS 桌面 App 框架、浏览器开发模式和本地 helper，用于配置检查、helper 生命周期、配置保存、Keychain 密钥管理、受控真实备份执行、恢复预案、备份结果和安全边界验证。
-- Windows 预览已加入：提供 PowerShell 入口、Windows 路径计划、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架，以及 Tauri Windows 打包配置；GitHub Actions 已覆盖 Windows 本地预览验证，Windows 安装包和远端目标原生验证仍待完成。
+- Windows 预览已加入：提供 PowerShell 入口、Windows 路径计划、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架，以及 Tauri Windows 打包配置；GitHub Actions 已覆盖 Windows 原生预览验证和安装包构建 artifact，远端目标原生验证、签名、安装后 smoke 和真实恢复仍待完成。
 
 ## 快速开始
 
@@ -84,7 +84,7 @@ source ./config.env
 
 完整命令、选项和环境变量见 [CLI 参考](docs/cli-reference.md)。
 
-跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 macOS CLI 和桌面产物已本机验证；Windows 预览代码路径已加入，但仍需要在 Windows 原生环境完成最终验证。
+跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 macOS CLI 和桌面产物已本机验证；Windows 预览代码路径已加入，并已通过 GitHub Actions 的 Windows 原生预览验证和安装包构建检查，但仍不标记为正式可用。
 
 0.28.0 起，macOS 真实备份、dry-run 和 fingerprint 都会从同一份 profile/archive 计划读取路径；这不会改变当前 macOS 归档结构，但会让后续 Windows 路径接入更稳。你也可以先查看 Codex profile 路径计划：
 
@@ -107,7 +107,9 @@ pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
 
 完整说明见 [Windows 预览](docs/windows.md)。这些入口不会安装、修改或删除任务计划程序任务，也不会执行真实恢复。
 
-0.30.0 起，GitHub Actions 会在 `windows-latest` runner 上运行 `tests/windows-native.ps1`，原生验证 Windows profile plan、doctor、本地 zip 备份预览、sha256、manifest、恢复预案和 validate-only 安全边界。Windows 安装包构建仍待后续补齐。
+0.30.0 起，GitHub Actions 会在 `windows-latest` runner 上运行 `tests/windows-native.ps1`，原生验证 Windows profile plan、doctor、本地 zip 备份预览、sha256、manifest、恢复预案和 validate-only 安全边界。
+
+0.31.0 起，Windows runner 会执行 `npm run desktop:build:windows`，并用 `npm run desktop:smoke:windows-installer` 检查 `.msi` 或 `.exe` 安装包。CI 会上传 `codexbackup-windows-installers` artifact；签名、自动更新和真实恢复执行仍未启用。
 
 ## 自动备份
 

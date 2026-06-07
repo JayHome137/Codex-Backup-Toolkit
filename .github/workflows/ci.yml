@@ -83,3 +83,24 @@ jobs:
       - name: Run Windows native preview checks
         shell: pwsh
         run: .\tests\windows-native.ps1
+
+      - name: Install GUI dependencies
+        working-directory: gui
+        run: npm ci
+
+      - name: Build Windows desktop installer
+        working-directory: gui
+        run: npm run desktop:build:windows
+
+      - name: Smoke check Windows desktop installer
+        working-directory: gui
+        run: npm run desktop:smoke:windows-installer
+
+      - name: Upload Windows desktop installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: codexbackup-windows-installers
+          path: |
+            gui/src-tauri/target/release/bundle/**/*.msi
+            gui/src-tauri/target/release/bundle/**/*.exe
+          if-no-files-found: error

@@ -1,7 +1,7 @@
 {
   "name": "codex-backup-toolkit-gui",
   "private": true,
-  "version": "0.30.0",
+  "version": "0.31.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -9,9 +9,11 @@
     "desktop:doctor": "node scripts/desktop-check.mjs",
     "desktop:dev": "node scripts/desktop-check.mjs --required && tauri dev",
     "desktop:build": "node scripts/desktop-check.mjs --required && tauri build",
+    "desktop:build:windows": "node scripts/desktop-check.mjs --required && tauri build --config src-tauri/tauri.windows.conf.json",
     "desktop:checksum": "node scripts/desktop-checksum.mjs",
     "desktop:smoke": "node scripts/desktop-smoke.mjs",
     "desktop:smoke:windows": "node scripts/windows-desktop-smoke.mjs",
+    "desktop:smoke:windows-installer": "node scripts/windows-installer-smoke.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run"
   },

@@ -2,7 +2,7 @@
 
 `codexbackup` is currently a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote. Windows support is now part of the roadmap, but this version does not mark Windows as ready.
 
-The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows preview support now includes PowerShell entrypoints, Windows path planning, local zip backup preview, restore plans, Credential Manager and Task Scheduler validate-only skeletons, and Tauri Windows packaging config. Native Windows validation is still pending.
+The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows preview support now includes PowerShell entrypoints, Windows path planning, local zip backup preview, restore plans, Credential Manager and Task Scheduler validate-only skeletons, and Tauri Windows packaging config. Native Windows preview validation and installer build checks now run in GitHub Actions, but Windows remains preview-only.
 
 ## What It Backs Up
 
@@ -99,7 +99,7 @@ See [storage-targets.md](docs/storage-targets.md) and the files in [examples](ex
 
 For a complete command, option, and environment variable reference, see [CLI reference](docs/cli-reference.md).
 
-For cross-platform status, see [roadmap.md](docs/roadmap.md). The current macOS CLI and desktop artifacts are validated locally; Windows preview code paths are present but still need native Windows validation.
+For cross-platform status, see [roadmap.md](docs/roadmap.md). The current macOS CLI and desktop artifacts are validated locally; Windows preview code paths now have GitHub Actions native preview validation and installer build checks, but Windows is still not marked ready.
 
 Since 0.28.0, macOS real backup, dry-run, and fingerprint generation read paths from the same profile/archive plan. This keeps the current macOS archive layout unchanged while making later Windows path work safer. You can also inspect the Codex profile path plan before Windows backup execution is enabled:
 
@@ -122,7 +122,9 @@ pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
 
 See [Windows preview](docs/windows.md). These entrypoints do not install, modify, or delete Task Scheduler tasks, and real restore execution remains disabled.
 
-Since 0.30.0, GitHub Actions runs `tests/windows-native.ps1` on a `windows-latest` runner. It natively validates the Windows profile plan, doctor, local zip backup preview, sha256, manifest, restore plan, and validate-only safety boundaries. Windows installer builds are still pending.
+Since 0.30.0, GitHub Actions runs `tests/windows-native.ps1` on a `windows-latest` runner. It natively validates the Windows profile plan, doctor, local zip backup preview, sha256, manifest, restore plan, and validate-only safety boundaries.
+
+Since 0.31.0, the Windows runner also runs `npm run desktop:build:windows` and `npm run desktop:smoke:windows-installer` to build and smoke-check `.msi` or `.exe` installers. CI uploads the `codexbackup-windows-installers` artifact; signing, auto-update, and real restore execution are still disabled.
 
 Print supported targets:
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.0 - 2026-06-07
+
+- Windows CI 在 `windows-latest` runner 上新增 Tauri 安装包构建：`npm run desktop:build:windows`。
+- 新增 `desktop:build:windows`、`desktop:smoke:windows-installer` 和 `gui/scripts/windows-installer-smoke.mjs`。
+- Windows installer smoke 会检查 `.msi` 或 `.exe` 安装包存在、非空，并确认文件名包含当前版本号。
+- GitHub Actions 会上传 Windows 安装包 artifact：`codexbackup-windows-installers`。
+- Windows 安装包进入 CI 构建验证阶段；签名、公证/代码签名和真实恢复执行仍未启用。
+- GUI/Tauri 版本升至 `0.31.0`。
+
 ## 0.30.0 - 2026-06-07
 
 - GitHub Actions 新增 `windows-native` job，在 `windows-latest` runner 上执行 `tests/windows-native.ps1`。
