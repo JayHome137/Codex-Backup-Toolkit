@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.30.0 - 2026-06-07
+
+- GitHub Actions 新增 `windows-native` job，在 `windows-latest` runner 上执行 `tests/windows-native.ps1`。
+- 新增 Windows 原生预览验证脚本，覆盖 `codexbackup.ps1 -ProfilePlan`、`-Doctor`、本地 zip 备份预览、sha256、manifest、zip 内容、`codexrestore.ps1 -Plan`、Credential Manager validate-only 和 Task Scheduler validate-only。
+- Windows PowerShell 脚本新增 `CODEX_BACKUP_HOME` 支持，方便 CI 和本地验证在临时 home 中隔离运行，不碰真实用户目录。
+- macOS 静态 Windows preview 检查同步要求 Windows CI job 和 `tests/windows-native.ps1` 存在。
+- Windows 安装包构建仍待 Windows 环境补齐；本版先完成 Windows 原生脚本验证链路。
+- GUI/Tauri 版本升至 `0.30.0`。
+
 ## 0.29.0 - 2026-06-07
 
 - 新增 Windows 预览脚本目录 `scripts/windows/`，包含 `codexbackup.ps1`、`codexrestore.ps1`、`codexcredential.ps1` 和 `codexscheduledbackup.ps1`。

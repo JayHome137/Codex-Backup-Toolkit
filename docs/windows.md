@@ -2,7 +2,7 @@
 
 CodexBackup 从 `0.29.0` 起加入 Windows 预览代码路径。这个阶段的目标是补齐 PowerShell 入口、路径计划、恢复预案、凭据和任务计划的安全边界，以及 Tauri Windows 打包配置。
 
-当前状态：Windows 原生环境验证仍待完成。因此公开说明应写成“Windows 预览”或“Windows 代码路径已补齐，待 Windows 环境验证”，不要写成 Windows 真实备份已经稳定可用。
+当前状态：`0.30.0` 起，GitHub Actions 会在 `windows-latest` runner 上执行 `tests/windows-native.ps1`，验证 PowerShell 脚本的本地 zip 备份预览、sha256、manifest、恢复预案和 validate-only 安全边界。Windows 安装包构建、SMB/WebDAV/rclone 原生验证和真实恢复执行仍待完成。因此公开说明仍应写成“Windows 预览”，不要写成 Windows 已完整成熟。
 
 ## 命令
 
@@ -51,12 +51,24 @@ pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
 - SMB、WebDAV 和 rclone 的 Windows 目标端真实验证仍待完成。
 - macOS 现有 launchd 自动备份任务不会被 Windows 预览脚本读取、加载、卸载或修改。
 
+## CI 验证
+
+`tests/windows-native.ps1` 会在临时目录中设置 `CODEX_BACKUP_HOME`、`APPDATA`、`LOCALAPPDATA`、`CODEX_BACKUP_DOCUMENTS_DIR` 和 `CODEX_BACKUP_LOCAL_DIR`，避免读取或写入 runner 的真实用户资料目录。
+
+验证范围：
+
+- `codexbackup.ps1 -ProfilePlan`
+- `codexbackup.ps1 -Doctor -Target local`
+- `codexbackup.ps1 -Target local` 本地 zip 备份预览
+- zip 内容、sha256 sidecar 和 manifest sidecar
+- `codexrestore.ps1 -Plan`
+- `codexcredential.ps1 -ValidateOnly`
+- `codexscheduledbackup.ps1 -ValidateOnly`
+
 ## 后续验证
 
 进入 Windows 环境后，需要补跑：
 
-- PowerShell 语法检查和 Pester 或等价测试。
-- 本地 zip 备份创建、sha256、manifest 和恢复预案检查。
 - SMB、WebDAV、rclone 的只读 doctor 验证。
 - Task Scheduler 和 Credential Manager 的 validate-only 行为确认。
 - Tauri Windows `.msi` / `.exe` 构建和 smoke 检查。

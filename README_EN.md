@@ -122,6 +122,8 @@ pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
 
 See [Windows preview](docs/windows.md). These entrypoints do not install, modify, or delete Task Scheduler tasks, and real restore execution remains disabled.
 
+Since 0.30.0, GitHub Actions runs `tests/windows-native.ps1` on a `windows-latest` runner. It natively validates the Windows profile plan, doctor, local zip backup preview, sha256, manifest, restore plan, and validate-only safety boundaries. Windows installer builds are still pending.
+
 Print supported targets:
 
 ```zsh

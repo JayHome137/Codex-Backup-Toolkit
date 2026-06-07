@@ -13,13 +13,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ToolkitDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$CodexHome = if ($env:CODEX_BACKUP_HOME) { $env:CODEX_BACKUP_HOME } else { $HOME }
 $Timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $HostNameSafe = ($env:COMPUTERNAME -replace '[^A-Za-z0-9._-]', '_')
 if ([string]::IsNullOrWhiteSpace($HostNameSafe)) { $HostNameSafe = 'windows' }
 $ArchiveBaseName = "codex-backup-$HostNameSafe-$Timestamp"
 
 function Get-CodexProfileSources {
-  $homeDir = $HOME
+  $homeDir = $CodexHome
   $appDataDir = if ($env:APPDATA) { $env:APPDATA } else { Join-Path $homeDir 'AppData\Roaming' }
   $localAppDataDir = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $homeDir 'AppData\Local' }
   $documentsDir = if ($env:CODEX_BACKUP_DOCUMENTS_DIR) { $env:CODEX_BACKUP_DOCUMENTS_DIR } else { Join-Path $homeDir 'Documents' }
@@ -115,7 +116,7 @@ function Invoke-PreviewBackup {
   $manifestLines = @(
     'Codex backup manifest',
     "Created: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))",
-    "Source home: $HOME",
+    "Source home: $CodexHome",
     "Source host: $HostNameSafe",
     'Profile: codex',
     'Platform: win32',

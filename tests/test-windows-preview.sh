@@ -27,6 +27,7 @@ assert_file scripts/windows/README.md
 assert_file docs/windows.md
 assert_file gui/src-tauri/tauri.windows.conf.json
 assert_file gui/scripts/windows-desktop-smoke.mjs
+assert_file tests/windows-native.ps1
 
 assert_contains scripts/windows/codexbackup.ps1 'param\('
 assert_contains scripts/windows/codexbackup.ps1 'ProfilePlan'
@@ -34,12 +35,14 @@ assert_contains scripts/windows/codexbackup.ps1 'Doctor'
 assert_contains scripts/windows/codexbackup.ps1 'Target'
 assert_contains scripts/windows/codexbackup.ps1 'Compress-Archive'
 assert_contains scripts/windows/codexbackup.ps1 'Get-FileHash'
+assert_contains scripts/windows/codexbackup.ps1 'CODEX_BACKUP_HOME'
 assert_contains scripts/windows/codexbackup.ps1 'Status: preview'
 assert_contains scripts/windows/codexbackup.ps1 'Windows real backup is preview-only'
 
 assert_contains scripts/windows/codexrestore.ps1 'Plan'
 assert_contains scripts/windows/codexrestore.ps1 'No files were changed'
 assert_contains scripts/windows/codexrestore.ps1 'Real restore execution is not enabled'
+assert_contains scripts/windows/codexrestore.ps1 'CODEX_BACKUP_HOME'
 
 assert_contains scripts/windows/codexcredential.ps1 'Credential Manager'
 assert_contains scripts/windows/codexcredential.ps1 'ValidateOnly'
@@ -52,12 +55,17 @@ assert_contains scripts/windows/codexscheduledbackup.ps1 'No scheduled tasks wer
 assert_contains docs/windows.md 'Windows 预览'
 assert_contains docs/windows.md '不会安装、修改或删除任务计划程序任务'
 assert_contains docs/windows.md '真实恢复仍未启用'
-assert_contains docs/windows.md 'Windows 原生环境验证仍待完成'
+assert_contains docs/windows.md 'Windows 安装包构建.*仍待完成'
 
 assert_contains gui/src-tauri/tauri.windows.conf.json '"targets": \["msi", "nsis"\]'
 assert_contains gui/package.json 'desktop:smoke:windows'
 assert_contains README.md 'Windows 预览'
 assert_contains README_EN.md 'Windows preview'
+assert_contains .github/workflows/ci.yml 'windows-latest'
+assert_contains .github/workflows/ci.yml 'tests\\windows-native\.ps1'
+assert_contains .github/workflows/ci.yml 'windows-native'
+assert_contains README.md 'windows-latest'
+assert_contains docs/windows.md 'tests/windows-native\.ps1'
 
 node gui/scripts/windows-desktop-smoke.mjs
 
