@@ -63,6 +63,8 @@ assert_contains docs/windows.md '待完成'
 
 assert_contains gui/src-tauri/tauri.windows.conf.json '"targets": \["msi", "nsis"\]'
 assert_contains gui/src-tauri/tauri.windows.conf.json '"icons/icon\.ico"'
+assert_contains gui/src-tauri/Cargo.toml '\[\[bin\]\]'
+assert_contains gui/src-tauri/Cargo.toml 'name = "CodexBackup"'
 assert_contains gui/scripts/windows-installer-smoke.mjs '\.msi'
 assert_contains gui/scripts/windows-installer-smoke.mjs '\.exe'
 assert_contains gui/scripts/windows-installer-smoke.mjs 'desktop:build:windows'
