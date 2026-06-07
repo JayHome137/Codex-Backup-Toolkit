@@ -134,6 +134,14 @@ Since 0.34.0, the Diagnostics page also shows an actionable fix path. These acti
 
 Since 0.35.0, the Overview page includes a First Launch Recommendation card. It prioritizes the next entry point across desktop runtime, helper, target blockers, read-only doctor checks, first real-backup acceptance, read-only schedule review, and health refresh. The recommendation only navigates inside the GUI or runs the existing read-only doctor command; it does not modify scheduled backup jobs or execute real restore.
 
+Since 0.35.1, macOS local install testing has a dedicated checklist and smoke script. After installing the app to `/Applications/CodexBackup.app`, run:
+
+```zsh
+./tests/test-macos-local-install-smoke.sh
+```
+
+The script only checks the installed app executable, bundled helper/scripts resources, short launch behavior, and port cleanup after exit. It does not install, uninstall, load, or modify `launchd`, does not modify existing real scheduled backup jobs, and does not execute real restore. See [macOS local install test checklist](docs/local-install-test.md).
+
 Before a macOS release, run the read-only release smoke check:
 
 ```zsh

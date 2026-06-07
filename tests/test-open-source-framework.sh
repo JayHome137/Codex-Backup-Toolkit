@@ -44,6 +44,7 @@ assert_file docs/restore-guide.md
 assert_file docs/roadmap.md
 assert_file docs/gui-design.md
 assert_file docs/release-checklist.md
+assert_file docs/local-install-test.md
 assert_file CONTRIBUTING.md
 assert_file CHANGELOG.md
 assert_file .github/workflows/ci.yml
@@ -81,6 +82,7 @@ assert_file tests/test-sync-local-authoritative.sh
 assert_file tests/test-scheduled-sync-mode.sh
 assert_file tests/test-profile-plan.sh
 assert_file tests/test-macos-release-smoke.sh
+assert_file tests/test-macos-local-install-smoke.sh
 assert_file tests/test-windows-preview.sh
 assert_file tests/windows-install-smoke.ps1
 assert_file tests/test-restore-plan.sh
@@ -110,11 +112,12 @@ assert_contains README.md 'codexrestore.sh --latest'
 assert_contains README.md 'codexrestore.sh --plan'
 assert_contains README.md 'docs/cli-reference.md'
 assert_contains README.md 'Windows 预览'
+assert_contains README.md '本地安装测试'
 assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.35\.0"'
+assert_contains gui/package.json '"version": "0\.35\.1"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -130,8 +133,11 @@ assert_contains gui/src/lib/firstLaunchGuidance.ts 'buildFirstLaunchGuidance'
 assert_contains gui/src/lib/macosReadiness.ts 'buildMacosReadiness'
 assert_contains gui/src/lib/macosReadiness.ts 'MacosReadinessFix'
 assert_contains tests/test-macos-release-smoke.sh 'no launchd install/uninstall/load/unload'
+assert_contains tests/test-macos-local-install-smoke.sh 'no launchd install/uninstall/load/unload'
+assert_contains tests/test-macos-local-install-smoke.sh '/Applications/CodexBackup.app'
 assert_contains gui/package.json '"desktop:smoke:windows"'
 assert_contains gui/package.json '"desktop:smoke:windows-installer"'
+assert_contains gui/scripts/windows-installer-smoke.mjs 'CODEXBACKUP_WINDOWS_INSTALLER_DIR'
 assert_contains gui/src-tauri/tauri.conf.json '"productName": "CodexBackup"'
 assert_contains gui/src-tauri/tauri.conf.json '"../../helper/server\.mjs"'
 assert_contains gui/src-tauri/tauri.conf.json '"toolkit/helper/server\.mjs"'

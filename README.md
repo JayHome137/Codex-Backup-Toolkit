@@ -205,6 +205,14 @@ CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 
 0.35.0 起，`概览` 页新增 `首次打开推荐`。它会根据当前状态优先引导用户打开桌面 App、启动 helper、处理目标端阻断、运行只读 doctor、完成首次真实备份验收、读取计划状态或刷新健康页。推荐动作只做页面跳转或运行现有只读 doctor，不会修改已有定时备份任务，也不会执行真实恢复。
 
+0.35.1 起，macOS 本地安装测试增加独立清单和 smoke 脚本。安装到 `/Applications/CodexBackup.app` 后可运行：
+
+```zsh
+./tests/test-macos-local-install-smoke.sh
+```
+
+该脚本只检查已安装 App 的可执行文件、内置 helper/scripts 资源、短暂启动和退出后的端口残留；不会安装、卸载、加载或修改 `launchd`，不会修改已有真实定时备份任务，也不会执行真实恢复。完整步骤见 [macOS 本地安装测试清单](docs/local-install-test.md)。
+
 macOS 发布前可运行只读 release smoke：
 
 ```zsh

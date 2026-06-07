@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.35.1 - 2026-06-07
+
+- `desktop:smoke:windows-installer` 新增 `CODEXBACKUP_WINDOWS_INSTALLER_DIR`，可直接检查下载后的 Windows installer artifact，不再只能读取本机 Tauri bundle 目录。
+- 新增 `tests/test-macos-local-install-smoke.sh`，用于检查已安装到 `/Applications/CodexBackup.app` 的 App 可执行文件、内置 helper/scripts 资源、短暂启动和退出后的端口残留。
+- 新增 `docs/local-install-test.md`，记录 macOS 本地安装测试步骤和安全边界。
+- 本地安装测试继续保持安全边界：不安装、卸载、加载或修改 `launchd`，不修改已有真实定时备份任务，不执行真实恢复。
+- GUI/Tauri 版本升至 `0.35.1`。
+
 ## 0.35.0 - 2026-06-07
 
 - GUI 概览页新增 `首次打开推荐`，根据桌面运行状态、helper、toolkit、目标端、doctor、首次备份验收、自动化读取和健康状态给出当前最应该处理的入口。

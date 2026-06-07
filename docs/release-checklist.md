@@ -26,6 +26,7 @@
 - [ ] 运行 `cd gui && npm run desktop:checksum`。
 - [ ] 运行 `cd gui && npm run desktop:smoke`；必须在 checksum 生成完成后再运行，避免并行检查时误报缺少 `.sha256`。
 - [ ] 运行 `./tests/test-macos-release-smoke.sh`；必须在 `desktop:build`、`desktop:checksum` 和 `desktop:smoke` 后运行，避免检查旧产物。
+- [ ] 安装到 `/Applications/CodexBackup.app` 后，运行 `./tests/test-macos-local-install-smoke.sh`；该脚本只检查已安装 App，不安装或修改系统任务。
 - [ ] 确认 `.app` Resources 中包含 `toolkit/helper/server.mjs` 和 `toolkit/scripts/codexbackup.sh`。
 - [ ] 确认 `.app` Resources 中包含 `icon.icns`，Windows 配置引用 `icon.ico`，且 `gui/src-tauri/icons/` 中多尺寸图标齐全。
 - [ ] 运行 `./scripts/codexbackup.sh --doctor --target local`。
@@ -70,6 +71,7 @@
 - [ ] 确认 GitHub Actions 的 `windows-native` job 已通过，且执行了 `tests/windows-native.ps1`。
 - [ ] 确认 GitHub Actions 的 Windows runner 已执行 `npm run desktop:build:windows`、`npm run desktop:smoke:windows-installer` 和 `tests/windows-install-smoke.ps1`。
 - [ ] 确认 Windows installer artifact `codexbackup-windows-installers` 已生成。
+- [ ] 如需在本机复查已下载的 Windows artifact，运行 `cd gui && CODEXBACKUP_WINDOWS_INSTALLER_DIR=/path/to/artifact npm run desktop:smoke:windows-installer`。
 - [ ] 确认 README 和 README_EN 描述的是同一套发布行为。
 - [ ] 确认没有提交个人主机名、用户名、token、密码或备份归档。
 - [ ] 确认 `CHANGELOG.md` 已填写发布日期。
@@ -81,14 +83,14 @@
 ## 打 Tag
 
 ```zsh
-git tag v0.35.0
+git tag v0.35.1
 git push origin main --tags
 ```
 
 ## 创建 GitHub Release
 
 - [ ] 从 tag 创建 GitHub Release。
-- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.35.0` 可以保留项目名和版本号，但说明正文只写中文。
+- [ ] Release 标题使用中文，例如：`Codex-Backup-toolkit v0.35.1` 可以保留项目名和版本号，但说明正文只写中文。
 - [ ] 上传 `.dmg` 和对应 `.dmg.sha256`。
 - [ ] 说明备份可能包含认证文件、cookies、sessions、memory 和本地项目文件。
 - [ ] 说明上传到 WebDAV、rclone 云盘或第三方存储前建议启用加密。
@@ -105,6 +107,7 @@ git push origin main --tags
 - [ ] 说明 GUI 新增日常使用状态，可汇总首次使用、最近备份、健康度和自动化状态，且只读取现有状态、不修改任务。
 - [ ] 说明 GUI 新增 macOS 诊断中心，可汇总桌面成熟度、helper、toolkit、路径、首次备份证明和 release smoke 状态，且只读取现有状态、不修改任务。
 - [ ] 说明新增 `tests/test-macos-release-smoke.sh`，可只读检查 `.app/.dmg`、sha256、图标和打包内置资源。
+- [ ] 说明新增 `tests/test-macos-local-install-smoke.sh`，可检查 `/Applications/CodexBackup.app`、内置资源、短暂启动和退出后的端口残留，且不修改系统任务。
 - [ ] 说明 GUI 新增首启引导页，串联桌面环境、目标端、doctor、helper 健康、备份证明和恢复边界。
 - [ ] 说明 GUI 新增安装后验证页，可查看 Release 地址、DMG/sha256 文件名、校验命令、未签名限制和首次打开流程。
 - [ ] 说明安装页补充校验结果判断、macOS 未签名 App 打开步骤和安装后 smoke 检查清单。

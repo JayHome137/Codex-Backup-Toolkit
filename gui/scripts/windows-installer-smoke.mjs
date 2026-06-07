@@ -6,7 +6,8 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const guiRoot = dirname(scriptDir);
 const repoRoot = dirname(guiRoot);
 const version = process.env.npm_package_version ?? '0.30.0';
-const bundleRoot = join(guiRoot, 'src-tauri', 'target', 'release', 'bundle');
+const defaultBundleRoot = join(guiRoot, 'src-tauri', 'target', 'release', 'bundle');
+const bundleRoot = process.env.CODEXBACKUP_WINDOWS_INSTALLER_DIR || defaultBundleRoot;
 
 const requiredSourceFiles = [
   join(repoRoot, 'scripts', 'windows', 'codexbackup.ps1'),
@@ -29,7 +30,7 @@ const exe = installers.find((file) => file.endsWith('.exe'));
 
 if (!msi && !exe) {
   console.error(`找不到 Windows 安装包：${bundleRoot}`);
-  console.error('请先在 Windows runner 上运行 `npm run desktop:build:windows`。');
+  console.error('请先在 Windows runner 上运行 `npm run desktop:build:windows`，或把下载后的 artifact 目录传给 CODEXBACKUP_WINDOWS_INSTALLER_DIR。');
   process.exit(1);
 }
 
