@@ -62,7 +62,7 @@
 ./scripts/codexbackup.sh --profile-plan --platform win32
 ```
 
-`--profile-plan --platform win32` 当前会显示 `Status: planned`，只用于后续 Windows 支持开发和验证。
+0.28.0 起，macOS 备份使用同一份 profile/archive 计划驱动 dry-run、fingerprint 和真实 staging 拷贝，归档内路径保持不变。`--profile-plan --platform win32` 当前会显示 `Status: planned`，只用于后续 Windows 支持开发和验证。
 
 返回值：
 
@@ -204,6 +204,10 @@ rclone 目标端：
 - `CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS`：只读检查频率，默认 `24`。
 - `CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS`：最小生成新备份间隔，默认 `24`。
 
+运行环境：
+
+- `node`：用于读取 profile/archive 计划。`codexbackup --doctor` 会提前检查是否可用。
+
 ## 归档产物
 
 普通备份会生成：
@@ -223,6 +227,8 @@ codex-backup-<host>-<timestamp>.tar.gz.manifest
 ```
 
 本地为准一致性检查还会维护 fingerprint sidecar，用于判断本机状态和最新备份是否一致。
+
+归档内的 profile 路径由 `helper/profile-paths.mjs` 生成。macOS 当前仍写入 `home/.codex`、`Library/Application Support/...` 和 `Documents/Codex` 等既有路径；Windows 路径计划仍只用于验证，不会触发真实 Windows 备份。
 
 ## 推荐执行顺序
 

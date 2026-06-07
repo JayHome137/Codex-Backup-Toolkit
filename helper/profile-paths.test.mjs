@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildProfilePathPlan, profilePathPlanToText } from './profile-paths.mjs';
+import { buildProfileArchivePlan, buildProfilePathPlan, profilePathPlanToText } from './profile-paths.mjs';
 
 test('builds the current macOS Codex profile path plan', () => {
   const plan = buildProfilePathPlan({ homeDir: '/Users/alice', platform: 'darwin', profile: 'codex' });
@@ -16,7 +16,7 @@ test('builds the current macOS Codex profile path plan', () => {
     'Library/Application Support/com.openai.codex',
     'Documents/Codex',
   ]);
-  assert.equal(plan.notes[0], 'macOS profile matches the current 0.26.x backup behavior.');
+  assert.equal(plan.notes[0], 'macOS profile matches the current backup behavior and drives archive staging.');
 });
 
 test('builds a planned Windows Codex profile path plan without marking it release-ready', () => {
@@ -40,6 +40,32 @@ test('builds a planned Windows Codex profile path plan without marking it releas
     'Documents/Codex',
   ]);
   assert.match(plan.notes.join('\n'), /Windows support is planned/);
+});
+
+test('maps macOS profile sources into deterministic staging paths', () => {
+  const plan = buildProfileArchivePlan({
+    homeDir: '/Users/alice/',
+    platform: 'darwin',
+    profile: 'codex',
+    stagingDir: '/tmp/codex-backup/staging/',
+  });
+
+  assert.equal(plan.profile, 'codex');
+  assert.equal(plan.platform, 'darwin');
+  assert.equal(plan.status, 'supported');
+  assert.deepEqual(plan.sources[0], {
+    archivePath: 'home/.codex',
+    sourcePath: '/Users/alice/.codex',
+    stagingPath: '/tmp/codex-backup/staging/home/.codex',
+  });
+  assert.deepEqual(plan.stagingParentPaths, [
+    '/tmp/codex-backup/staging/home',
+    '/tmp/codex-backup/staging/Library/Application Support',
+    '/tmp/codex-backup/staging/Library/Application Support',
+    '/tmp/codex-backup/staging/Library/Application Support/OpenAI',
+    '/tmp/codex-backup/staging/Library/Application Support',
+    '/tmp/codex-backup/staging/Documents',
+  ]);
 });
 
 test('renders a CLI-readable profile plan', () => {

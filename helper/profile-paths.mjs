@@ -11,6 +11,22 @@ export function buildProfilePathPlan(options = {}) {
   return macosCodexPlan(options, platform);
 }
 
+export function buildProfileArchivePlan(options = {}) {
+  const stagingDir = normalizePath(options.stagingDir ?? 'staging');
+  const plan = buildProfilePathPlan(options);
+
+  const sources = plan.sources.map((item) => ({
+    ...item,
+    stagingPath: joinArchivePath(stagingDir, item.archivePath),
+  }));
+
+  return {
+    ...plan,
+    sources,
+    stagingParentPaths: sources.map((item) => dirname(item.stagingPath)),
+  };
+}
+
 export function profilePathPlanToText(plan) {
   const lines = [
     'Codex profile path plan',
@@ -36,7 +52,7 @@ export function profilePathPlanToText(plan) {
 function macosCodexPlan(options, platform) {
   const homeDir = normalizePath(options.homeDir ?? process.env.HOME ?? '~');
   return {
-    notes: ['macOS profile matches the current 0.26.x backup behavior.'],
+    notes: ['macOS profile matches the current backup behavior and drives archive staging.'],
     platform,
     profile: 'codex',
     sources: [
@@ -82,4 +98,18 @@ function normalizePath(value) {
 
 function source(sourcePath, archivePath) {
   return { archivePath, sourcePath };
+}
+
+function dirname(value) {
+  const normalized = normalizePath(value);
+  const index = normalized.lastIndexOf('/');
+  if (index <= 0) return index === 0 ? '/' : '.';
+  return normalized.slice(0, index);
+}
+
+function joinArchivePath(...parts) {
+  const [first = '', ...rest] = parts;
+  const absolute = String(first).startsWith('/');
+  const joined = [first, ...rest].map((part) => normalizePath(part).replace(/^\/+|\/+$/g, '')).filter(Boolean).join('/');
+  return absolute ? `/${joined}` : joined;
 }

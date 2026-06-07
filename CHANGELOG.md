@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.28.0 - 2026-06-07
+
+- 新增 `buildProfileArchivePlan`，把 profile 路径计划映射为确定性的归档 staging 路径。
+- `codexbackup` 的 dry-run、fingerprint 和真实备份 staging 拷贝改为从同一份 profile archive plan 读取路径，减少 macOS 和后续 Windows 路径维护重复。
+- `codexbackup --profile-plan` 改为按脚本所在 toolkit 定位 helper 模块，从仓库外部目录调用也能正常输出路径计划。
+- `codexbackup --doctor` 新增 Node 可用性检查，因为备份路径计划由 Node profile 模块生成。
+- Windows 路径计划继续标记为 `planned`，本版本仍不启用 Windows 真实备份执行。
+- GUI/Tauri 版本升至 `0.28.0`。
+
 ## 0.27.0 - 2026-06-07
 
 - 新增 `helper/profile-paths.mjs`，提供 Codex profile 的跨平台路径计划能力。

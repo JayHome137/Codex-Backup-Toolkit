@@ -239,19 +239,48 @@ print_profile_plan() {
     *) echo "Unsupported profile plan platform: ${PROFILE_PLAN_PLATFORM}" >&2; exit 2 ;;
   esac
 
-  node --input-type=module <<EOF
-import { buildProfilePathPlan, profilePathPlanToText } from './helper/profile-paths.mjs';
+  CODEX_BACKUP_PROFILE_PLAN_PLATFORM="$PROFILE_PLAN_PLATFORM" \
+  CODEX_BACKUP_PROFILE_PLAN_PROFILE="$PROFILE" \
+  CODEX_BACKUP_TOOLKIT_DIR="$TOOLKIT_DIR" \
+  node --input-type=module <<'EOF'
+import { pathToFileURL } from 'node:url';
+
+const moduleUrl = pathToFileURL(`${process.env.CODEX_BACKUP_TOOLKIT_DIR}/helper/profile-paths.mjs`).href;
+const { buildProfilePathPlan, profilePathPlanToText } = await import(moduleUrl);
 
 const plan = buildProfilePathPlan({
   appDataDir: process.env.APPDATA,
   documentsDir: process.env.CODEX_BACKUP_DOCUMENTS_DIR,
   homeDir: process.env.HOME || process.env.USERPROFILE,
   localAppDataDir: process.env.LOCALAPPDATA,
-  platform: '${PROFILE_PLAN_PLATFORM}',
-  profile: '${PROFILE}',
+  platform: process.env.CODEX_BACKUP_PROFILE_PLAN_PLATFORM,
+  profile: process.env.CODEX_BACKUP_PROFILE_PLAN_PROFILE,
 });
 
 process.stdout.write(profilePathPlanToText(plan));
+EOF
+}
+
+profile_archive_sources_tsv() {
+  CODEX_BACKUP_PROFILE_PLAN_PROFILE="$PROFILE" \
+  CODEX_BACKUP_STAGING_DIR="$STAGING_DIR" \
+  CODEX_BACKUP_TOOLKIT_DIR="$TOOLKIT_DIR" \
+  node --input-type=module <<'EOF'
+import { pathToFileURL } from 'node:url';
+
+const moduleUrl = pathToFileURL(`${process.env.CODEX_BACKUP_TOOLKIT_DIR}/helper/profile-paths.mjs`).href;
+const { buildProfileArchivePlan } = await import(moduleUrl);
+
+const plan = buildProfileArchivePlan({
+  homeDir: process.env.HOME,
+  platform: 'darwin',
+  profile: process.env.CODEX_BACKUP_PROFILE_PLAN_PROFILE,
+  stagingDir: process.env.CODEX_BACKUP_STAGING_DIR,
+});
+
+for (const source of plan.sources) {
+  process.stdout.write(`${source.sourcePath}\t${source.archivePath}\t${source.stagingPath}\n`);
+}
 EOF
 }
 
@@ -296,6 +325,7 @@ run_doctor() {
   echo "codexbackup doctor"
   echo "Target: ${TARGET}"
   doctor_check "zsh available" command -v zsh || failures=$((failures + 1))
+  doctor_check "node available" command -v node || failures=$((failures + 1))
   doctor_check "tar available" command -v tar || failures=$((failures + 1))
   doctor_check "rsync available" command -v rsync || failures=$((failures + 1))
   doctor_check "shasum available" command -v shasum || failures=$((failures + 1))
@@ -373,13 +403,12 @@ Retention count: ${RETENTION_COUNT}
 Retention days: ${RETENTION_DAYS}
 Remote retention: ${REMOTE_RETENTION}
 Would inspect:
-  ${HOME}/.codex
-  ${HOME}/Library/Application Support/Codex
-  ${HOME}/Library/Application Support/OpenAI
-  ${HOME}/Library/Application Support/OpenAI/Codex
-  ${HOME}/Library/Application Support/com.openai.codex
-  ${HOME}/Documents/Codex
 EOF
+  profile_sources_tsv="$(profile_archive_sources_tsv)"
+  while IFS=$'\t' read -r source_path _archive_path _staging_path; do
+    [[ -n "$source_path" ]] || continue
+    print -r -- "  ${source_path}"
+  done <<< "$profile_sources_tsv"
   exit 0
 fi
 
@@ -440,15 +469,16 @@ fingerprint_if_exists() {
 
 write_local_fingerprint() {
   local dest="$1"
+  local profile_sources_tsv
+  profile_sources_tsv="$(profile_archive_sources_tsv)"
   {
+    local source_path archive_path _staging_path
     printf 'Codex backup fingerprint v1\n'
     printf 'Profile: %s\n' "$PROFILE"
-    fingerprint_if_exists "${HOME}/.codex" 'home/.codex'
-    fingerprint_if_exists "${HOME}/Library/Application Support/Codex" 'Library/Application Support/Codex'
-    fingerprint_if_exists "${HOME}/Library/Application Support/OpenAI" 'Library/Application Support/OpenAI'
-    fingerprint_if_exists "${HOME}/Library/Application Support/OpenAI/Codex" 'Library/Application Support/OpenAI/Codex'
-    fingerprint_if_exists "${HOME}/Library/Application Support/com.openai.codex" 'Library/Application Support/com.openai.codex'
-    fingerprint_if_exists "${HOME}/Documents/Codex" 'Documents/Codex'
+    while IFS=$'\t' read -r source_path archive_path _staging_path; do
+      [[ -n "$source_path" ]] || continue
+      fingerprint_if_exists "$source_path" "$archive_path"
+    done <<< "$profile_sources_tsv"
   } > "$dest"
 }
 
@@ -890,6 +920,9 @@ EOF
 }
 
 run_backup() {
+  local source_path archive_path staging_path profile_sources_tsv
+  profile_sources_tsv="$(profile_archive_sources_tsv)"
+
   echo "Codex backup"
   echo "Tool: ${TOOL_NAME}"
   echo "Target: ${TARGET}"
@@ -897,7 +930,7 @@ run_backup() {
   echo "Archive: ${ARCHIVE_BASENAME}.tar.gz"
   echo
 
-  mkdir -p "$STAGING_DIR/home" "$STAGING_DIR/Library/Application Support" "$STAGING_DIR/Documents"
+  mkdir -p "$STAGING_DIR"
 
   cat > "$MANIFEST" <<EOF
 Codex backup manifest
@@ -909,12 +942,10 @@ Target: ${TARGET}
 
 EOF
 
-  copy_if_exists "${HOME}/.codex" "${STAGING_DIR}/home/.codex"
-  copy_if_exists "${HOME}/Library/Application Support/Codex" "${STAGING_DIR}/Library/Application Support/Codex"
-  copy_if_exists "${HOME}/Library/Application Support/OpenAI" "${STAGING_DIR}/Library/Application Support/OpenAI"
-  copy_if_exists "${HOME}/Library/Application Support/OpenAI/Codex" "${STAGING_DIR}/Library/Application Support/OpenAI/Codex"
-  copy_if_exists "${HOME}/Library/Application Support/com.openai.codex" "${STAGING_DIR}/Library/Application Support/com.openai.codex"
-  copy_if_exists "${HOME}/Documents/Codex" "${STAGING_DIR}/Documents/Codex"
+  while IFS=$'\t' read -r source_path archive_path staging_path; do
+    [[ -n "$source_path" ]] || continue
+    copy_if_exists "$source_path" "$staging_path"
+  done <<< "$profile_sources_tsv"
   write_local_fingerprint "$FINGERPRINT"
 
   cat >> "$MANIFEST" <<EOF

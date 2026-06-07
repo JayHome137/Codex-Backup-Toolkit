@@ -101,7 +101,7 @@ For a complete command, option, and environment variable reference, see [CLI ref
 
 For cross-platform status, see [roadmap.md](docs/roadmap.md). The current CLI and desktop artifacts are still validated on macOS.
 
-Since 0.27.0, you can inspect the Codex profile path plan before Windows backup execution is enabled:
+Since 0.28.0, macOS real backup, dry-run, and fingerprint generation read paths from the same profile/archive plan. This keeps the current macOS archive layout unchanged while making later Windows path work safer. You can also inspect the Codex profile path plan before Windows backup execution is enabled:
 
 ```zsh
 ./scripts/codexbackup.sh --profile-plan --platform darwin

@@ -86,7 +86,7 @@ source ./config.env
 
 跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 CLI 和桌面产物仍按 macOS 验证；Windows 相关能力会在后续版本逐步加入。
 
-0.27.0 起可以先查看 Codex profile 路径计划：
+0.28.0 起，macOS 真实备份、dry-run 和 fingerprint 都会从同一份 profile/archive 计划读取路径；这不会改变当前 macOS 归档结构，但会让后续 Windows 路径接入更稳。你也可以先查看 Codex profile 路径计划：
 
 ```zsh
 ./scripts/codexbackup.sh --profile-plan --platform darwin

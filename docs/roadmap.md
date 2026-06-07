@@ -52,6 +52,7 @@ Status: current scope.
 - Daily usage status combining first-use completion, latest backup, health score, and read-only automation state. Status: added for 0.26.0.
 - Complete CLI reference for commands, options, environment variables, outputs, and safety boundaries. Status: added for 0.26.1.
 - Cross-platform Codex profile path plan with macOS supported paths and planned Windows paths. Status: added for 0.27.0.
+- Profile-driven archive staging for macOS dry-run, fingerprint, and real backup copying. Status: added for 0.28.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
@@ -60,7 +61,7 @@ Status: current scope.
 
 Status: planned. Current releases remain macOS-first until these items are implemented and verified on Windows.
 
-- Windows Codex Desktop profile discovery for `%USERPROFILE%`, `%APPDATA%`, `%LOCALAPPDATA%`, and user documents paths. Status: path plan added for 0.27.0; real backup execution still pending.
+- Windows Codex Desktop profile discovery for `%USERPROFILE%`, `%APPDATA%`, `%LOCALAPPDATA%`, and user documents paths. Status: path plan added for 0.27.0; archive-plan foundation added for 0.28.0; real backup execution still pending.
 - PowerShell or native Windows CLI entrypoints equivalent to `codexbackup`, `codexrestore`, and validation commands.
 - Windows archive creation, checksum verification, retention, latest restore, and restore-plan behavior.
 - Windows credential storage replacement for macOS Keychain, such as Windows Credential Manager.

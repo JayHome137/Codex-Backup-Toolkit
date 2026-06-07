@@ -13,6 +13,14 @@ grep -Fq 'Platform: darwin' "$OUT"
 grep -Fq 'Status: supported' "$OUT"
 grep -Fq 'Library/Application Support/Codex' "$OUT"
 
+(
+  cd /tmp
+  "$ROOT_DIR/scripts/codexbackup.sh" --profile-plan --platform darwin >"$OUT"
+)
+grep -Fq 'Codex profile path plan' "$OUT"
+grep -Fq 'Platform: darwin' "$OUT"
+grep -Fq 'Status: supported' "$OUT"
+
 ./scripts/codexbackup.sh --profile-plan --platform win32 >"$OUT"
 grep -Fq 'Platform: win32' "$OUT"
 grep -Fq 'Status: planned' "$OUT"
