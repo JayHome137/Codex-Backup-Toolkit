@@ -2,7 +2,7 @@
 
 [English README](README_EN.md)
 
-`codexbackup` 是一个面向 macOS 的 Codex Desktop 备份、恢复和自动化工具。它可以把 Codex 本机状态打包成归档，并发布到本地目录、SMB/NAS、WebDAV 或 rclone 远端。
+`codexbackup` 是一个当前以 macOS 为主的 Codex Desktop 备份、恢复和自动化工具。它可以把 Codex 本机状态打包成归档，并发布到本地目录、SMB/NAS、WebDAV 或 rclone 远端。Windows 支持已纳入后续路线，当前版本不会把 Windows 标记为已可用。
 
 ## 主要能力
 
@@ -14,6 +14,7 @@
 - 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天执行一次真实备份。
 - 支持默认关闭的本地为准一致性检查：按可选频率对比本地状态和最新备份，不一致时生成新的时间戳备份，并套用保留策略。
 - 提供 macOS 桌面 App 框架、浏览器开发模式和本地 helper，用于配置检查、helper 生命周期、配置保存、Keychain 密钥管理、受控真实备份执行、恢复预案、备份结果和安全边界验证。
+- Windows 支持已进入产品路线：后续会补齐 Windows 路径发现、PowerShell/原生命令入口、任务计划程序、凭据保存和桌面打包。
 
 ## 快速开始
 
@@ -80,6 +81,10 @@ source ./config.env
 - `rclone`：通过已配置的 rclone remote 上传和下载。
 
 更多说明见 [storage-targets.md](docs/storage-targets.md) 和 [examples](examples)。
+
+完整命令、选项和环境变量见 [CLI 参考](docs/cli-reference.md)。
+
+跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 CLI 和桌面产物仍按 macOS 验证；Windows 相关能力会在后续版本逐步加入。
 
 ## 自动备份
 

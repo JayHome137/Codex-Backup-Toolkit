@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.26.1 - 2026-06-07
+
+- 新增 `docs/cli-reference.md`，集中整理 `codexbackup`、`codexrestore`、`codexinstallautomation` 和定时入口的 CLI 用法。
+- CLI 参考补齐命令选项、返回值、关键环境变量、归档产物、日志路径和推荐执行顺序。
+- README、CLI 参考和路线图明确 Windows 支持已进入后续阶段，但当前版本仍按 macOS-first 标记和验证。
+- README 和 README_EN 增加 CLI 参考入口，开源框架测试增加文档存在性和关键内容检查。
+- GUI/Tauri 版本升至 `0.26.1`。
+
 ## 0.26.0 - 2026-06-07
 
 - GUI 新增 `日常使用状态`，把首次真实使用路径、最近备份、健康度和自动化读取结果聚合成日常可用、需要关注或有阻断项。

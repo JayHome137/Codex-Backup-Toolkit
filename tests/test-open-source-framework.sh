@@ -37,6 +37,7 @@ assert_file LICENSE
 assert_file .gitignore
 assert_file config.example.env
 assert_file docs/security.md
+assert_file docs/cli-reference.md
 assert_file docs/storage-targets.md
 assert_file docs/restore-guide.md
 assert_file docs/roadmap.md
@@ -91,10 +92,13 @@ assert_contains README.md 'WebDAV'
 assert_contains README.md 'rclone'
 assert_contains README.md 'codexrestore.sh --latest'
 assert_contains README.md 'codexrestore.sh --plan'
+assert_contains README.md 'docs/cli-reference.md'
+assert_contains README.md 'Windows 支持已纳入后续路线'
 assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
+assert_contains README_EN.md 'Windows support is now part of the roadmap'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.26\.0"'
+assert_contains gui/package.json '"version": "0\.26\.1"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -139,6 +143,12 @@ assert_contains scripts/codexbackup.sh 'rclone'
 assert_contains scripts/codexrestore.sh 'download_webdav_latest'
 assert_contains scripts/codexrestore.sh 'download_rclone_latest'
 assert_contains scripts/codexrestore.sh '--plan'
+assert_contains docs/cli-reference.md 'codexbackup'
+assert_contains docs/cli-reference.md 'codexrestore'
+assert_contains docs/cli-reference.md 'codexinstallautomation'
+assert_contains docs/cli-reference.md 'CODEX_BACKUP_SYNC_ENABLED'
+assert_contains docs/cli-reference.md 'Windows'
+assert_contains docs/roadmap.md 'Phase A\.2: Windows Support'
 assert_contains docs/restore-guide.md 'CODEX_BACKUP_TARGET=webdav'
 assert_contains docs/restore-guide.md 'CODEX_BACKUP_TARGET=rclone'
 assert_contains scripts/codexinstallautomation.sh 'validate'

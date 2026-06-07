@@ -50,9 +50,23 @@ Status: current scope.
 - Install-readiness acceptance checklist connecting DMG checksum, first open, runtime, doctor, first backup acceptance, and restore boundary. Status: added for 0.24.0.
 - First real-use path connecting install readiness, target setup, doctor, manually confirmed backup, first backup acceptance, and restore boundary. Status: added for 0.25.0.
 - Daily usage status combining first-use completion, latest backup, health score, and read-only automation state. Status: added for 0.26.0.
+- Complete CLI reference for commands, options, environment variables, outputs, and safety boundaries. Status: added for 0.26.1.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
+
+## Phase A.2: Windows Support
+
+Status: planned. Current releases remain macOS-first until these items are implemented and verified on Windows.
+
+- Windows Codex Desktop profile discovery for `%USERPROFILE%`, `%APPDATA%`, `%LOCALAPPDATA%`, and user documents paths.
+- PowerShell or native Windows CLI entrypoints equivalent to `codexbackup`, `codexrestore`, and validation commands.
+- Windows archive creation, checksum verification, retention, latest restore, and restore-plan behavior.
+- Windows credential storage replacement for macOS Keychain, such as Windows Credential Manager.
+- Windows scheduled backup support through Task Scheduler, with validate-only checks that do not mutate existing tasks.
+- Windows local, SMB path, WebDAV, and rclone target verification.
+- Windows desktop packaging and smoke checks for the Tauri app.
+- Documentation that clearly separates macOS and Windows commands, paths, logs, and safety boundaries.
 
 ## Phase B: More AI Developer Tools
 

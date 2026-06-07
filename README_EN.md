@@ -1,8 +1,8 @@
 # Codex-Backup-toolkit
 
-`codexbackup` is a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote.
+`codexbackup` is currently a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote. Windows support is now part of the roadmap, but this version does not mark Windows as ready.
 
-The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation.
+The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows support will be added in later stages for path discovery, PowerShell/native command entrypoints, Task Scheduler, credential storage, and desktop packaging.
 
 ## What It Backs Up
 
@@ -96,6 +96,10 @@ Supported `CODEX_BACKUP_TARGET` values:
 - `rclone`: upload and download archives with `rclone copy` and `rclone copyto` through any configured rclone remote.
 
 See [storage-targets.md](docs/storage-targets.md) and the files in [examples](examples) for target-specific configuration.
+
+For a complete command, option, and environment variable reference, see [CLI reference](docs/cli-reference.md).
+
+For cross-platform status, see [roadmap.md](docs/roadmap.md). The current CLI and desktop artifacts are still validated on macOS.
 
 Print supported targets:
 
