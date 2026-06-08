@@ -64,6 +64,15 @@ type HelperActionState = 'config-load' | 'config-save' | 'secret-save' | 'secret
 type HealthActionState = 'refresh' | null;
 type DesktopActionState = 'diagnostics' | 'status' | 'start' | 'stop' | null;
 
+type LocalSettingsSnapshot = {
+  capturedAt: string;
+  config: BackupConfig;
+  history: BackupHistoryEntry[];
+  paths: DesktopPaths;
+  serviceStatus: string;
+  warnings: string[];
+};
+
 type RunPreviewOptions = {
   refreshHelperHistory?: boolean;
 };
@@ -95,7 +104,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.0';
+const appVersion = '0.36.1';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -121,6 +130,8 @@ function App() {
   const [desktopDiagnostics, setDesktopDiagnostics] = useState<DesktopDiagnostics | null>(null);
   const [desktopAction, setDesktopAction] = useState<DesktopActionState>(null);
   const [desktopMessage, setDesktopMessage] = useState('桌面状态尚未检查。');
+  const [localSnapshot, setLocalSnapshot] = useState<LocalSettingsSnapshot | null>(null);
+  const [localSnapshotBusy, setLocalSnapshotBusy] = useState(false);
   const desktopBridge = useMemo(() => createDesktopBridge(), []);
   const httpHelperRunner = useMemo(() => createLocalBridgeRunner(createHttpHelperTransport()), []);
   const desktopHelperRunner = useMemo(() => createLocalBridgeRunner(createDesktopHelperTransport(desktopBridge)), [desktopBridge]);
@@ -251,6 +262,7 @@ function App() {
     }
 
     const initializeDesktop = async () => {
+      setRunnerMode('desktopHelper');
       await refreshDesktopHelperStatus({ autoStart: true });
       await refreshDesktopDiagnostics({ silent: true });
     };
@@ -435,6 +447,63 @@ function App() {
     }
   };
 
+  const readLocalSettingsSnapshot = async () => {
+    setLocalSnapshotBusy(true);
+    const warnings: string[] = [];
+    let snapshotConfig = config;
+    let snapshotHistory = helperHistory;
+    let snapshotPaths = desktopPaths;
+    let snapshotServiceStatus = helperStatusLabel(helperStatus === 'unknown' && desktopHelperStatus.online ? 'online' : helperStatus);
+
+    try {
+      const loadedConfig = await helperApi.loadConfig();
+      snapshotConfig = { ...defaultConfig, ...loadedConfig };
+      setHelperStatus('online');
+      snapshotServiceStatus = helperStatusLabel('online');
+    } catch (error) {
+      warnings.push(`保存配置读取失败，已显示当前界面配置：${shortErrorMessage(error)}`);
+    }
+
+    try {
+      const entries = await helperApi.loadHistory();
+      snapshotHistory = entries;
+      setHelperHistory(entries);
+      setHelperStatus('online');
+      snapshotServiceStatus = helperStatusLabel('online');
+    } catch (error) {
+      warnings.push(`备份记录读取失败，已显示当前已加载记录：${shortErrorMessage(error)}`);
+    }
+
+    if (desktopBridge.isDesktop) {
+      try {
+        const diagnostics = await desktopBridge.desktopDiagnostics();
+        setDesktopDiagnostics(diagnostics);
+        applyDesktopStatus(diagnostics.helper);
+        setDesktopToolkitStatus(diagnostics.toolkit);
+        snapshotPaths = diagnostics.paths;
+        if (diagnostics.helper.online) snapshotServiceStatus = helperStatusLabel('online');
+      } catch (error) {
+        warnings.push(`桌面路径刷新失败，已显示默认路径：${shortErrorMessage(error)}`);
+      }
+    }
+
+    setLocalSnapshot({
+      capturedAt: new Date().toISOString(),
+      config: snapshotConfig,
+      history: snapshotHistory,
+      paths: snapshotPaths,
+      serviceStatus: snapshotServiceStatus,
+      warnings,
+    });
+    setLastResult({
+      status: warnings.length === 0 ? 'success' : 'warning',
+      output: warnings.length === 0
+        ? '已读取本机设置和保存目录。这个操作只读取配置、历史和路径，不执行备份或恢复。'
+        : ['已读取本机设置和保存目录，但有部分信息未能从本机服务读取：', '', ...warnings].join('\n'),
+    });
+    setLocalSnapshotBusy(false);
+  };
+
   const refreshBackupHealth = async () => {
     setHealthAction('refresh');
     setRunningCommand('GET /history + GET /automation');
@@ -610,35 +679,6 @@ function App() {
             <h2>{sectionTitle(activeSection)}</h2>
           </div>
           <div className="topbar-actions">
-            <div className="mode-switch" role="group" aria-label="运行模式">
-              <button className={runnerMode === 'mock' ? 'segment segment--active' : 'segment'} onClick={() => setRunnerMode('mock')} type="button">
-                预览
-              </button>
-              <button
-                className={runnerMode === 'localBridge' ? 'segment segment--active' : 'segment'}
-                onClick={() => setRunnerMode('localBridge')}
-                type="button"
-              >
-                本机
-              </button>
-              <button
-                className={runnerMode === 'httpHelper' ? 'segment segment--active' : 'segment'}
-                onClick={() => setRunnerMode('httpHelper')}
-                type="button"
-              >
-                开发连接
-              </button>
-              <button
-                className={runnerMode === 'desktopHelper' ? 'segment segment--active' : 'segment'}
-                onClick={() => {
-                  setRunnerMode('desktopHelper');
-                  void refreshDesktopHelperStatus({ autoStart: true });
-                }}
-                type="button"
-              >
-                桌面 App
-              </button>
-            </div>
             <StatusBadge status={status} label={statusLabel(status)} />
           </div>
         </header>
@@ -663,6 +703,14 @@ function App() {
               onOpenStorage={() => setActiveSection('targets')}
               onOpenRecords={() => setActiveSection('logs')}
               storageLabel={targetLabels[config.target]}
+            />
+
+            <LocalSettingsSnapshotPanel
+              busy={localSnapshotBusy}
+              onCopy={copyText}
+              onOpen={openBackupPath}
+              onRead={readLocalSettingsSnapshot}
+              snapshot={localSnapshot}
             />
 
             <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} onRestorePlan={useArchiveForRestorePlan} />
@@ -1083,6 +1131,13 @@ function App() {
                 <button className="button button--tertiary" onClick={() => setActiveSection('diagnostics')} type="button">macOS 诊断</button>
                 <button className="button button--tertiary" onClick={() => setActiveSection('schedule')} type="button">定时备份状态</button>
               </div>
+              <RuntimeModePanel
+                mode={runnerMode}
+                onSelect={(mode) => {
+                  setRunnerMode(mode);
+                  if (mode === 'desktopHelper') void refreshDesktopHelperStatus({ autoStart: true });
+                }}
+              />
             </section>
             <section className="panel">
               <div className="panel-header">
@@ -1214,6 +1269,60 @@ function helperErrorOutput(error: unknown): string {
   return message;
 }
 
+function shortErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.split('\n')[0] ?? message;
+}
+
+function sourceLocations(): string[] {
+  return [
+    '~/.codex',
+    '~/Library/Application Support/Codex',
+    '~/Library/Application Support/OpenAI',
+    '~/Library/Application Support/OpenAI/Codex',
+    '~/Library/Application Support/com.openai.codex',
+    '~/Documents/Codex',
+  ];
+}
+
+function targetLocationSummary(config: BackupConfig): string {
+  if (config.target === 'local') return config.localDir;
+  if (config.target === 'smb') return `smb://${config.smbHost}/${config.smbShare}`;
+  if (config.target === 'webdav') return config.webdavUrl;
+  return config.rcloneRemote;
+}
+
+function RuntimeModePanel({
+  mode,
+  onSelect,
+}: {
+  mode: RunnerMode;
+  onSelect: (mode: RunnerMode) => void;
+}) {
+  return (
+    <div className="runtime-mode-panel">
+      <div>
+        <strong>开发运行模式</strong>
+        <p className="muted-copy">普通使用不需要调整；这里只保留给本地验证、开发连接和桌面桥接排查。</p>
+      </div>
+      <div className="mode-switch" role="group" aria-label="开发运行模式">
+        <button className={mode === 'mock' ? 'segment segment--active' : 'segment'} onClick={() => onSelect('mock')} type="button">
+          预览
+        </button>
+        <button className={mode === 'localBridge' ? 'segment segment--active' : 'segment'} onClick={() => onSelect('localBridge')} type="button">
+          本机
+        </button>
+        <button className={mode === 'httpHelper' ? 'segment segment--active' : 'segment'} onClick={() => onSelect('httpHelper')} type="button">
+          开发连接
+        </button>
+        <button className={mode === 'desktopHelper' ? 'segment segment--active' : 'segment'} onClick={() => onSelect('desktopHelper')} type="button">
+          桌面 App
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SimpleProductFlow({
   backupAcceptance,
   configErrorCount,
@@ -1276,6 +1385,114 @@ function SimpleProductFlow({
         </div>
       </div>
     </section>
+  );
+}
+
+function LocalSettingsSnapshotPanel({
+  busy,
+  onCopy,
+  onOpen,
+  onRead,
+  snapshot,
+}: {
+  busy: boolean;
+  onCopy: (text: string) => Promise<void>;
+  onOpen: (path: string) => Promise<void>;
+  onRead: () => Promise<void>;
+  snapshot: LocalSettingsSnapshot | null;
+}) {
+  const latestEntry = snapshot?.history.find((entry) => entry.action === 'backup' || entry.action === 'syncLocalAuthoritative') ?? null;
+  const latestArchive = latestEntry?.archivePaths[0] ?? '尚无备份记录';
+
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <FolderOpen size={16} aria-hidden="true" />
+          <span>本机设置和保存目录</span>
+        </div>
+        <button className="button button--primary" disabled={busy} onClick={() => void onRead()} type="button">
+          <FolderOpen size={15} aria-hidden="true" />
+          {busy ? '读取中' : '一键读取本机设置'}
+        </button>
+      </div>
+      {!snapshot ? (
+        <p className="muted-copy">点击后只读取本机数据位置、备份保存位置、应用配置、历史、日志和最近备份记录；不会执行备份、恢复，也不会修改定时任务。</p>
+      ) : (
+        <div className="readiness-layout">
+          <div className="summary-list">
+            <SummaryRow label="读取时间" value={formatDateTime(snapshot.capturedAt)} />
+            <SummaryRow label="本机服务" value={snapshot.serviceStatus} />
+            <SummaryRow label="备份类型" value={targetLabels[snapshot.config.target]} />
+            <SummaryRow label="备份保存位置" value={targetLocationSummary(snapshot.config)} />
+            <SummaryRow label="保留策略" value={`${snapshot.config.retentionCount} 份 / ${snapshot.config.retentionDays} 天`} />
+            <SummaryRow label="完整性" value="备份后生成 sha256 和 manifest" />
+            <SummaryRow label="最近备份" value={latestArchive} />
+          </div>
+          <div className="snapshot-sections">
+            <SnapshotPathGroup title="本机数据位置" paths={sourceLocations()} onCopy={onCopy} onOpen={onOpen} />
+            <SnapshotPathGroup
+              title="应用保存目录"
+              paths={[
+                snapshot.paths.configPath,
+                snapshot.paths.historyPath,
+                snapshot.paths.appSupportDir,
+                snapshot.paths.logDir,
+                snapshot.paths.automationStdoutLogPath,
+                snapshot.paths.automationStderrLogPath,
+              ]}
+              onCopy={onCopy}
+              onOpen={onOpen}
+            />
+            {snapshot.warnings.length > 0 && (
+              <div className="check-list check-list--compact">
+                {snapshot.warnings.map((warning) => (
+                  <div className="check-item check-item--warning" key={warning}>
+                    <TriangleAlert size={15} aria-hidden="true" />
+                    <div>
+                      <strong>读取提示</strong>
+                      <span>{warning}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SnapshotPathGroup({
+  onCopy,
+  onOpen,
+  paths,
+  title,
+}: {
+  onCopy: (text: string) => Promise<void>;
+  onOpen: (path: string) => Promise<void>;
+  paths: string[];
+  title: string;
+}) {
+  return (
+    <div className="snapshot-path-group">
+      <strong>{title}</strong>
+      <div className="artifact-list">
+        {paths.map((path) => (
+          <div className="artifact-row" key={path}>
+            <code>{path}</code>
+            <div className="artifact-actions">
+              <button className="button button--tertiary" onClick={() => void onCopy(path)} type="button">复制</button>
+              <button className="button button--tertiary" disabled={path.startsWith('~')} onClick={() => void onOpen(path)} type="button">
+                <FolderOpen size={14} aria-hidden="true" />
+                打开
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

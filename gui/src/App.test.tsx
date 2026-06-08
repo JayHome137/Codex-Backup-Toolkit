@@ -36,12 +36,26 @@ function openBackup() {
   clickNav(/备份/i);
 }
 
-async function selectHttpHelperMode() {
-  fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+async function selectRuntimeMode(name: RegExp | string) {
+  clickNav(/^设置$/i);
+  const group = screen.getByRole('group', { name: /开发运行模式/i });
+  fireEvent.click(within(group).getByRole('button', { name }));
 
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: /开发连接/i })).toHaveClass('segment--active');
+    expect(within(group).getByRole('button', { name })).toHaveClass('segment--active');
   });
+}
+
+async function selectHttpHelperMode() {
+  await selectRuntimeMode(/开发连接/i);
+}
+
+async function selectLocalBridgeMode() {
+  await selectRuntimeMode(/^本机$/i);
+}
+
+async function selectDesktopHelperMode() {
+  await selectRuntimeMode(/桌面 App/i);
 }
 
 describe('App', () => {
@@ -137,6 +151,9 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /^健康$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^诊断$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^计划$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /运行模式/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /开发连接/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /桌面 App/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
 
@@ -148,6 +165,53 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: /首启引导/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /健康检查/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /定时备份状态/i })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /开发运行模式/i })).toBeInTheDocument();
+  });
+
+  it('reads local settings and saved paths from one overview action', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith('/config')) {
+        return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok', config: { ...baseConfigResponse(), target: 'webdav' } });
+      }
+      if (String(input).endsWith('/history')) {
+        return jsonResponse({
+          schema: 'codex-backup-helper.v1',
+          version: 1,
+          status: 'ok',
+          history: {
+            version: 1,
+            entries: [{
+              action: 'backup',
+              target: 'webdav',
+              status: 'success',
+              startedAt: '2026-06-08T00:00:00.000Z',
+              finishedAt: '2026-06-08T00:00:02.000Z',
+              exitCode: 0,
+              archivePaths: ['/tmp/CodexBackups/codex-backup-latest.tar.gz'],
+            }],
+          },
+        });
+      }
+      return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok' });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /一键读取本机设置/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('本机设置和保存目录')).toBeInTheDocument();
+      expect(screen.getAllByText('WebDAV').length).toBeGreaterThan(0);
+      expect(screen.getByText('https://webdav.example.com/remote.php/dav/files/user/CodexBackup')).toBeInTheDocument();
+      expect(screen.getByText('~/.codex')).toBeInTheDocument();
+      expect(screen.getByText('~/Documents/Codex')).toBeInTheDocument();
+      expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
+      expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-latest.tar.gz').length).toBeGreaterThan(0);
+    });
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
   });
 
   it('shows backup health summary and next actions', async () => {
@@ -236,8 +300,7 @@ describe('App', () => {
       expect(screen.getByText(/已刷新健康状态/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: /查看真实备份确认/i })[0]);
+    await selectHttpHelperMode();
     openBackup();
 
     expect(screen.getByText('备份本机数据')).toBeInTheDocument();
@@ -251,9 +314,9 @@ describe('App', () => {
     openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.0_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.0_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.1_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.1_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.1_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -276,7 +339,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.0_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.1_aarch64.dmg.sha256');
     });
   });
 
@@ -422,7 +485,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    await selectHttpHelperMode();
     clickNav(/记录/i);
     fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
 
@@ -516,7 +579,7 @@ describe('App', () => {
   it('uses the local bridge allowlist mode for doctor commands', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /本机/i }));
+    await selectLocalBridgeMode();
     runDoctorFromStorage();
     clickNav(/记录/i);
 
@@ -530,7 +593,7 @@ describe('App', () => {
   it('runs backup commands in local bridge mode', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /本机/i }));
+    await selectLocalBridgeMode();
     openBackup();
     fireEvent.click(screen.getByRole('button', { name: /立即备份/i }));
     clickNav(/记录/i);
@@ -593,7 +656,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    await selectHttpHelperMode();
     openBackup();
     fireEvent.click(screen.getByRole('button', { name: /确认备份内容/i }));
     fireEvent.click(screen.getByRole('button', { name: /立即备份/i }));
@@ -661,7 +724,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    await selectHttpHelperMode();
     openBackup();
 
     expect(screen.getByText('备份本机数据')).toBeInTheDocument();
@@ -736,7 +799,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    await selectHttpHelperMode();
     openBackup();
     fireEvent.click(screen.getByRole('button', { name: /生成同步备份/i }));
     clickNav(/记录/i);
@@ -832,7 +895,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    await selectHttpHelperMode();
     clickNav(/恢复/i);
     fireEvent.click(screen.getByRole('button', { name: /指定归档/i }));
     fireEvent.click(screen.getByRole('button', { name: /生成预案/i }));
@@ -1030,7 +1093,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.36.0')).toBeInTheDocument();
+    expect(screen.getByText('0.36.1')).toBeInTheDocument();
   });
 
   it('shows desktop readiness in Settings for first launch', () => {
@@ -1102,10 +1165,10 @@ describe('App', () => {
     });
   });
 
-  it('keeps real backup confirmation disabled in desktop mode outside Tauri', () => {
+  it('keeps real backup confirmation disabled in desktop mode outside Tauri', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /桌面/i }));
+    await selectDesktopHelperMode();
     openBackup();
 
     expect(screen.getByText('备份本机数据')).toBeInTheDocument();

@@ -191,7 +191,7 @@ function unavailableDiagnostics(): DesktopDiagnostics {
     helper: unavailableStatus(),
     paths: defaultDesktopPaths(),
     toolkit: { available: false, lastError: '当前不是 Tauri 桌面环境。', source: 'unavailable' },
-    version: '0.35.1',
+    version: '0.36.1',
   };
 }
 
