@@ -57,6 +57,8 @@ Status: current scope.
 - Actionable macOS diagnostic fix path for first-run readiness, helper startup guidance, read-only schedule review, first backup acceptance, and release smoke follow-up. Status: added for 0.34.0.
 - First launch recommendation on Overview that prioritizes desktop runtime, helper, target blockers, read-only doctor, first backup acceptance, schedule review, and health refresh. Status: added for 0.35.0.
 - Local macOS install smoke for `/Applications/CodexBackup.app`, plus artifact-aware Windows installer smoke. Status: added for 0.35.1.
+- Shell-quoted helper action and Keychain arguments for GUI/API supplied strings. Status: added for 0.35.2.
+- Product-focused GUI simplification with main navigation reduced to Overview, Backup, Storage Target, Restore, Logs, and Settings; advanced diagnostics moved into Settings; helper wording reduced to local service in user-facing UI. Status: added for 0.36.0.
 - Day-based retention for WebDAV and rclone once provider timestamp semantics are documented.
 - Optional encrypted manifests.
 - Homebrew formula or install script.
@@ -89,6 +91,6 @@ The default should remain conservative: each profile must document exactly what 
 
 ## Phase C: GUI
 
-The GUI calls the CLI through the helper rather than reimplementing backup logic. The current GUI supports browser development mode and a Tauri macOS desktop shell, first-run validation guide, install-readiness acceptance, first real-use path, daily usage status, macOS diagnostics center, configuration checks, encryption guidance, persisted config, Keychain secret actions, command previews, helper health checks, helper online/offline state, disabled helper actions while offline, desktop helper start/stop/status/diagnostics, managed helper log paths, settings path open actions, confirmed real backup execution, local-authoritative consistency checks, backup health scoring, target doctor advice, first real-backup acceptance, automatic helper history refresh, latest backup result display, restore-plan guidance, read-only launchd automation status, release trust checklist, and helper backup history. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
+The GUI calls the CLI through the local helper/service rather than reimplementing backup logic. The current product-facing desktop UI is intentionally simpler: Overview, Backup, Storage Target, Restore, Logs, and Settings are the daily screens; guide, install verification, health, diagnostics, and schedule status remain available as advanced entries from Settings. Real restore and automation management should wait for stronger confirmation, audit, and rollback UX.
 
 See `docs/gui-design.md` for the visual direction.

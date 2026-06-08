@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -14,11 +14,41 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function openAdvancedSection(name: RegExp | string) {
+  clickNav(/^设置$/i);
+  fireEvent.click(screen.getByRole('button', { name }));
+}
+
+function clickNav(name: RegExp | string) {
+  fireEvent.click(within(screen.getByRole('navigation', { name: /GUI 分区/i })).getByRole('button', { name }));
+}
+
+function expectNav(name: RegExp | string) {
+  expect(within(screen.getByRole('navigation', { name: /GUI 分区/i })).getByRole('button', { name })).toBeInTheDocument();
+}
+
+function runDoctorFromStorage() {
+  clickNav(/存储位置/i);
+  fireEvent.click(screen.getByRole('button', { name: /运行目标端检查/i }));
+}
+
+function openBackup() {
+  clickNav(/备份/i);
+}
+
+async function selectHttpHelperMode() {
+  fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: /开发连接/i })).toHaveClass('segment--active');
+  });
+}
+
 describe('App', () => {
   it('shows WebDAV command preview after selecting WebDAV target', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
     expect(screen.getByLabelText('WebDAV 地址')).toBeInTheDocument();
@@ -28,7 +58,7 @@ describe('App', () => {
   it('shows a target setup guide with validation and common failure guidance', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
 
     expect(screen.getByText('本地目录设置向导')).toBeInTheDocument();
     expect(screen.getByText('确认输出目录')).toBeInTheDocument();
@@ -53,8 +83,8 @@ describe('App', () => {
   it('runs doctor through the preview-only mock runner', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    runDoctorFromStorage();
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/环境检查通过/)).toBeInTheDocument();
@@ -64,7 +94,7 @@ describe('App', () => {
   it('shows structured target check results after running doctor', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
+    runDoctorFromStorage();
 
     await waitFor(() => {
       expect(screen.getByText('目标端检查')).toBeInTheDocument();
@@ -77,7 +107,7 @@ describe('App', () => {
   it('shows target doctor advice after doctor output is available', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
+    runDoctorFromStorage();
 
     await waitFor(() => {
       expect(screen.getByText('目标端处理建议')).toBeInTheDocument();
@@ -86,75 +116,64 @@ describe('App', () => {
     });
   });
 
-  it('shows a first real-use path on overview and navigates to the required screens', async () => {
+  it('shows a simplified product flow on overview and keeps diagnostics out of the main nav', () => {
     render(<App />);
 
-    expect(screen.getByText('首次打开推荐')).toBeInTheDocument();
-    expect(screen.getByText('当前推荐动作')).toBeInTheDocument();
-    expect(screen.getAllByText('打开设置').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/不会修改已有定时备份任务/).length).toBeGreaterThan(0);
+    expect(screen.getByText('备份流程')).toBeInTheDocument();
+    expect(screen.getByText('1. 打包本机数据')).toBeInTheDocument();
+    expect(screen.getByText('2. 上传到存储位置')).toBeInTheDocument();
+    expect(screen.getByText('3. 验证完整性')).toBeInTheDocument();
+    expect(screen.getByText('4. 换设备恢复')).toBeInTheDocument();
 
-    expect(screen.getByText('首次真实使用路径')).toBeInTheDocument();
-    expect(screen.getByText('选择并配置目标端')).toBeInTheDocument();
-    expect(screen.getByText('运行目标端 doctor')).toBeInTheDocument();
-    expect(screen.getByText('执行确认备份')).toBeInTheDocument();
-    expect(screen.getByText('确认恢复边界')).toBeInTheDocument();
-    expect(screen.getAllByText(/不会执行真实恢复/).length).toBeGreaterThan(0);
+    expectNav(/^概览$/i);
+    expectNav(/^备份$/i);
+    expectNav(/^存储位置$/i);
+    expectNav(/^恢复$/i);
+    expectNav(/^记录$/i);
+    expectNav(/^设置$/i);
+
+    expect(screen.queryByRole('button', { name: /^引导$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^安装$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^健康$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^诊断$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^计划$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /执行推荐动作/i }));
-    expect(screen.getByText('桌面 helper')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /开始备份/i }));
+    expect(screen.getByText('备份本机数据')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /概览/i }));
-
-    fireEvent.click(screen.getByRole('button', { name: /路径步骤 2/ }));
-    expect(screen.getByText('目标端配置')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /概览/i }));
-    fireEvent.click(screen.getByRole('button', { name: /路径步骤 3/ }));
-
-    await waitFor(() => {
-      expect(screen.getByText('目标端检查')).toBeInTheDocument();
-      expect(screen.getAllByText('4 项检查，0 个失败，0 个警告。').length).toBeGreaterThan(0);
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /路径步骤 4/ }));
-    expect(screen.getByText('真实备份确认')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /路径步骤 6/ }));
-    expect(screen.getAllByText('恢复预览').length).toBeGreaterThan(0);
+    clickNav(/^设置$/i);
+    expect(screen.getByText('高级诊断入口')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /首启引导/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /健康检查/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /定时备份状态/i })).toBeInTheDocument();
   });
 
   it('shows backup health summary and next actions', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /健康/i }));
+    openAdvancedSection(/健康检查/i);
 
     expect(screen.getByText('日常使用状态')).toBeInTheDocument();
     expect(screen.getByText('首次使用')).toBeInTheDocument();
     expect(screen.getByText('健康度')).toBeInTheDocument();
     expect(screen.getByText('备份健康度')).toBeInTheDocument();
-    expect(screen.getByText('helper')).toBeInTheDocument();
+    expect(screen.getByText('本机服务')).toBeInTheDocument();
     expect(screen.getAllByText('最近备份').length).toBeGreaterThan(0);
     expect(screen.getByText('一致性')).toBeInTheDocument();
     expect(screen.getByText('建议动作')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /打开目标端/i })).toBeInTheDocument();
   });
 
-  it('shows daily usage status on overview without adding restore or automation mutation controls', () => {
+  it('keeps automation mutation and real restore controls out of the simplified overview', () => {
     render(<App />);
 
-    expect(screen.getByText('日常使用状态')).toBeInTheDocument();
-    expect(screen.getByText('日常备份需要关注，有建议补齐的状态。')).toBeInTheDocument();
-    expect(screen.getAllByText(/真实备份仍需要手动确认/).length).toBeGreaterThan(0);
+    expect(screen.getByText('备份流程')).toBeInTheDocument();
+    expect(screen.getByText(/主流程只关注备份、存储位置、完整性校验和恢复/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /卸载定时任务/i })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /日常刷新/ }));
-    expect(screen.getByText('健康')).toBeInTheDocument();
   });
 
   it('guides first-run validation without exposing install, uninstall, or real restore actions', async () => {
@@ -195,7 +214,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /引导/i }));
+    openAdvancedSection(/首启引导/i);
 
     expect(screen.getByText('首启验证流程')).toBeInTheDocument();
     expect(screen.getByText('恢复安全边界')).toBeInTheDocument();
@@ -210,30 +229,31 @@ describe('App', () => {
       expect(screen.getAllByText('4 项检查，0 个失败，0 个警告。').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /引导/i }));
+    openAdvancedSection(/首启引导/i);
     fireEvent.click(screen.getAllByRole('button', { name: /刷新健康状态/i })[0]);
 
     await waitFor(() => {
       expect(screen.getByText(/已刷新健康状态/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
     fireEvent.click(screen.getAllByRole('button', { name: /查看真实备份确认/i })[0]);
+    openBackup();
 
-    expect(screen.getByText('真实备份确认')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
+    expect(screen.getByText('备份本机数据')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /立即备份/i })).toBeDisabled();
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
   });
 
   it('shows post-install release verification without adding updater, signing, or real restore controls', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.35.2_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.35.2_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.35.2_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.0_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.0_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.0_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -256,19 +276,19 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.35.2_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.0_aarch64.dmg.sha256');
     });
   });
 
   it('shows a macOS diagnostic center without exposing automation mutation or real restore controls', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /诊断/i }));
+    openAdvancedSection(/macOS 诊断/i);
 
     expect(screen.getByText('macOS 诊断中心')).toBeInTheDocument();
     expect(screen.getByText('macOS 桌面成熟度')).toBeInTheDocument();
-    expect(screen.getByText('helper 运行状态')).toBeInTheDocument();
-    expect(screen.getByText('内置资源')).toBeInTheDocument();
+    expect(screen.getByText('本机服务运行状态')).toBeInTheDocument();
+    expect(screen.getAllByText('内置资源').length).toBeGreaterThan(0);
     expect(screen.getByText('发布验收脚本')).toBeInTheDocument();
     expect(screen.getByText(/macOS 诊断只读取状态和路径/)).toBeInTheDocument();
     expect(screen.getByText('诊断路径')).toBeInTheDocument();
@@ -278,7 +298,7 @@ describe('App', () => {
     expect(screen.getByText('不安装、不卸载、不加载或卸载 launchd；不执行真实恢复。')).toBeInTheDocument();
     expect(screen.getByText('建议修复路径')).toBeInTheDocument();
     expect(screen.getByText('打开桌面 App 版本')).toBeInTheDocument();
-    expect(screen.getByText('在设置页启动 helper')).toBeInTheDocument();
+    expect(screen.getByText('在设置页启动本机服务')).toBeInTheDocument();
     expect(screen.getByText('读取计划状态')).toBeInTheDocument();
     expect(screen.getByText('完成首次真实备份验收')).toBeInTheDocument();
     expect(screen.getByText('只读取自动化状态，不加载、不卸载、不重写定时任务。')).toBeInTheDocument();
@@ -288,25 +308,25 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole('button', { name: /前往处理/i })[0]);
-    expect(screen.getByText('桌面 helper')).toBeInTheDocument();
+    expect(screen.getByText('本机服务')).toBeInTheDocument();
   });
 
   it('lets the install readiness panel navigate to settings, targets, logs, and restore', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    openAdvancedSection(/安装验证/i);
     fireEvent.click(screen.getByRole('button', { name: /验收打开设置/ }));
-    expect(screen.getByText('桌面 helper')).toBeInTheDocument();
+    expect(screen.getByText('本机服务')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    openAdvancedSection(/安装验证/i);
     fireEvent.click(screen.getByRole('button', { name: /验收运行目标端检查/ }));
-    expect(screen.getByText('目标端配置')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '存储位置' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    openAdvancedSection(/安装验证/i);
     fireEvent.click(screen.getByRole('button', { name: /验收刷新历史/ }));
-    expect(screen.getByText('helper 备份历史')).toBeInTheDocument();
+    expect(screen.getByText('备份记录')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /安装/i }));
+    openAdvancedSection(/安装验证/i);
     fireEvent.click(screen.getByRole('button', { name: /验收打开恢复预案/ }));
     expect(screen.getAllByText('恢复预览').length).toBeGreaterThan(0);
   });
@@ -360,7 +380,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /健康/i }));
+    openAdvancedSection(/健康检查/i);
     fireEvent.click(screen.getByRole('button', { name: /刷新健康状态/i }));
 
     await waitFor(() => {
@@ -402,8 +422,8 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    clickNav(/记录/i);
     fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
 
     await waitFor(() => {
@@ -417,7 +437,8 @@ describe('App', () => {
   it('copies command previews to the clipboard', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /复制备份命令/i }));
+    openBackup();
+    fireEvent.click(screen.getByRole('button', { name: /复制备份命令预览/i }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('./scripts/codexbackup.sh --target local'));
@@ -428,7 +449,7 @@ describe('App', () => {
   it('shows a config.env preview for the selected target', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
     expect(screen.getAllByText(/config.env 预览/i).length).toBeGreaterThan(0);
@@ -439,7 +460,7 @@ describe('App', () => {
   it('previews opt-in remote retention for cloud targets', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
     expect(screen.getByLabelText('启用远端保留策略')).toBeInTheDocument();
@@ -453,9 +474,9 @@ describe('App', () => {
   it('previews latest restore commands for the selected target', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /rclone/i }));
-    fireEvent.click(screen.getByRole('button', { name: /恢复/i }));
+    clickNav(/恢复/i);
 
     expect(screen.getByRole('group', { name: /恢复来源/i })).toBeInTheDocument();
     expect(screen.getByText('最新备份目标端')).toBeInTheDocument();
@@ -468,7 +489,7 @@ describe('App', () => {
   it('can switch restore preview back to a specific archive', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /恢复/i }));
+    clickNav(/恢复/i);
     fireEvent.click(screen.getByRole('button', { name: /指定归档/i }));
 
     expect(screen.getByLabelText('归档路径')).toBeInTheDocument();
@@ -480,23 +501,24 @@ describe('App', () => {
   it('keeps a history of preview runs in Logs', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
-    fireEvent.click(screen.getByRole('button', { name: /预览备份/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    runDoctorFromStorage();
+    openBackup();
+    fireEvent.click(screen.getByRole('button', { name: /立即备份/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/运行历史/i)).toBeInTheDocument();
-      expect(screen.getByText(/环境检查命令/i)).toBeInTheDocument();
-      expect(screen.getByText(/备份命令/i)).toBeInTheDocument();
+      expect(screen.getByText(/目标端检查命令/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/真实备份/i).length).toBeGreaterThan(0);
     });
   });
 
   it('uses the local bridge allowlist mode for doctor commands', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /本地桥接/i }));
-    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /本机/i }));
+    runDoctorFromStorage();
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/模拟助手已接受环境检查/)).toBeInTheDocument();
@@ -508,9 +530,10 @@ describe('App', () => {
   it('runs backup commands in local bridge mode', async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /本地桥接/i }));
-    fireEvent.click(screen.getByRole('button', { name: /执行备份/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /本机/i }));
+    openBackup();
+    fireEvent.click(screen.getByRole('button', { name: /立即备份/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/模拟助手已接受备份执行/)).toBeInTheDocument();
@@ -521,7 +544,7 @@ describe('App', () => {
   it('shows config checks and encryption guidance for cloud targets', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
     expect(screen.getByText('配置检查')).toBeInTheDocument();
@@ -570,10 +593,11 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /确认真实备份/i }));
-    fireEvent.click(screen.getByRole('button', { name: /执行真实备份/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    openBackup();
+    fireEvent.click(screen.getByRole('button', { name: /确认备份内容/i }));
+    fireEvent.click(screen.getByRole('button', { name: /立即备份/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
@@ -637,15 +661,16 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
+    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    openBackup();
 
-    expect(screen.getByText('真实备份确认')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /确认真实备份/i })).not.toBeDisabled();
-    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
+    expect(screen.getByText('备份本机数据')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /确认备份内容/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /立即备份/i })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('button', { name: /确认真实备份/i }));
-    fireEvent.click(screen.getByRole('button', { name: /执行真实备份/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /确认备份内容/i }));
+    fireEvent.click(screen.getByRole('button', { name: /立即备份/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
@@ -711,9 +736,10 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /本地为准生成备份/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    openBackup();
+    fireEvent.click(screen.getByRole('button', { name: /生成同步备份/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/Sync action: backup-created/)).toBeInTheDocument();
@@ -756,13 +782,21 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /运行检查/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    await selectHttpHelperMode();
+    runDoctorFromStorage();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://127.0.0.1:37371/run',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/助手返回环境检查正常/)).toBeInTheDocument();
-      expect(screen.getByText(/助手: node-local-helper/)).toBeInTheDocument();
+      expect(screen.getByText(/服务: node-local-helper/)).toBeInTheDocument();
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'http://127.0.0.1:37371/run',
@@ -798,11 +832,11 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /恢复/i }));
+    fireEvent.click(screen.getByRole('button', { name: /开发连接/i }));
+    clickNav(/恢复/i);
     fireEvent.click(screen.getByRole('button', { name: /指定归档/i }));
     fireEvent.click(screen.getByRole('button', { name: /生成预案/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/Codex restore plan/)).toBeInTheDocument();
@@ -832,15 +866,14 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /HTTP 助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /检查助手/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    await selectHttpHelperMode();
+    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/助手在线/)).toBeInTheDocument();
-      expect(screen.getAllByText(/node-local-helper/).length).toBeGreaterThan(0);
-      expect(screen.getByText('helper 在线')).toBeInTheDocument();
+      expect(screen.getAllByText(/本机服务已连接/).length).toBeGreaterThan(0);
     });
+    clickNav(/记录/i);
+    expect(screen.getAllByText(/node-local-helper/).length).toBeGreaterThan(0);
   });
 
   it('disables helper actions after helper health check fails', async () => {
@@ -854,11 +887,11 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
 
     await waitFor(() => {
-      expect(screen.getAllByText('helper 离线').length).toBeGreaterThan(0);
-      expect(screen.getByText(/请先在本机启动 helper/)).toBeInTheDocument();
+      expect(screen.getAllByText('本机服务未连接').length).toBeGreaterThan(0);
+      expect(screen.getByText(/请先启动本机服务/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
 
     expect(screen.getByRole('button', { name: /加载配置/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /保存配置/i })).toBeDisabled();
@@ -882,16 +915,16 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('helper 离线')).toBeInTheDocument();
+      expect(screen.getByText('本机服务未连接')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('helper 在线')).toBeInTheDocument();
+      expect(screen.getByText('本机服务已连接')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
 
     expect(screen.getByRole('button', { name: /加载配置/i })).not.toBeDisabled();
     expect(screen.getByRole('button', { name: /保存配置/i })).not.toBeDisabled();
@@ -912,21 +945,21 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /加载配置/i }));
 
     await waitFor(() => {
       expect(screen.getByLabelText('WebDAV 地址')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
-    expect(screen.getByText(/已从 helper 加载持久化配置/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/记录/i);
+    expect(screen.getByText(/已从本机服务加载保存的配置/)).toBeInTheDocument();
+    clickNav(/存储位置/i);
 
     fireEvent.click(screen.getByRole('button', { name: /保存配置/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/配置已保存到 helper/)).toBeInTheDocument();
+      expect(screen.getByText(/配置已保存到本机/)).toBeInTheDocument();
     });
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'GET' }));
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'PUT' }));
@@ -943,11 +976,11 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /目标端/i }));
+    clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
     fireEvent.change(screen.getByLabelText('Secret'), { target: { value: 'secret-value' } });
     fireEvent.click(screen.getByRole('button', { name: /保存密钥/i }));
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    clickNav(/记录/i);
 
     await waitFor(() => {
       expect(screen.getByText(/密钥已写入 macOS Keychain/)).toBeInTheDocument();
@@ -976,11 +1009,11 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    clickNav(/记录/i);
     fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/已加载 1 条 helper 备份历史/)).toBeInTheDocument();
+      expect(screen.getByText(/已加载 1 条备份记录/)).toBeInTheDocument();
       expect(screen.getAllByText(/codex-backup-mac\.tar\.gz/).length).toBeGreaterThan(0);
     });
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
@@ -989,33 +1022,35 @@ describe('App', () => {
   it('shows helper lifecycle controls and product paths in Settings', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^设置$/i }));
+    clickNav(/^设置$/i);
 
-    expect(screen.getByText('桌面 helper')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /启动 helper/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /停止 helper/i })).toBeInTheDocument();
+    expect(screen.getByText('本机服务')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /启动服务/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /停止服务/i })).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.35.2')).toBeInTheDocument();
+    expect(screen.getByText('0.36.0')).toBeInTheDocument();
   });
 
-  it('shows desktop readiness on the overview page for first launch', () => {
+  it('shows desktop readiness in Settings for first launch', () => {
     render(<App />);
 
-    expect(screen.getByText('桌面就绪检查')).toBeInTheDocument();
-    expect(screen.getByText('未签名桌面版本')).toBeInTheDocument();
-    expect(screen.getAllByText(/不会修改已有定时备份任务/).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /打开设置/i })).toBeInTheDocument();
+    clickNav(/^设置$/i);
+
+    expect(screen.getByText('首次启动核对')).toBeInTheDocument();
+    expect(screen.getByText('高级诊断入口')).toBeInTheDocument();
+    expect(screen.getByText(/日常使用只需要概览、备份、存储位置、恢复和记录/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /安装验证/i })).toBeInTheDocument();
   });
 
   it('shows a first-launch checklist in Settings', () => {
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^设置$/i }));
+    clickNav(/^设置$/i);
 
     expect(screen.getByText('首次启动核对')).toBeInTheDocument();
-    expect(screen.getByText('helper 状态')).toBeInTheDocument();
+    expect(screen.getByText('本机服务状态')).toBeInTheDocument();
     expect(screen.getByText('toolkit 来源')).toBeInTheDocument();
     expect(screen.getByText('配置和历史路径')).toBeInTheDocument();
     expect(screen.getByText('真实恢复仍为预案')).toBeInTheDocument();
@@ -1048,7 +1083,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^计划$/i }));
+    openAdvancedSection(/定时备份状态/i);
     expect(screen.getByText('自动化状态')).toBeInTheDocument();
     expect(screen.getByText(/只读检查/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装任务/i })).not.toBeInTheDocument();
@@ -1071,11 +1106,12 @@ describe('App', () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole('button', { name: /桌面/i }));
+    openBackup();
 
-    expect(screen.getByText('真实备份确认')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: /确认真实备份/i }));
-    expect(screen.getByRole('button', { name: /执行真实备份/i })).toBeDisabled();
+    expect(screen.getByText('备份本机数据')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /立即备份/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /确认备份内容/i }));
+    expect(screen.getByRole('button', { name: /立即备份/i })).toBeDisabled();
   });
 
   it('shows latest backup result artifacts from helper history', async () => {
@@ -1100,7 +1136,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    clickNav(/记录/i);
     fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
 
     await waitFor(() => {
@@ -1133,7 +1169,7 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /日志/i }));
+    clickNav(/记录/i);
     fireEvent.click(screen.getByRole('button', { name: /刷新历史/i }));
 
     await waitFor(() => {

@@ -58,7 +58,7 @@ export function buildPostInstallExperience(runtime: PostInstallRuntime): PostIns
         status: 'warning',
       },
       {
-        detail: '首次打开后建议进入引导页，依次完成桌面环境、目标端、doctor、helper 健康和备份证明。',
+        detail: '首次打开后建议进入引导页，依次完成桌面环境、目标端、doctor、本机服务和备份证明。',
         id: 'first-open',
         label: '首次打开流程',
         status: 'ok',

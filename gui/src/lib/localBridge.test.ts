@@ -88,7 +88,7 @@ describe('local bridge command allowlist', () => {
     expect(result.status).toBe('success');
     expect(result.output).toContain('doctor ok');
     expect(result.output).toContain('请求 ID: cbt_');
-    expect(result.output).toContain('助手: unit-test-helper');
+    expect(result.output).toContain('服务: unit-test-helper');
   });
 
   it('formats backup helper responses as executable output', async () => {

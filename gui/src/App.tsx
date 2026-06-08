@@ -95,7 +95,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.35.2';
+const appVersion = '0.36.0';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -114,7 +114,7 @@ function App() {
   const [helperStatus, setHelperStatus] = useState<HelperConnectionStatus>('unknown');
   const [helperAction, setHelperAction] = useState<HelperActionState>(null);
   const [healthAction, setHealthAction] = useState<HealthActionState>(null);
-  const [helperMessage, setHelperMessage] = useState('尚未检查本地 helper。需要加载配置、保存密钥或读取真实历史时，请先确认 helper 已启动。');
+  const [helperMessage, setHelperMessage] = useState('尚未检查本机服务。需要保存配置、读取记录或执行备份时，请先确认本机服务已连接。');
   const [backupConfirmed, setBackupConfirmed] = useState(false);
   const [desktopHelperStatus, setDesktopHelperStatus] = useState<DesktopHelperStatus>({ managed: false, online: false, source: 'unavailable' });
   const [desktopToolkitStatus, setDesktopToolkitStatus] = useState<DesktopToolkitStatus>({ available: false, source: 'unavailable' });
@@ -298,19 +298,19 @@ function App() {
     }
 
     setHelperStatus('checking');
-    setHelperMessage('正在连接 127.0.0.1:37371 的本地 helper...');
+    setHelperMessage('正在连接 127.0.0.1:37371 的本机服务...');
     setRunningCommand('GET http://127.0.0.1:37371/health');
     try {
       const health = await checkHelperHealth();
       setHelperStatus('online');
-      setHelperMessage(`helper 在线：${health.helper} / ${health.host}`);
+      setHelperMessage(`本机服务已连接：${health.host}`);
       setLastResult({
         status: 'success',
         output: [
-          '助手在线。',
+          '本机服务已连接。',
           '',
           `协议: ${health.schema}`,
-          `助手: ${health.helper}`,
+          `服务: ${health.helper}`,
           `主机: ${health.host}`,
           `状态: ${health.status === 'ok' ? '正常' : health.status}`,
         ].join('\n'),
@@ -318,7 +318,7 @@ function App() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setHelperStatus('offline');
-      setHelperMessage('helper 离线。请先在本机启动 helper，然后重新检查连接。');
+      setHelperMessage('本机服务未连接。请先启动本机服务，然后重新检查连接。');
       setLastResult({
         status: 'error',
         output: helperErrorOutput(message),
@@ -335,8 +335,8 @@ function App() {
       const nextConfig = await helperApi.loadConfig();
       setConfigAndSecretDefaults({ ...defaultConfig, ...nextConfig });
       setHelperStatus('online');
-      setHelperMessage('helper 在线，已成功加载持久化配置。');
-      setLastResult({ status: 'success', output: '已从 helper 加载持久化配置。' });
+      setHelperMessage('本机服务已连接，已成功加载保存的配置。');
+      setLastResult({ status: 'success', output: '已从本机服务加载保存的配置。' });
     } catch (error) {
       updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
@@ -353,8 +353,8 @@ function App() {
       const savedConfig = await helperApi.saveConfig(config);
       setConfigAndSecretDefaults({ ...defaultConfig, ...savedConfig });
       setHelperStatus('online');
-      setHelperMessage('helper 在线，配置已保存。');
-      setLastResult({ status: 'success', output: '配置已保存到 helper。敏感字段不会写入 config.json。' });
+      setHelperMessage('本机服务已连接，配置已保存。');
+      setLastResult({ status: 'success', output: '配置已保存到本机。敏感字段不会写入 config.json。' });
     } catch (error) {
       updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
@@ -371,7 +371,7 @@ function App() {
       await helperApi.saveSecret(secretDraft);
       setSecretDraft((draft) => ({ ...draft, secret: '' }));
       setHelperStatus('online');
-      setHelperMessage('helper 在线，密钥已写入 Keychain。');
+      setHelperMessage('本机服务已连接，密钥已写入 Keychain。');
       setLastResult({ status: 'success', output: `密钥已写入 macOS Keychain。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
     } catch (error) {
       updateHelperFailureState(error);
@@ -388,7 +388,7 @@ function App() {
     try {
       await helperApi.deleteSecret({ service: secretDraft.service, account: secretDraft.account });
       setHelperStatus('online');
-      setHelperMessage('helper 在线，Keychain 密钥已删除。');
+      setHelperMessage('本机服务已连接，Keychain 密钥已删除。');
       setLastResult({ status: 'success', output: `Keychain 密钥已删除。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
     } catch (error) {
       updateHelperFailureState(error);
@@ -406,8 +406,8 @@ function App() {
       const entries = await helperApi.loadHistory();
       setHelperHistory(entries);
       setHelperStatus('online');
-      setHelperMessage(`helper 在线，已读取 ${entries.length} 条备份历史。`);
-      setLastResult({ status: 'success', output: `已加载 ${entries.length} 条 helper 备份历史。` });
+      setHelperMessage(`本机服务已连接，已读取 ${entries.length} 条备份记录。`);
+      setLastResult({ status: 'success', output: `已加载 ${entries.length} 条备份记录。` });
     } catch (error) {
       updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
@@ -424,7 +424,7 @@ function App() {
       const status = await helperApi.loadAutomationStatus();
       setAutomationStatus(status);
       setHelperStatus('online');
-      setHelperMessage('helper 在线，已读取只读自动化状态。');
+      setHelperMessage('本机服务已连接，已读取定时备份状态。');
       setLastResult({ status: 'success', output: `已刷新自动化状态：${status.label} / ${status.loaded ? '已加载' : '未加载'}` });
     } catch (error) {
       updateHelperFailureState(error);
@@ -462,11 +462,11 @@ function App() {
       const entries = await helperApi.loadHistory();
       setHelperHistory(entries);
       setHelperStatus('online');
-      setHelperMessage(`真实备份完成，已自动刷新 ${entries.length} 条 helper 备份历史。`);
+      setHelperMessage(`备份完成，已自动刷新 ${entries.length} 条备份记录。`);
     } catch (error) {
       updateHelperFailureState(error);
       setLastResult((result) => result
-        ? { ...result, output: `${result.output}\n\n备份已完成，但自动刷新 helper 历史失败：\n${helperErrorOutput(error)}` }
+        ? { ...result, output: `${result.output}\n\n备份已完成，但自动刷新备份记录失败：\n${helperErrorOutput(error)}` }
         : { status: 'warning', output: helperErrorOutput(error) });
     }
   };
@@ -475,12 +475,12 @@ function App() {
     const output = helperErrorOutput(error);
     if (output.includes('ERR_HELPER_UNAVAILABLE')) {
       setHelperStatus('offline');
-      setHelperMessage('helper 离线。请先在本机启动 helper，然后重新检查连接。');
+      setHelperMessage('本机服务未连接。请先启动本机服务，然后重新检查连接。');
       return;
     }
 
     setHelperStatus('online');
-    setHelperMessage('helper 已响应，但本次操作失败。请查看日志里的错误详情。');
+    setHelperMessage('本机服务已响应，但本次操作失败。请查看记录里的错误详情。');
   };
 
   const copyText = async (text: string) => {
@@ -528,8 +528,8 @@ function App() {
             '桌面诊断已刷新。',
             '',
             `版本: ${diagnostics.version}`,
-            `helper: ${desktopHelperStatusLabel(diagnostics.helper)}`,
-            `toolkit: ${diagnostics.toolkit.available ? '可用' : '不可用'}`,
+            `本机服务: ${desktopHelperStatusLabel(diagnostics.helper)}`,
+            `内置资源: ${diagnostics.toolkit.available ? '可用' : '不可用'}`,
             `配置: ${diagnostics.paths.configPath}`,
             `历史: ${diagnostics.paths.historyPath}`,
             `日志: ${diagnostics.paths.logDir}`,
@@ -573,7 +573,7 @@ function App() {
     setDesktopHelperStatus(status);
     setHelperStatus(status.online ? 'online' : 'offline');
     setDesktopMessage(desktopStatusMessage(status));
-    setHelperMessage(status.online ? desktopStatusMessage(status) : status.lastError ?? '桌面 helper 离线。');
+    setHelperMessage(status.online ? desktopStatusMessage(status) : status.lastError ?? '本机服务未连接。');
   };
 
   const openBackupPath = async (path: string) => {
@@ -612,21 +612,21 @@ function App() {
           <div className="topbar-actions">
             <div className="mode-switch" role="group" aria-label="运行模式">
               <button className={runnerMode === 'mock' ? 'segment segment--active' : 'segment'} onClick={() => setRunnerMode('mock')} type="button">
-                模拟
+                预览
               </button>
               <button
                 className={runnerMode === 'localBridge' ? 'segment segment--active' : 'segment'}
                 onClick={() => setRunnerMode('localBridge')}
                 type="button"
               >
-                本地桥接
+                本机
               </button>
               <button
                 className={runnerMode === 'httpHelper' ? 'segment segment--active' : 'segment'}
                 onClick={() => setRunnerMode('httpHelper')}
                 type="button"
               >
-                HTTP 助手
+                开发连接
               </button>
               <button
                 className={runnerMode === 'desktopHelper' ? 'segment segment--active' : 'segment'}
@@ -636,159 +636,104 @@ function App() {
                 }}
                 type="button"
               >
-                桌面
+                桌面 App
               </button>
             </div>
             <StatusBadge status={status} label={statusLabel(status)} />
           </div>
         </header>
 
-        <HelperConnectionBanner
-          disabled={helperBusy}
-          message={helperBannerMessage}
-          onCheck={checkHelper}
-          status={helperStatus}
-        />
+        <HelperConnectionBanner disabled={helperBusy} message={helperBannerMessage} onCheck={checkHelper} status={helperStatus} />
 
         {activeSection === 'overview' && (
           <section className="view-stack">
             <div className="metric-grid">
-              <MetricCard icon={Archive} label="目标端" value={targetLabels[config.target]} tone="blue" />
-              <MetricCard icon={ShieldCheck} label="模式" value="仅预览" tone="green" />
-              <MetricCard icon={CalendarCheck2} label="计划" value="03:00 / 每 3 天" tone="yellow" />
+              <MetricCard icon={Archive} label="存储位置" value={targetLabels[config.target]} tone="blue" />
+              <MetricCard icon={ShieldCheck} label="完整性" value={latestBackupEntry ? '有备份记录' : '等待首次备份'} tone="green" />
+              <MetricCard icon={CalendarCheck2} label="定时备份" value="03:00 / 每 3 天" tone="yellow" />
             </div>
 
-            <FirstLaunchGuidancePanel
-              guidance={firstLaunchGuidance}
-              onAction={firstLaunchGuidanceAction(firstLaunchGuidance, {
-                onOpenHealth: () => setActiveSection('health'),
-                onOpenOverview: () => setActiveSection('overview'),
-                onOpenSchedule: () => setActiveSection('schedule'),
-                onOpenSettings: () => setActiveSection('settings'),
-                onOpenTargets: () => setActiveSection('targets'),
-                onRunDoctor: () => runPreview(commands.doctor, '目标端检查命令'),
-              })}
-              runningDoctor={runningCommand === commands.doctor}
-            />
-
-            <DesktopReadinessPanel
-              appVersion={displayedAppVersion}
-              helperStatus={desktopHelperStatus}
-              isDesktop={desktopBridge.isDesktop}
-              onOpenSettings={() => setActiveSection('settings')}
-              paths={desktopPaths}
-              toolkitStatus={desktopToolkitStatus}
-            />
-
-            <DailyUsageStatusPanel
-              onOpenHealth={() => setActiveSection('health')}
-              onOpenLogs={() => setActiveSection('logs')}
-              onOpenTargets={() => setActiveSection('targets')}
-              status={dailyUsageStatus}
-            />
-
-            <FirstUsePathPanel
-              path={firstUsePath}
-              onOpenInstall={() => setActiveSection('install')}
-              onOpenLogs={() => setActiveSection('logs')}
-              onOpenOverview={() => setActiveSection('overview')}
+            <SimpleProductFlow
+              backupAcceptance={backupAcceptance}
+              configErrorCount={blockingChecks.length}
+              helperOnline={helperStatus === 'online' || desktopHelperStatus.online}
+              latestBackupEntry={latestBackupEntry}
+              onOpenBackup={() => setActiveSection('backup')}
               onOpenRestore={() => setActiveSection('restore')}
-              onOpenTargets={() => setActiveSection('targets')}
-              onRunDoctor={() => runPreview(commands.doctor, '目标端检查命令')}
-              runningDoctor={runningCommand === commands.doctor}
+              onOpenStorage={() => setActiveSection('targets')}
+              onOpenRecords={() => setActiveSection('logs')}
+              storageLabel={targetLabels[config.target]}
             />
 
-            <TargetDoctorPanel report={doctorReport} />
-            <DoctorAdvicePanel advice={doctorAdvice} />
+            <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} onRestorePlan={useArchiveForRestorePlan} />
+          </section>
+        )}
 
-            <div className="two-column">
-              <section className="panel">
-                <div className="panel-header">
-                  <div className="panel-title">
-                    <Activity size={16} aria-hidden="true" />
-                    <span>当前运行</span>
-                  </div>
+        {activeSection === 'backup' && (
+          <section className="view-stack">
+            <section className="panel readiness-panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <Archive size={16} aria-hidden="true" />
+                  <span>备份本机数据</span>
                 </div>
+                <StatusBadge status={blockingChecks.length === 0 ? 'success' : 'error'} label={blockingChecks.length === 0 ? '可备份' : '配置未完成'} />
+              </div>
+              <div className="readiness-layout">
                 <div className="summary-list">
-                  <SummaryRow label="配置检查" value={blockingChecks.length === 0 ? '当前配置没有阻断项' : `${blockingChecks.length} 个阻断项`} />
-                  <SummaryRow label="最近备份" value="此界面尚未启动任何真实备份" />
-                  <SummaryRow label="运行器" value={runnerModeLabel(runnerMode)} />
-                  <SummaryRow label="自动化" value="计划校验命令使用隔离测试标识" />
+                  <SummaryRow label="备份内容" value="Codex 配置、状态、插件、记录和工作区数据" />
+                  <SummaryRow label="存储位置" value={targetLabels[config.target]} />
+                  <SummaryRow label="加密" value={config.encrypt ? '已开启 age 加密' : '未开启'} />
+                  <SummaryRow label="保留策略" value={`${config.retentionCount} 份 / ${config.retentionDays} 天`} />
+                  <SummaryRow label="本机服务" value={helperStatusLabel(helperStatus)} />
                 </div>
-                <ConfigCheckList checks={configChecks} compact />
-                <div className="action-row">
-                  <button className="button button--primary" onClick={() => runPreview(commands.doctor, '环境检查命令')} type="button">
-                    <Play size={15} aria-hidden="true" />
-                    运行检查
-                  </button>
-                  {runnerMode === 'httpHelper' && (
-                    <button className="button button--tertiary" onClick={checkHelper} type="button">
-                      <Activity size={15} aria-hidden="true" />
-                      检查助手
-                    </button>
-                  )}
-                  {!realRunnerMode && (
-                    <button className="button button--tertiary" onClick={() => runPreview(commands.backup, '备份命令', actions.backup)} type="button">
-                      <Archive size={15} aria-hidden="true" />
-                      {runnerMode === 'mock' ? '预览备份' : '执行备份'}
-                    </button>
-                  )}
-                </div>
-              </section>
-              {realRunnerMode && (
-                <section className="panel real-backup-panel">
-                  <div className="panel-header">
-                    <div className="panel-title">
-                      <UnlockKeyhole size={16} aria-hidden="true" />
-                      <span>真实备份确认</span>
-                    </div>
-                  </div>
-                  <div className="summary-list">
-                    <SummaryRow label="目标端" value={targetLabels[config.target]} />
-                    <SummaryRow label="加密" value={config.encrypt ? '已开启 age 加密' : '未开启 age 加密'} />
-                    <SummaryRow label="保留策略" value={`${config.retentionCount} 份 / ${config.retentionDays} 天${config.remoteRetention ? ' / 远端清理开启' : ''}`} />
-                    <SummaryRow label="helper" value={helperStatusLabel(helperStatus)} />
-                  </div>
-                  <p className="muted-copy">确认后只会通过本地 helper 执行一次结构化 backup action。不会执行恢复、安装、卸载或修改已有定时任务。</p>
+                <div className="readiness-copy">
+                  <strong>先确认，再执行</strong>
+                  <p>备份会生成时间戳归档、sha256 校验和 manifest。完成后可在记录页查看结果，并在恢复页生成恢复前检查。</p>
                   <div className="action-row">
                     <button className="button button--tertiary" disabled={blockingChecks.length > 0 || helperBusy} onClick={() => setBackupConfirmed(true)} type="button">
                       <CheckCircle2 size={15} aria-hidden="true" />
-                      确认真实备份
+                      确认备份内容
                     </button>
                     <button className="button button--primary" disabled={realBackupDisabled} onClick={runConfirmedBackup} type="button">
                       <Archive size={15} aria-hidden="true" />
-                      执行真实备份
+                      立即备份
                     </button>
-                  </div>
-                </section>
-              )}
-              <section className="panel">
-                <div className="panel-header">
-                  <div className="panel-title">
-                    <TimerReset size={16} aria-hidden="true" />
-                    <span>一致性统一</span>
+                    <button className="button button--tertiary" onClick={() => setActiveSection('targets')} type="button">修改存储位置</button>
                   </div>
                 </div>
-                <div className="summary-list">
-                  <SummaryRow label="规则" value="本地数据永远优先" />
-                  <SummaryRow label="频率" value={`每 ${config.syncCheckIntervalHours} 小时检查 / 最短 ${config.syncMinBackupIntervalHours} 小时生成新备份`} />
-                  <SummaryRow label="归档" value="不覆盖旧备份，按时间戳生成并套用保留策略" />
-                  <SummaryRow label="目标端" value={syncTargetSupported ? '当前目标端支持一致性检查' : '0.14.0 先支持本地目录和 SMB/NAS'} />
+              </div>
+              <ConfigCheckList checks={configChecks} compact />
+            </section>
+
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
+                  <TimerReset size={16} aria-hidden="true" />
+                  <span>本地为准同步</span>
                 </div>
-                <p className="muted-copy">一致性统一不会从备份回写本机，也不会覆盖已有归档；发现备份和本地不一致时，只创建新的时间戳备份。</p>
-                <div className="action-row">
-                  <button className="button button--tertiary" disabled={!syncTargetSupported || helperBusy} onClick={runSyncCheck} type="button">
-                    <ShieldCheck size={15} aria-hidden="true" />
-                    只读检查
-                  </button>
-                  <button className="button button--primary" disabled={realRunnerMode ? realSyncDisabled : !syncTargetSupported || helperBusy} onClick={runLocalAuthoritativeSync} type="button">
-                    <TimerReset size={15} aria-hidden="true" />
-                    本地为准生成备份
-                  </button>
-                </div>
-              </section>
-              <CommandPreview command={commands.backup} title="备份命令" onCopy={copyText} />
-            </div>
+              </div>
+              <div className="summary-list">
+                <SummaryRow label="规则" value="本地数据永远优先" />
+                <SummaryRow label="频率" value={`每 ${config.syncCheckIntervalHours} 小时检查 / 最短 ${config.syncMinBackupIntervalHours} 小时生成新备份`} />
+                <SummaryRow label="归档" value="不覆盖旧备份，按时间戳生成并套用保留策略" />
+                <SummaryRow label="存储位置" value={syncTargetSupported ? '当前存储位置支持一致性检查' : '当前先支持本地目录和 NAS'} />
+              </div>
+              <p className="muted-copy">这个功能用于定期发现本机和备份位置不一致的情况；发现不一致时生成新备份，不会从备份反向覆盖本机。</p>
+              <div className="action-row">
+                <button className="button button--tertiary" disabled={!syncTargetSupported || helperBusy} onClick={runSyncCheck} type="button">
+                  <ShieldCheck size={15} aria-hidden="true" />
+                  检查一致性
+                </button>
+                <button className="button button--primary" disabled={realRunnerMode ? realSyncDisabled : !syncTargetSupported || helperBusy} onClick={runLocalAuthoritativeSync} type="button">
+                  <TimerReset size={15} aria-hidden="true" />
+                  生成同步备份
+                </button>
+              </div>
+            </section>
+
+            <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} onRestorePlan={useArchiveForRestorePlan} />
+            <CommandPreview command={commands.backup} title="备份命令预览" onCopy={copyText} />
           </section>
         )}
 
@@ -882,12 +827,13 @@ function App() {
               onRunDoctor={() => runPreview(commands.doctor, '目标端检查命令')}
               runningDoctor={runningCommand === commands.doctor}
             />
+            <TargetDoctorPanel report={doctorReport} />
             <DoctorAdvicePanel advice={doctorAdvice} />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
                   <Archive size={16} aria-hidden="true" />
-                  <span>目标端配置</span>
+                  <span>存储位置</span>
                 </div>
               </div>
               <TargetForm config={config} onChange={setConfigAndSecretDefaults} />
@@ -1098,12 +1044,12 @@ function App() {
               <div className="panel-header">
                 <div className="panel-title">
                   <Archive size={16} aria-hidden="true" />
-                  <span>helper 备份历史</span>
+                  <span>备份记录</span>
                 </div>
               </div>
               <div className="history-list">
                 {helperHistory.length === 0 ? (
-                  <p className="muted-copy">还没有从 helper 加载真实备份历史。</p>
+                  <p className="muted-copy">还没有从本机加载备份记录。</p>
                 ) : (
                   helperHistory.map((entry) => <HelperHistoryItem entry={entry} key={`${entry.startedAt}-${entry.target}-${entry.exitCode}`} />)
                 )}
@@ -1123,8 +1069,26 @@ function App() {
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  <span>高级诊断入口</span>
+                </div>
+              </div>
+              <p className="muted-copy">
+                日常使用只需要概览、备份、存储位置、恢复和记录。下面入口用于安装验收、健康检查、macOS 诊断和定时备份状态排查。
+              </p>
+              <div className="action-row">
+                <button className="button button--tertiary" onClick={() => setActiveSection('guide')} type="button">首启引导</button>
+                <button className="button button--tertiary" onClick={() => setActiveSection('install')} type="button">安装验证</button>
+                <button className="button button--tertiary" onClick={() => setActiveSection('health')} type="button">健康检查</button>
+                <button className="button button--tertiary" onClick={() => setActiveSection('diagnostics')} type="button">macOS 诊断</button>
+                <button className="button button--tertiary" onClick={() => setActiveSection('schedule')} type="button">定时备份状态</button>
+              </div>
+            </section>
+            <section className="panel">
+              <div className="panel-header">
+                <div className="panel-title">
                   <Activity size={16} aria-hidden="true" />
-                  <span>桌面 helper</span>
+                  <span>本机服务</span>
                 </div>
                 <StatusBadge status={desktopHelperStatus.online ? 'success' : 'warning'} label={desktopHelperStatusLabel(desktopHelperStatus)} />
               </div>
@@ -1142,19 +1106,19 @@ function App() {
                 </button>
                 <button className="button button--primary" disabled={desktopAction !== null || !desktopBridge.isDesktop} onClick={startDesktopHelper} type="button">
                   <Play size={15} aria-hidden="true" />
-                  {desktopAction === 'start' ? '启动中' : '启动 helper'}
+                  {desktopAction === 'start' ? '启动中' : '启动服务'}
                 </button>
                 <button className="button button--tertiary" disabled={desktopAction !== null || !desktopBridge.isDesktop} onClick={stopDesktopHelper} type="button">
                   <Trash2 size={15} aria-hidden="true" />
-                  {desktopAction === 'stop' ? '停止中' : '停止 helper'}
+                  {desktopAction === 'stop' ? '停止中' : '停止服务'}
                 </button>
                 <button className="button button--tertiary" disabled={!desktopBridge.isDesktop} onClick={refreshDesktopToolkitStatus} type="button">
                   <ShieldCheck size={15} aria-hidden="true" />
-                  检查 toolkit
+                  检查内置资源
                 </button>
                 <button className="button button--tertiary" disabled={desktopAction !== null || !desktopBridge.isDesktop} onClick={() => refreshDesktopDiagnostics()} type="button">
                   <ShieldCheck size={15} aria-hidden="true" />
-                  {desktopAction === 'diagnostics' ? '诊断中' : '刷新诊断'}
+                  {desktopAction === 'diagnostics' ? '诊断中' : '刷新高级诊断'}
                 </button>
               </div>
             </section>
@@ -1162,21 +1126,21 @@ function App() {
               <div className="panel-header">
                 <div className="panel-title">
                   <Archive size={16} aria-hidden="true" />
-                  <span>内置 toolkit</span>
+                  <span>高级诊断：内置资源</span>
                 </div>
                 <StatusBadge status={desktopToolkitStatus.available ? 'success' : 'warning'} label={desktopToolkitStatus.available ? '可用' : '不可用'} />
               </div>
               <div className="summary-list">
                 <SummaryRow label="来源" value={toolkitSourceLabel(desktopToolkitStatus.source)} />
                 <SummaryRow label="根目录" value={desktopToolkitStatus.rootPath ?? '未定位'} />
-                <SummaryRow label="helper" value={desktopToolkitStatus.helperPath ?? '未定位'} />
+                <SummaryRow label="本机服务入口" value={desktopToolkitStatus.helperPath ?? '未定位'} />
                 <SummaryRow label="脚本" value={desktopToolkitStatus.scriptsPath ?? '未定位'} />
               </div>
               {desktopToolkitStatus.lastError && <p className="muted-copy">{desktopToolkitStatus.lastError}</p>}
               <div className="action-row">
                 <button className="button button--tertiary" disabled={!desktopBridge.isDesktop || !desktopToolkitStatus.rootPath} onClick={() => desktopToolkitStatus.rootPath && openDesktopPath(desktopToolkitStatus.rootPath)} type="button">
                   <FolderOpen size={15} aria-hidden="true" />
-                  打开 toolkit
+                  打开资源目录
                 </button>
               </div>
             </section>
@@ -1194,8 +1158,8 @@ function App() {
                 <PathRow label="配置目录" path={desktopPaths.appSupportDir} onOpen={openDesktopPath} />
                 <PathRow label="自动化标准输出" path={desktopPaths.automationStdoutLogPath} onOpen={openDesktopPath} />
                 <PathRow label="自动化错误输出" path={desktopPaths.automationStderrLogPath} onOpen={openDesktopPath} />
-                <PathRow label="桌面 helper 输出" path={desktopPaths.desktopHelperStdoutLogPath} onOpen={openDesktopPath} />
-                <PathRow label="桌面 helper 错误" path={desktopPaths.desktopHelperStderrLogPath} onOpen={openDesktopPath} />
+                <PathRow label="本机服务输出" path={desktopPaths.desktopHelperStdoutLogPath} onOpen={openDesktopPath} />
+                <PathRow label="本机服务错误" path={desktopPaths.desktopHelperStderrLogPath} onOpen={openDesktopPath} />
                 <PathRow label="日志目录" path={desktopPaths.logDir} onOpen={openDesktopPath} />
               </div>
             </section>
@@ -1229,8 +1193,8 @@ function helperErrorOutput(error: unknown): string {
     return [
       'ERR_HELPER_UNAVAILABLE',
       '',
-      '本地 helper 当前不可用。',
-      '请先在仓库根目录运行 `node helper/server.mjs`，再回到 GUI 点击“重新检查”。',
+      '本机服务当前不可用。',
+      '请先启动桌面 App 内置服务，或在开发环境运行 `node helper/server.mjs`，再回到 GUI 点击“重新检查”。',
       '',
       message,
     ].join('\n');
@@ -1240,7 +1204,7 @@ function helperErrorOutput(error: unknown): string {
     return [
       'ERR_HELPER_FAILED',
       '',
-      'helper 已响应，但本次操作没有成功。',
+      '本机服务已响应，但本次操作没有成功。',
       '请根据下方错误信息检查配置、权限或 Keychain 输入。',
       '',
       message,
@@ -1248,6 +1212,71 @@ function helperErrorOutput(error: unknown): string {
   }
 
   return message;
+}
+
+function SimpleProductFlow({
+  backupAcceptance,
+  configErrorCount,
+  helperOnline,
+  latestBackupEntry,
+  onOpenBackup,
+  onOpenRecords,
+  onOpenRestore,
+  onOpenStorage,
+  storageLabel,
+}: {
+  backupAcceptance: BackupAcceptance;
+  configErrorCount: number;
+  helperOnline: boolean;
+  latestBackupEntry: BackupHistoryEntry | null;
+  onOpenBackup: () => void;
+  onOpenRecords: () => void;
+  onOpenRestore: () => void;
+  onOpenStorage: () => void;
+  storageLabel: string;
+}) {
+  const backupReady = configErrorCount === 0 && helperOnline;
+  const integrityLabel = backupAcceptance.level === 'accepted' ? '已验证' : latestBackupEntry ? '待复核' : '待备份';
+  const nextAction = configErrorCount > 0
+    ? '先完善存储位置'
+    : !helperOnline
+      ? '先连接本机服务'
+      : latestBackupEntry
+        ? '查看记录或准备恢复'
+        : '执行第一次备份';
+
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Archive size={16} aria-hidden="true" />
+          <span>备份流程</span>
+        </div>
+        <StatusBadge status={backupReady ? 'success' : 'warning'} label={nextAction} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="1. 打包本机数据" value={backupReady ? '可执行' : '等待准备'} />
+          <SummaryRow label="2. 上传到存储位置" value={storageLabel} />
+          <SummaryRow label="3. 验证完整性" value={integrityLabel} />
+          <SummaryRow label="4. 换设备恢复" value="先校验，再写入" />
+        </div>
+        <div className="readiness-copy">
+          <strong>{nextAction}</strong>
+          <p>主流程只关注备份、存储位置、完整性校验和恢复。高级诊断和内部服务状态已放到设置里。</p>
+          <div className="action-row">
+            <button className="button button--primary" onClick={configErrorCount > 0 ? onOpenStorage : onOpenBackup} type="button">
+              <Archive size={15} aria-hidden="true" />
+              {configErrorCount > 0 ? '设置存储位置' : '开始备份'}
+            </button>
+            <button className="button button--tertiary" onClick={onOpenStorage} type="button">存储位置</button>
+            <button className="button button--tertiary" onClick={onOpenRecords} type="button">备份记录</button>
+            <button className="button button--tertiary" onClick={onOpenRestore} type="button">恢复</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function HelperConnectionBanner({
@@ -1318,7 +1347,7 @@ function BackupHealthPanel({
           </div>
           <div className="readiness-copy">
             <strong>只读健康视图</strong>
-            <p>这里聚合 helper、配置、历史、自动化和一致性检查状态，只做展示和跳转，不会执行真实恢复、安装、卸载或修改已有定时任务。</p>
+            <p>这里聚合本机服务、配置、历史、自动化和一致性检查状态，只做展示和跳转，不会执行真实恢复、安装、卸载或修改已有定时任务。</p>
             <div className="action-row">
               <button className="button button--primary" disabled={refreshing} onClick={onRefresh} type="button">
                 <RotateCcw size={15} aria-hidden="true" />
@@ -1558,8 +1587,8 @@ function DesktopReadinessPanel({
       <div className="readiness-layout">
         <div className="summary-list">
           <SummaryRow label="版本" value={appVersion} />
-          <SummaryRow label="helper" value={desktopHelperStatusLabel(helperStatus)} />
-          <SummaryRow label="toolkit" value={toolkitStatus.available ? toolkitSourceLabel(toolkitStatus.source) : '未就绪'} />
+          <SummaryRow label="本机服务" value={desktopHelperStatusLabel(helperStatus)} />
+          <SummaryRow label="内置资源" value={toolkitStatus.available ? toolkitSourceLabel(toolkitStatus.source) : '未就绪'} />
           <SummaryRow label="安全边界" value="不会修改已有定时备份任务" />
         </div>
         <div className="readiness-copy">
@@ -1620,7 +1649,7 @@ function FirstRunJourneyPanel({
         </div>
         <div className="readiness-copy">
           <strong>从打开 App 到完成验证</strong>
-          <p>按顺序完成桌面环境、目标端、doctor、helper 健康、备份证明和恢复边界确认。这里不会绕过真实备份确认，也不会修改已有自动化任务。</p>
+          <p>按顺序完成桌面环境、存储位置、只读检查、本机服务、备份证明和恢复边界确认。这里不会绕过真实备份确认，也不会修改已有自动化任务。</p>
           <div className="action-row">
             <button className="button button--primary" disabled={runningDoctor} onClick={onRunDoctor} type="button">
               <ShieldCheck size={15} aria-hidden="true" />
@@ -2308,14 +2337,14 @@ function MacosDiagnosticsPanel({
         <div className="summary-list">
           <SummaryRow label="macOS 桌面成熟度" value={macosReadinessLevelLabel(readiness.level)} />
           <SummaryRow label="结论" value={readiness.summary} />
-          <SummaryRow label="helper" value={desktopHelperStatusLabel(helperStatus)} />
-          <SummaryRow label="toolkit" value={toolkitStatus.available ? toolkitSourceLabel(toolkitStatus.source) : '未就绪'} />
+          <SummaryRow label="本机服务" value={desktopHelperStatusLabel(helperStatus)} />
+          <SummaryRow label="内置资源" value={toolkitStatus.available ? toolkitSourceLabel(toolkitStatus.source) : '未就绪'} />
           <SummaryRow label="最近诊断" value={diagnostics ? `版本 ${diagnostics.version}` : '尚未刷新桌面诊断'} />
           <SummaryRow label="安全边界" value={readiness.safetyNote} />
         </div>
         <div className="readiness-copy">
           <strong>面向发布前的本机状态汇总</strong>
-          <p>诊断中心聚合桌面运行时、helper、toolkit、路径、首次备份证明和发布 smoke 状态。这里不触发恢复，也不修改自动化任务。</p>
+          <p>诊断中心聚合桌面运行时、本机服务、内置资源、路径、首次备份证明和发布 smoke 状态。这里不触发恢复，也不修改自动化任务。</p>
           <div className="action-row">
             <button className="button button--primary" disabled={refreshing} onClick={() => void onRefreshDiagnostics()} type="button">
               <ShieldCheck size={15} aria-hidden="true" />
@@ -2354,7 +2383,7 @@ function MacosDiagnosticsPanel({
             <SummaryRow label="配置" value={paths.configPath} />
             <SummaryRow label="历史" value={paths.historyPath} />
             <SummaryRow label="日志目录" value={paths.logDir} />
-            <SummaryRow label="桌面 helper 错误" value={paths.desktopHelperStderrLogPath} />
+            <SummaryRow label="本机服务错误" value={paths.desktopHelperStderrLogPath} />
             <SummaryRow label="自动化错误" value={paths.automationStderrLogPath} />
           </div>
         </section>
@@ -2579,9 +2608,9 @@ function buildFirstLaunchItems({
     },
     {
       id: 'helper-status',
-      label: 'helper 状态',
+      label: '本机服务状态',
       status: helperStatus.online ? 'ok' : 'warning',
-      detail: helperStatus.online ? desktopStatusMessage(helperStatus) : 'helper 离线时，配置保存、Keychain、历史读取和真实备份按钮会按离线规则禁用。',
+      detail: helperStatus.online ? desktopStatusMessage(helperStatus) : '本机服务未连接时，配置保存、Keychain、历史读取和真实备份按钮会按离线规则禁用。',
     },
     {
       id: 'toolkit-source',
@@ -2610,10 +2639,10 @@ function existsLabel(exists: boolean): string {
 
 function helperStatusLabel(status: HelperConnectionStatus): string {
   return {
-    unknown: 'helper 未确认',
-    checking: 'helper 检查中',
-    online: 'helper 在线',
-    offline: 'helper 离线',
+    unknown: '本机服务未确认',
+    checking: '本机服务检查中',
+    online: '本机服务已连接',
+    offline: '本机服务未连接',
   }[status];
 }
 
@@ -2662,7 +2691,7 @@ function LatestBackupResult({
         </div>
       </div>
       {!entry ? (
-        <p className="muted-copy">还没有可展示的真实备份结果。执行真实备份或刷新 helper 历史后会显示最近一次结果。</p>
+        <p className="muted-copy">还没有可展示的真实备份结果。执行真实备份或刷新备份记录后会显示最近一次结果。</p>
       ) : (
         <div className="backup-result">
           <div className="summary-list">
@@ -2724,14 +2753,15 @@ function ArtifactRow({
 function sectionTitle(section: SectionId): string {
   return {
     overview: '概览',
+    backup: '备份',
     guide: '首启引导',
     install: '安装验证',
     health: '备份健康',
     diagnostics: 'macOS 诊断',
-    targets: '目标端',
-    schedule: '计划校验',
-    restore: '恢复预览',
-    logs: '日志',
+    targets: '存储位置',
+    schedule: '定时备份',
+    restore: '恢复',
+    logs: '记录',
     settings: '设置',
   }[section];
 }
@@ -2777,30 +2807,30 @@ function resultStatusLabel(status: CommandResult['status']): string {
 
 function runnerModeLabel(mode: RunnerMode): string {
   return {
-    mock: '模拟预览模式',
-    localBridge: '本地桥接允许列表模式',
-    httpHelper: 'HTTP 助手：127.0.0.1:37371',
-    desktopHelper: '桌面 helper：Tauri 托管或外部连接',
+    mock: '预览模式',
+    localBridge: '本机允许列表模式',
+    httpHelper: '开发连接：127.0.0.1:37371',
+    desktopHelper: '桌面 App 本机服务',
   }[mode];
 }
 
 function desktopStatusMessage(status: DesktopHelperStatus): string {
-  if (status.online && status.source === 'managed') return '托管 helper 在线。退出桌面 App 时会尝试清理这个 helper。';
-  if (status.online && status.source === 'external') return '外部 helper 在线。桌面 App 只连接它，退出时不会停止它。';
-  return status.lastError ?? '桌面 helper 离线。';
+  if (status.online && status.source === 'managed') return '本机服务已连接。退出桌面 App 时会尝试清理这个服务。';
+  if (status.online && status.source === 'external') return '外部本机服务已连接。桌面 App 只连接它，退出时不会停止它。';
+  return status.lastError ?? '本机服务未连接。';
 }
 
 function desktopSourceLabel(source: DesktopHelperStatus['source']): string {
   return {
     managed: 'App 托管',
-    external: '外部 helper',
+    external: '外部服务',
     unavailable: '不可用',
   }[source];
 }
 
 function desktopHelperStatusLabel(status: DesktopHelperStatus): string {
-  if (!status.online) return 'helper 离线';
-  return status.source === 'managed' ? '托管 helper 在线' : '外部 helper 在线';
+  if (!status.online) return '本机服务未连接';
+  return status.source === 'managed' ? '本机服务已连接' : '外部服务已连接';
 }
 
 function toolkitSourceLabel(source: DesktopToolkitStatus['source']): string {

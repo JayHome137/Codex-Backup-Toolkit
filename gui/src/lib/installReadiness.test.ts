@@ -53,7 +53,7 @@ describe('buildInstallReadiness', () => {
     expect(readiness.steps.find((step) => step.id === 'first-backup')?.detail).toContain('首次真实备份还没有验收');
     expect(readiness.nextActions).toEqual([
       '先完成 DMG 校验和首次打开。',
-      '打开设置页确认桌面 helper 和内置 toolkit。',
+      '打开设置页确认本机服务和内置资源。',
       '运行一次目标端 doctor 检查。',
       '完成一次手动确认的真实备份并刷新历史。',
     ]);

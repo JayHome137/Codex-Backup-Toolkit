@@ -2,7 +2,7 @@
 
 `codexbackup` is currently a macOS-first backup and restore toolkit for Codex Desktop. It archives the local state that makes Codex feel like your current machine, then publishes the archive to a local folder, SMB/NAS share, WebDAV endpoint, or rclone remote. Windows support is now part of the roadmap, but this version does not mark Windows as ready.
 
-The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop GUI/helper foundation. Windows preview support now includes PowerShell entrypoints, Windows path planning, local zip backup preview, restore plans, Credential Manager and Task Scheduler validate-only skeletons, and Tauri Windows packaging config. Native Windows preview validation, installer build checks, and isolated install-layout smoke checks now run in GitHub Actions, but Windows remains preview-only.
+The current public scope is Codex Desktop backup, restore, automation, and a Tauri-based macOS desktop app. The desktop UI now focuses on the core product path: Overview, Backup, Storage Target, Restore, Logs, and Settings. Windows preview support includes PowerShell entrypoints, Windows path planning, local zip backup preview, restore plans, Credential Manager and Task Scheduler validate-only skeletons, and Tauri Windows packaging config. Native Windows preview validation, installer build checks, and isolated install-layout smoke checks now run in GitHub Actions, but Windows remains preview-only.
 
 ## What It Backs Up
 
@@ -236,7 +236,15 @@ Logs are written to:
 
 ## Desktop App And GUI
 
-Since 0.8.0, the GUI includes a Tauri v2 desktop shell that reuses the React/Vite app under `gui/` and talks to the local helper through desktop bridge commands.
+The GUI includes a Tauri v2 desktop shell that reuses the React/Vite app under `gui/`. Since 0.36.0, the desktop UI has been simplified around the user-facing backup flow. The main navigation only shows `Overview`, `Backup`, `Storage Target`, `Restore`, `Logs`, and `Settings`; guide, install verification, health checks, diagnostics, and schedule status are available from the advanced entries in Settings.
+
+The current desktop flow is:
+
+- Choose a local folder, NAS/SMB share, WebDAV endpoint, or rclone remote in `Storage Target`, then run the target check.
+- Package local Codex data from `Backup`; confirmed real backup and local-authoritative consistency backup are both available through controlled actions.
+- Review command output, backup history, archive paths, sha256 files, and manifests in `Logs`.
+- Generate restore plans in `Restore`; real restore still requires explicit CLI execution outside the GUI.
+- Manage the local service, config path, log path, version information, and advanced diagnostics in `Settings`.
 
 Install GUI dependencies:
 
@@ -289,46 +297,22 @@ npm run desktop:smoke
 
 The current target is a local unsigned `.app`; a `.dmg` is produced when the local Tauri/macOS build environment supports it. Apple Developer signing, notarization, and auto-update are not included yet. If Rust is missing, `desktop:build` prints a Chinese diagnostic and points to `https://rustup.rs/`.
 
-The desktop app checks `127.0.0.1:37371` on startup. If an external helper is already online, the app connects to it and does not stop it on exit. If the app starts a managed helper, it attempts to stop only that managed helper when the app exits. Since 0.9.0, packaged builds include `helper/`, `scripts/`, `config.example.env`, and `examples/` as app resources, so the desktop app can start its bundled helper first. Since 0.10.0, managed helper stdout/stderr are written to:
+The desktop app checks the local service at `127.0.0.1:37371` on startup. If an external service is already online, the app connects to it and does not stop it on exit. If the app starts a managed service, it attempts to stop only that managed process when the app exits. Packaged builds include `helper/`, `scripts/`, `config.example.env`, and `examples/` as app resources. Managed service stdout/stderr are written to:
 
 ```text
 ~/Library/Logs/CodexBackup/desktop-helper.out.log
 ~/Library/Logs/CodexBackup/desktop-helper.err.log
 ```
 
-Development or custom runs can still point the helper launcher at the repo root with:
+Development or custom runs can still point the service launcher at the repo root with:
 
 ```zsh
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-Since 0.11.0, the overview screen shows a desktop readiness check with version, helper status, toolkit source, and unsigned-build safety guidance. The `Settings` screen shows a first-launch checklist, helper status, start/stop controls, desktop diagnostics, bundled toolkit source, config path, history path, log paths, and version information, with open-path actions for the config directory, log directory, and toolkit directory.
+The GUI safety boundary is unchanged: it can run target checks, save sanitized config, manage Keychain secrets, execute confirmed backups, show backup results, run local-authoritative consistency checks, and generate restore plans. It does not execute real restore, install, uninstall, load, or modify existing scheduled backup jobs, and it does not expose arbitrary shell execution.
 
-Since 0.12.0, the overview screen parses `codexbackup --doctor` output into a structured target check with target, passed checks, warnings, and failures. The `Logs` screen shows the latest real backup result with archive, sha256, and manifest paths plus copy/open actions and a restore-plan entry point. Restore still only generates `codexrestore --plan`; it does not execute real restore.
-
-Since 0.13.0, the `Schedule` screen includes a read-only automation status panel. Through the helper it can display the launchd label, loaded state, plist path, install path, scheduled script path, log paths, and schedule information. This surface only reads state; it does not install, uninstall, load, unload, or modify existing scheduled backup jobs.
-
-Since 0.14.0, the overview and target screens include local-authoritative consistency checks. Local data always wins: the feature never writes backup data back to the Mac and never overwrites existing archives. A read-only check compares the current local fingerprint with the latest backup fingerprint. A local-authoritative run creates a new timestamped backup only when the latest backup is missing or different, then applies the configured retention count and retention days. This release supports consistency checks for `local` and `smb` targets first.
-
-Since 0.15.0, the GUI includes a `Health` screen. It combines helper status, config checks, backup history, read-only automation status, and consistency-check settings into a backup health score with check items and suggested next actions. The screen is read-only apart from navigation; it does not run real restore, install, uninstall, or scheduled-task mutation commands.
-
-Since 0.16.0, the GUI includes a `Guide` screen for the first-run validation path. It connects desktop runtime checks, target configuration, doctor checks, helper health, backup proof, and the restore safety boundary into one workflow. It only calls existing safe actions or navigates to existing screens; it does not bypass real-backup confirmation, run real restore, install, uninstall, or mutate scheduled jobs.
-
-Since 0.17.0, the GUI includes an `Install` screen. It shows the current Release URL, DMG asset name, sha256 asset name, post-download checksum command, unsigned-build limitation, and first-open path. This screen only copies text and navigates to existing screens; it does not download or install files, run real restore, install, uninstall, or mutate scheduled jobs.
-
-Since 0.18.0, the `Install` screen also explains how to read successful and failed checksum output, how to handle macOS unsigned-app blocking, and which post-install smoke checks to run. Those smoke checks still use existing safe screens and manual confirmation only; they do not add auto-update, signing, notarization, real restore, or scheduled-job mutation capabilities.
-
-Since 0.19.0, the `Targets` screen includes a setup guide. For local, SMB/NAS, WebDAV, and rclone targets it shows setup steps, the read-only doctor validation command, next action, common failure causes, and safety boundaries. The guide reuses the existing `codexbackup --doctor` path; it does not store plaintext passwords, add helper APIs, install, uninstall, or mutate scheduled jobs.
-
-Since 0.23.0, the GUI includes four maturity flows for the first public desktop loop: target doctor advice, first real-backup acceptance, restore-plan guidance, and a release trust checklist. These flows explain what to check next, show archive/sha256/manifest proof from helper history, clarify what `codexrestore --plan` does and does not do, and keep unsigned-build/checksum/manual-smoke limitations visible. They do not add real restore execution, scheduled-task mutation, signing, notarization, or auto-update.
-
-Since 0.24.0, the `Install` screen includes an install-readiness acceptance checklist. It connects DMG checksum verification, first open, desktop runtime, target doctor, first backup acceptance, and restore-plan boundary into one post-download path. Each step links to the existing safe screen; it does not run real restore, install, uninstall, or mutate scheduled jobs.
-
-Since 0.25.0, the `Overview` and `Guide` screens include a first real-use path. It connects install readiness, target setup, doctor checks, manually confirmed backup, first backup acceptance, and restore-plan boundary into one first-use route. It only shows status, links to existing screens, and runs the existing read-only doctor check; it does not run real restore, install, uninstall, or mutate scheduled jobs.
-
-Since 0.26.0, the `Overview` and `Health` screens include a daily usage status panel. It combines the first real-use path, latest backup, backup health score, and read-only automation result into a daily-ready, needs-attention, or blocked status. It only reads existing state, navigates to existing screens, or refreshes health; it does not rescan archives, add helper APIs, run real restore, install, uninstall, or mutate scheduled jobs.
-
-## Browser Mode And Local Helper
+## Browser Mode And Local Service
 
 The repository also includes the browser-based GUI development mode for validating the interface, target configuration flow, and command previews:
 
@@ -344,32 +328,22 @@ Default local URL:
 http://127.0.0.1:5173
 ```
 
-The current GUI focuses on configuration, persisted config, Keychain secret actions, safety checks, confirmed backup execution, latest backup result display, restore planning, helper connection state, read-only automation status, and helper health/history surfaces. Mock mode still previews commands only. When the local HTTP helper is running and `HTTP Helper` mode is selected, the GUI can execute real `codexbackup` backup commands after an explicit confirmation step, and can execute `codexrestore --plan` restore-plan commands through structured helper actions. Real restore, install, uninstall, and status commands are still blocked.
-
-The interface currently supports target forms, configuration checks, age encryption guidance, `config.env` previews, command copying, confirmed real backup execution, automatic helper history refresh after successful backups, latest/archive restore plans, mock/helper output, run history, helper online/offline status, disabled helper actions when the helper is offline, and clearer loading/error states for helper actions.
-
-The GUI includes two local bridge-related modes:
-
-- `Local Bridge`: uses a mock helper to show protocol responses and allowlist behavior without executing shell commands.
-- `HTTP Helper`: connects to a manually started local helper at `http://127.0.0.1:37371`.
-- `Desktop`: uses Tauri bridge commands to start/connect/stop a managed helper and proxy helper API calls.
-
-The local helper is not started by default and does not auto-run with the GUI. For development validation, start it in a separate terminal:
+Mock mode previews commands only. For development validation, start the local service in a separate terminal:
 
 ```zsh
 node helper/server.mjs
 ```
 
-The current helper allows `codexbackup --doctor`, real `codexbackup` backup commands, `codexrestore --plan` restore-plan commands, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Real restore, install, uninstall, status, and appended shell commands are blocked. Encrypted backup commands must include `CODEX_BACKUP_AGE_RECIPIENT` or `CODEX_BACKUP_AGE_RECIPIENT_FILE`. See [helper-protocol.md](docs/helper-protocol.md) for the protocol.
+The local service defaults to `127.0.0.1:37371`. It accepts only controlled actions: `codexbackup --doctor`, confirmed `codexbackup` backup commands, `codexrestore --plan` restore-plan commands, and isolated `codexinstallautomation validate` commands that use `dev.codexbackup.toolkit.test.*` labels. Real restore, install, uninstall, status, and appended shell commands are blocked. Encrypted backup commands must include `CODEX_BACKUP_AGE_RECIPIENT` or `CODEX_BACKUP_AGE_RECIPIENT_FILE`. See [helper-protocol.md](docs/helper-protocol.md) for the protocol.
 
-The helper also exposes opt-in product-state endpoints for the GUI:
+The local service also exposes opt-in product-state endpoints for the GUI:
 
-- `GET /config` and `PUT /config` persist sanitized config at `~/Library/Application Support/CodexBackupToolkit/config.json`; the GUI can now load and save this config directly.
-- `POST /secret` and `DELETE /secret` write/delete password-like values through macOS Keychain; the GUI can now manage SMB/WebDAV secrets through these endpoints.
-- `GET /history` returns recent backup history recorded by successful helper backup runs; the GUI can now display this history on the logs page.
+- `GET /config` and `PUT /config` persist sanitized config at `~/Library/Application Support/CodexBackupToolkit/config.json`; the GUI can load and save this config directly.
+- `POST /secret` and `DELETE /secret` write/delete password-like values through macOS Keychain; the GUI can manage SMB/WebDAV secrets through these endpoints.
+- `GET /history` returns recent backup history recorded by successful backup runs; the GUI displays this history on the logs page.
 - `GET /automation` returns read-only launchd automation status; it only checks paths and `launchctl print`, and never installs, uninstalls, loads, unloads, or modifies scheduled jobs.
 
-After selecting `HTTP 助手` in the GUI, use `检查助手` to call `/health` first. This only confirms the helper is online; it does not run backup scripts or modify any scheduled job. If the helper is offline, config, Keychain, and real history buttons are disabled until a later health check succeeds. Real backup execution requires a visible confirmation summary before the `执行真实备份` button is enabled.
+Calling `/health` only confirms that the local service is online; it does not run backup scripts or modify any scheduled job. If the service is offline, config, Keychain, and real history buttons are disabled until a later health check succeeds. Real backup execution requires a visible confirmation summary before the backup button is enabled.
 
 ## Output Files
 

@@ -41,19 +41,19 @@ export type MacosReadiness = {
 export function buildMacosReadiness(input: MacosReadinessInput): MacosReadiness {
   const items: MacosReadinessItem[] = [
     {
-      detail: input.isDesktop ? `CodexBackup ${input.version} 正在桌面 App 中运行。` : '当前是浏览器开发模式，桌面 helper 托管和打开本机路径能力不可用。',
+      detail: input.isDesktop ? `CodexBackup ${input.version} 正在桌面 App 中运行。` : '当前是浏览器开发模式，本机服务托管和打开本机路径能力不可用。',
       id: 'desktop-runtime',
       label: '桌面运行环境',
       status: input.isDesktop ? 'ok' : 'blocked',
     },
     {
-      detail: input.helperOnline ? 'helper 在线，可以读取配置、历史和执行受控备份。' : 'helper 离线，配置保存、历史读取和真实备份会按离线规则禁用。',
+      detail: input.helperOnline ? '本机服务已连接，可以读取配置、历史和执行受控备份。' : '本机服务未连接，配置保存、历史读取和真实备份会按离线规则禁用。',
       id: 'helper-runtime',
-      label: 'helper 运行状态',
+      label: '本机服务运行状态',
       status: input.helperOnline ? 'ok' : 'blocked',
     },
     {
-      detail: input.toolkitAvailable ? '内置 toolkit 资源已定位。' : '尚未定位内置 helper 和脚本资源。',
+      detail: input.toolkitAvailable ? '内置资源已定位。' : '尚未定位内置本机服务和脚本资源。',
       id: 'toolkit-resources',
       label: '内置资源',
       status: input.toolkitAvailable ? 'ok' : 'blocked',
@@ -98,7 +98,7 @@ function pathsReady(input: MacosReadinessInput): boolean {
 function nextActions(input: MacosReadinessInput, items: MacosReadinessItem[]): string[] {
   const actions: string[] = [];
   if (!input.isDesktop) actions.push('用桌面 App 打开，而不是只停留在浏览器开发模式。');
-  if (!input.helperOnline || !input.toolkitAvailable || !pathsReady(input)) actions.push('刷新桌面诊断，确认 helper 和内置 toolkit。');
+  if (!input.helperOnline || !input.toolkitAvailable || !pathsReady(input)) actions.push('刷新桌面诊断，确认本机服务和内置资源。');
   if (!input.automationLoaded) actions.push('读取只读自动化状态，确认当前备份节奏。');
   if (!input.backupAccepted) actions.push('执行一次手动确认的真实备份并刷新历史。');
   if (!input.releaseSmokeAvailable) actions.push('运行 macOS release smoke，确认 .app/.dmg 和资源完整。');
@@ -113,7 +113,7 @@ function fixPlan(input: MacosReadinessInput, items: MacosReadinessItem[]): Macos
   if (!input.isDesktop) {
     fixes.push({
       action: '打开桌面 App 版本',
-      detail: '浏览器开发模式可以预览界面，但不能托管 helper 或打开本机路径。',
+      detail: '浏览器开发模式可以预览界面，但不能托管本机服务或打开本机路径。',
       id: 'open-desktop',
       safeBoundary: '只切换运行入口，不会修改备份任务。',
       target: 'settings',
@@ -121,17 +121,17 @@ function fixPlan(input: MacosReadinessInput, items: MacosReadinessItem[]): Macos
   }
   if (!input.helperOnline) {
     fixes.push({
-      action: '在设置页启动 helper',
-      detail: 'helper 在线后，配置保存、历史读取、健康状态和受控真实备份才会可用。',
+      action: '在设置页启动本机服务',
+      detail: '本机服务在线后，配置保存、历史读取、健康状态和受控真实备份才会可用。',
       id: 'start-helper',
-      safeBoundary: '只启动桌面 App 托管的本地 helper，不接管外部进程。',
+      safeBoundary: '只启动桌面 App 托管的本机服务，不接管外部进程。',
       target: 'settings',
     });
   }
   if (!input.toolkitAvailable || !pathsReady(input)) {
     fixes.push({
       action: '刷新桌面诊断',
-      detail: '重新读取内置 toolkit、配置路径、历史路径和日志路径。',
+      detail: '重新读取内置资源、配置路径、历史路径和日志路径。',
       id: 'refresh-diagnostics',
       safeBoundary: '只读检查路径和资源，不安装或卸载 launchd。',
       target: 'diagnostics',
@@ -160,7 +160,7 @@ function fixPlan(input: MacosReadinessInput, items: MacosReadinessItem[]): Macos
       action: '运行发布 smoke 检查',
       detail: '检查 .app/.dmg、sha256、图标和内置资源是否完整。',
       id: 'release-smoke',
-      safeBoundary: '只读检查构建产物，不启动 App、不连接 helper。',
+      safeBoundary: '只读检查构建产物，不启动 App、不连接本机服务。',
       target: 'release-checklist',
     });
   }

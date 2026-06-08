@@ -46,7 +46,7 @@ export function buildInstallReadiness(input: InstallReadinessInput): InstallRead
     },
     {
       actionLabel: '打开设置',
-      detail: runtimeReady ? '桌面环境、helper 和内置 toolkit 已就绪。' : '需要在设置页确认桌面 helper 和内置 toolkit 状态。',
+      detail: runtimeReady ? '桌面环境、本机服务和内置资源已就绪。' : '需要在设置页确认本机服务和内置资源状态。',
       id: 'runtime',
       label: '桌面运行时',
       status: runtimeReady ? 'ok' : 'blocked',
@@ -92,7 +92,7 @@ function nextActions(steps: InstallReadinessStep[]): string[] {
   }
   if (steps.find((step) => step.id === 'runtime')?.status !== 'ok') {
     actions.push('先完成 DMG 校验和首次打开。');
-    actions.push('打开设置页确认桌面 helper 和内置 toolkit。');
+    actions.push('打开设置页确认本机服务和内置资源。');
   }
   if (steps.find((step) => step.id === 'target-doctor')?.status !== 'ok') {
     actions.push('运行一次目标端 doctor 检查。');

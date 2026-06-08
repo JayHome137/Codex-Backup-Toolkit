@@ -13,7 +13,7 @@
 - 支持可选 age 加密、本地/SMB 保留策略，以及默认关闭的 WebDAV/rclone 远端保留策略。
 - 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天执行一次真实备份。
 - 支持默认关闭的本地为准一致性检查：按可选频率对比本地状态和最新备份，不一致时生成新的时间戳备份，并套用保留策略。
-- 提供 macOS 桌面 App 框架、浏览器开发模式和本地 helper，用于配置检查、helper 生命周期、配置保存、Keychain 密钥管理、受控真实备份执行、恢复预案、备份结果和安全边界验证。
+- 提供 macOS 桌面 App 和浏览器开发模式。桌面主流程聚焦 `概览`、`备份`、`存储位置`、`恢复`、`记录` 和 `设置`，本机服务细节收在设置和高级诊断里。
 - Windows 预览已加入：提供 PowerShell 入口、Windows 路径计划、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架，以及 Tauri Windows 打包配置；GitHub Actions 已覆盖 Windows 原生预览验证、安装包构建 artifact 和隔离安装布局 smoke，远端目标原生验证、签名、真实系统安装后 smoke 和真实恢复仍待完成。
 
 ## 快速开始
@@ -135,7 +135,15 @@ source ./config.env
 
 ## 桌面 App 和 GUI
 
-0.8.0 起，GUI 已接入 Tauri v2 桌面壳。桌面 App 会复用 `gui/` 的 React/Vite 界面，并通过 Tauri bridge 管理或连接本地 helper。
+GUI 已接入 Tauri v2 桌面壳。0.36.0 起，桌面界面做了产品降噪：主导航只保留日常会用到的 `概览`、`备份`、`存储位置`、`恢复`、`记录` 和 `设置`；安装验证、健康检查、macOS 诊断、定时备份状态等高级入口统一收进设置页。
+
+当前桌面主流程是：
+
+- 在 `存储位置` 选择本地目录、NAS/SMB、WebDAV 或 rclone 远端，并运行目标端检查。
+- 在 `备份` 打包本机 Codex 数据，可选择真实备份或本地为准一致性备份。
+- 在 `记录` 查看运行输出、备份历史、归档路径、sha256 和 manifest。
+- 在 `恢复` 生成恢复预案；真实恢复仍由 CLI 明确执行，不在 GUI 内一键触发。
+- 在 `设置` 管理本机服务、配置路径、日志路径、版本信息和高级诊断入口。
 
 安装前端依赖：
 
@@ -184,7 +192,7 @@ npm run desktop:smoke
 
 当前目标是本机可运行的未签名 `.app`；如果 Tauri 和本机打包环境支持，也会生成 `.dmg`。当前不包含 Apple Developer 签名、公证和自动更新。缺少 Rust 工具链时，`desktop:build` 会输出中文提示，并指向 `https://rustup.rs/`。
 
-桌面 App 启动后会检查 `127.0.0.1:37371`。如果发现外部 helper 已在线，只会连接它，退出 App 时不会停止外部进程；如果由 App 启动托管 helper，退出时会尝试清理该 helper。0.9.0 起，打包产物会内置 `helper/`、`scripts/`、`config.example.env` 和 `examples/`，桌面 App 可以优先从 App Resources 中启动 helper。0.10.0 起，App 托管 helper 的输出会写入：
+桌面 App 启动后会检查 `127.0.0.1:37371` 的本机服务。如果发现外部服务已在线，只会连接它，退出 App 时不会停止外部进程；如果由 App 启动托管服务，退出时会尝试清理该托管进程。打包产物会内置 `helper/`、`scripts/`、`config.example.env` 和 `examples/`。托管服务输出会写入：
 
 ```text
 ~/Library/Logs/CodexBackup/desktop-helper.out.log
@@ -197,21 +205,13 @@ npm run desktop:smoke
 CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
 ```
 
-当前 GUI 已覆盖桌面就绪检查、首次打开推荐、macOS 诊断中心、诊断修复路径、设置页 helper 管理、目标端设置向导、目标端 doctor 结果、目标端处理建议、健康页、日常使用状态、首启引导、安装验证、安装落地验收、首次真实使用路径、发布可信度清单、真实备份确认、首次备份验收、最新备份结果、helper 历史、只读自动化状态、本地为准一致性检查和恢复预案。
-
-0.33.0 起，GUI 新增 `诊断` 页，用于集中查看 macOS 桌面成熟度、helper 运行状态、内置资源、配置/历史/日志路径、首次备份证明和发布验收脚本状态。它只读取已有状态和路径，不会安装、卸载、加载或卸载 `launchd`，也不会执行真实恢复。
-
-0.34.0 起，`诊断` 页会把未就绪项整理成 `建议修复路径`。这些建议只会跳转到概览、设置、计划页，或刷新只读诊断；不会安装、卸载、加载或修改 `launchd`，不会执行真实恢复，也不会接管外部 helper。
-
-0.35.0 起，`概览` 页新增 `首次打开推荐`。它会根据当前状态优先引导用户打开桌面 App、启动 helper、处理目标端阻断、运行只读 doctor、完成首次真实备份验收、读取计划状态或刷新健康页。推荐动作只做页面跳转或运行现有只读 doctor，不会修改已有定时备份任务，也不会执行真实恢复。
-
-0.35.1 起，macOS 本地安装测试增加独立清单和 smoke 脚本。安装到 `/Applications/CodexBackup.app` 后可运行：
+macOS 本地安装测试可参考 [本地安装测试清单](docs/local-install-test.md)。安装到 `/Applications/CodexBackup.app` 后可运行：
 
 ```zsh
 ./tests/test-macos-local-install-smoke.sh
 ```
 
-该脚本只检查已安装 App 的可执行文件、内置 helper/scripts 资源、短暂启动和退出后的端口残留；不会安装、卸载、加载或修改 `launchd`，不会修改已有真实定时备份任务，也不会执行真实恢复。完整步骤见 [macOS 本地安装测试清单](docs/local-install-test.md)。
+该脚本只检查已安装 App 的可执行文件、内置资源、短暂启动和退出后的端口残留；不会安装、卸载、加载或修改 `launchd`，不会修改已有真实定时备份任务，也不会执行真实恢复。
 
 macOS 发布前可运行只读 release smoke：
 
@@ -219,26 +219,13 @@ macOS 发布前可运行只读 release smoke：
 ./tests/test-macos-release-smoke.sh
 ```
 
-该脚本检查当前 `.app/.dmg`、sha256、图标、内置 helper/scripts/config/examples 资源，不启动 App，不加载系统任务，不修改已有自动备份。
+该脚本检查当前 `.app/.dmg`、sha256、图标和内置资源，不启动 App，不加载系统任务，不修改已有自动备份。
 
-0.23.0 起，GUI 会把短期成熟产品所需的四个判断流程补齐：
-
-- `目标端处理建议`：根据 doctor 输出给出本地、SMB/NAS、WebDAV、rclone 的下一步排查建议。
-- `首次备份验收`：根据 helper 历史展示归档、sha256、manifest、退出码和恢复预案入口。
-- `恢复预案说明`：明确 `codexrestore --plan` 会做什么、不会做什么、需要准备什么。
-- `发布可信度`：在安装页展示 Release 产物、sha256、人工 smoke 流程、未签名/未公证/无自动更新等已知限制。
-
-这些界面只展示、复制、跳转或调用现有安全动作。真实恢复、安装/卸载/加载定时任务、自动更新、Apple 签名和公证仍不在当前版本内。
-
-0.24.0 起，安装页新增 `安装落地验收`，把下载校验、首次打开、桌面运行时、目标端检查、首次备份验收和恢复边界串成一个可跟随的验收清单。每个步骤都会跳转到对应页面，仍不会执行真实恢复，也不会安装、卸载或修改已有定时任务。
-
-0.25.0 起，概览页和引导页新增 `首次真实使用路径`，把安装验收、目标端配置、doctor 检查、手动确认备份、首次备份验收和恢复边界串成第一次真正上手的路线。它只做状态展示、页面跳转和已有只读 doctor 检查，不执行真实恢复，也不会安装、卸载或修改已有定时任务。
-
-0.26.0 起，概览页和健康页新增 `日常使用状态`，把首次真实使用路径、最近备份、健康度和自动化读取结果聚合成日常可用、需要关注或有阻断项。它只读取现有状态、跳转页面或刷新健康信息，不重新扫描归档，不新增 helper API，不执行真实恢复，也不会安装、卸载或修改已有定时任务。
+GUI 的安全边界保持不变：可以做目标端检查、配置保存、Keychain 密钥管理、受控真实备份、备份结果展示、本地为准一致性检查和恢复预案；不会在界面里执行真实恢复，不会安装、卸载、加载或修改已有定时备份任务，不会开放任意 shell 命令。
 
 0.10.1 起，桌面 App 已接入正式图标资源。当前图标采用黑底玻璃质感备份图标方向，包含多尺寸 PNG、`icon.icns` 和 `icon.ico`，用于 `.app`、Dock、Finder、DMG 和 Windows 安装包资源。
 
-## 浏览器模式和本地 helper
+## 浏览器模式和本机服务
 
 启动 GUI：
 
@@ -250,15 +237,15 @@ npm run dev
 
 默认地址：`http://127.0.0.1:5173`
 
-手动启动本地 helper：
+开发模式下可手动启动本机服务：
 
 ```zsh
 node helper/server.mjs
 ```
 
-helper 默认只监听 `127.0.0.1:37371`。GUI 顶部会显示 helper 未确认、检查中、在线或离线状态；helper 离线时，加载/保存配置、Keychain 密钥和真实历史按钮会暂时禁用，避免误操作。GUI 选择 `HTTP 助手` 或 `桌面` helper 后，可以执行环境检查、加载/保存配置、保存/删除 Keychain 密钥、读取真实备份历史、读取只读自动化状态、受控真实备份、恢复预案和隔离的计划校验。真实备份需要先确认摘要，再点击 `执行真实备份`，成功后会自动刷新 helper 备份历史并更新最新备份结果。恢复预案会运行 `codexrestore --plan`，不会执行真实恢复。
+本机服务默认只监听 `127.0.0.1:37371`。它负责把 GUI 的点击转换为受控 CLI 动作，例如目标端检查、配置保存、Keychain 密钥写入、备份历史读取、受控真实备份和恢复预案。服务离线时，涉及本机读写的按钮会禁用。
 
-helper 仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。自动化状态读取使用 `GET /automation`，只读取路径存在性和 `launchctl print` 状态，不会调用安装、卸载、加载或卸载命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。备份历史会保存到 `~/Library/Application Support/CodexBackupToolkit/history.json`。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
+本机服务仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。自动化状态读取使用 `GET /automation`，只读取路径存在性和 `launchctl print` 状态，不会调用安装、卸载、加载或卸载命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。备份历史会保存到 `~/Library/Application Support/CodexBackupToolkit/history.json`。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
 
 ## 加密与安全
 

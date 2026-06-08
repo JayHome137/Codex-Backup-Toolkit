@@ -123,7 +123,7 @@ function backupStep(input: FirstUsePathInput): FirstUsePathStep {
   }
   return {
     actionLabel: '打开概览',
-    detail: input.helperOnline ? '回到概览页，手动确认后执行一次受控真实备份。' : '需要 helper 在线后，才能执行手动确认的真实备份。',
+    detail: input.helperOnline ? '回到概览页，手动确认后执行一次受控真实备份。' : '需要本机服务在线后，才能执行手动确认的真实备份。',
     id: 'backup',
     label: '执行确认备份',
     status: 'todo',

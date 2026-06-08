@@ -69,7 +69,7 @@ describe('buildFirstUsePath', () => {
     expect(path.level).toBe('needs-action');
     expect(path.primaryAction).toBe('运行一次目标端 doctor 检查。');
     expect(path.steps.find((step) => step.id === 'doctor')?.status).toBe('todo');
-    expect(path.steps.find((step) => step.id === 'backup')?.detail).toContain('需要 helper 在线');
+    expect(path.steps.find((step) => step.id === 'backup')?.detail).toContain('需要本机服务在线');
     expect(path.steps.find((step) => step.id === 'acceptance')?.status).toBe('todo');
   });
 

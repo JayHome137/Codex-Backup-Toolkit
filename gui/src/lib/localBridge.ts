@@ -87,7 +87,7 @@ function formatHelperResponse(response: HelperResponse): string {
     `协议: ${response.schema}`,
     `命令类型: ${commandKindLabels[response.audit.commandKind]}`,
     `决策: ${decisionLabels[response.audit.decision]}`,
-    `助手: ${response.audit.helper}`,
+    `服务: ${response.audit.helper}`,
     `退出码: ${response.exitCode}`,
   ].join('\n');
 }

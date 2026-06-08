@@ -55,7 +55,7 @@ describe('macOS readiness', () => {
     expect(readiness.level).toBe('blocked');
     expect(readiness.score).toBe(0);
     expect(readiness.nextActions).toContain('用桌面 App 打开，而不是只停留在浏览器开发模式。');
-    expect(readiness.nextActions).toContain('刷新桌面诊断，确认 helper 和内置 toolkit。');
+    expect(readiness.nextActions).toContain('刷新桌面诊断，确认本机服务和内置资源。');
     expect(readiness.nextActions).toContain('执行一次手动确认的真实备份并刷新历史。');
     expect(readiness.fixPlan.map((fix) => fix.id)).toEqual([
       'open-desktop',

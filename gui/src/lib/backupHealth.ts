@@ -62,8 +62,8 @@ export function buildBackupHealth(input: BackupHealthInput): BackupHealth {
 
 function helperItem(helperOnline: boolean): BackupHealthItem {
   return helperOnline
-    ? { id: 'helper', label: 'helper', status: 'ok', detail: 'helper 在线，可以读取配置、历史和执行受控操作。' }
-    : { id: 'helper', label: 'helper', status: 'warning', detail: 'helper 尚未在线，真实备份、历史刷新和 Keychain 操作会受限。' };
+    ? { id: 'helper', label: '本机服务', status: 'ok', detail: '本机服务已连接，可以读取配置、历史和执行受控操作。' }
+    : { id: 'helper', label: '本机服务', status: 'warning', detail: '本机服务尚未连接，真实备份、历史刷新和 Keychain 操作会受限。' };
 }
 
 function configItem(configErrorCount: number): BackupHealthItem {
@@ -75,7 +75,7 @@ function configItem(configErrorCount: number): BackupHealthItem {
 
 function historyItem(latest: BackupHistoryEntry | null, now: Date): BackupHealthItem {
   if (!latest) {
-    return { id: 'history', label: '最近备份', status: 'warning', detail: '还没有 helper 备份历史。' };
+    return { id: 'history', label: '最近备份', status: 'warning', detail: '还没有备份记录。' };
   }
   if (latest.status !== 'success') {
     return { id: 'history', label: '最近备份', status: 'error', detail: `最近一次备份失败，退出码 ${latest.exitCode}。` };
