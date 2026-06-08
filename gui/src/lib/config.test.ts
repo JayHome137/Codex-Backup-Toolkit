@@ -108,8 +108,22 @@ describe('command builders', () => {
     const checks = getConfigChecks({ ...defaultConfig, target: 'webdav', encrypt: true, ageRecipient: '', ageRecipientFile: '' });
 
     expect(findCheck(checks, 'encryption').status).toBe('error');
-    expect(findCheck(checks, 'encryption').detail).toContain('AGE_RECIPIENT');
+    expect(findCheck(checks, 'encryption').detail).toContain('加密收件人');
+    expect(findCheck(checks, 'encryption').detail).not.toContain('CODEX_BACKUP_');
     expect(findCheck(checks, 'target').status).toBe('ok');
+  });
+
+  it('keeps user-facing config checks free of internal environment variable names', () => {
+    const checks = [
+      ...getConfigChecks({ ...defaultConfig, target: 'smb', smbHost: '', smbUser: '', smbShare: '' }),
+      ...getConfigChecks({ ...defaultConfig, target: 'webdav', webdavUrl: '', webdavUser: '' }),
+      ...getConfigChecks({ ...defaultConfig, target: 'rclone', rcloneRemote: '' }),
+      ...getConfigChecks({ ...defaultConfig, target: 'webdav', encrypt: true, ageRecipient: '', ageRecipientFile: '' }),
+    ];
+
+    for (const check of checks) {
+      expect(check.detail).not.toContain('CODEX_BACKUP_');
+    }
   });
 
   it('warns when cloud targets are not encrypted', () => {

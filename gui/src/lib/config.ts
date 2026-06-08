@@ -162,9 +162,9 @@ function getTargetCheck(config: BackupConfig): ConfigCheck {
 
   if (config.target === 'smb') {
     const missing = [
-      ['CODEX_BACKUP_SMB_HOST', config.smbHost],
-      ['CODEX_BACKUP_SMB_USER', config.smbUser],
-      ['CODEX_BACKUP_SMB_SHARE', config.smbShare],
+      ['NAS 地址', config.smbHost],
+      ['用户名', config.smbUser],
+      ['共享名称', config.smbShare],
     ]
       .filter(([, value]) => !value.trim())
       .map(([name]) => name);
@@ -175,8 +175,8 @@ function getTargetCheck(config: BackupConfig): ConfigCheck {
 
   if (config.target === 'webdav') {
     const missing = [
-      ['CODEX_BACKUP_WEBDAV_URL', config.webdavUrl],
-      ['CODEX_BACKUP_WEBDAV_USER', config.webdavUser],
+      ['WebDAV 地址', config.webdavUrl],
+      ['用户名', config.webdavUser],
     ]
       .filter(([, value]) => !value.trim())
       .map(([name]) => name);
@@ -187,7 +187,7 @@ function getTargetCheck(config: BackupConfig): ConfigCheck {
 
   return config.rcloneRemote.trim()
     ? { id: 'target', label: '目标端', status: 'ok', detail: 'rclone remote 已填写。' }
-    : { id: 'target', label: '目标端', status: 'error', detail: '缺少 CODEX_BACKUP_RCLONE_REMOTE。' };
+    : { id: 'target', label: '目标端', status: 'error', detail: '缺少 rclone 保存位置。' };
 }
 
 function getCredentialCheck(config: BackupConfig): ConfigCheck {
@@ -196,7 +196,7 @@ function getCredentialCheck(config: BackupConfig): ConfigCheck {
       id: 'credentials',
       label: '密钥',
       status: 'warning',
-      detail: 'SMB 密码不会写入预览配置；请使用 Keychain 或运行前临时导出 CODEX_BACKUP_PASSWORD。',
+      detail: 'SMB 密码不会写入配置文件；请保存到系统钥匙串。',
     };
   }
 
@@ -205,7 +205,7 @@ function getCredentialCheck(config: BackupConfig): ConfigCheck {
       id: 'credentials',
       label: '密钥',
       status: 'warning',
-      detail: 'WebDAV 密码不会写入预览配置；请使用 Keychain 或运行前临时导出 CODEX_BACKUP_WEBDAV_PASSWORD。',
+      detail: 'WebDAV 密码不会写入配置文件；请保存到系统钥匙串。',
     };
   }
 
@@ -225,7 +225,7 @@ function getEncryptionCheck(config: BackupConfig): ConfigCheck {
           id: 'encryption',
           label: '加密',
           status: 'error',
-          detail: '启用加密时必须配置 CODEX_BACKUP_AGE_RECIPIENT 或 CODEX_BACKUP_AGE_RECIPIENT_FILE。',
+          detail: '启用加密时必须先填写加密收件人，或选择保存收件人的文件。',
         };
   }
 

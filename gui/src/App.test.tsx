@@ -19,6 +19,11 @@ function openAdvancedSection(name: RegExp | string) {
   fireEvent.click(screen.getByRole('button', { name }));
 }
 
+function openSettingsDetails(name: RegExp | string) {
+  clickNav(/^设置$/i);
+  fireEvent.click(screen.getByText(name));
+}
+
 function clickNav(name: RegExp | string) {
   fireEvent.click(within(screen.getByRole('navigation', { name: /GUI 分区/i })).getByRole('button', { name }));
 }
@@ -29,7 +34,7 @@ function expectNav(name: RegExp | string) {
 
 function runDoctorFromStorage() {
   clickNav(/存储位置/i);
-  fireEvent.click(screen.getByRole('button', { name: /运行目标端检查/i }));
+  fireEvent.click(screen.getByRole('button', { name: /检查保存位置/i }));
 }
 
 function openBackup() {
@@ -38,6 +43,7 @@ function openBackup() {
 
 async function selectRuntimeMode(name: RegExp | string) {
   clickNav(/^设置$/i);
+  fireEvent.click(screen.getByText('高级诊断'));
   const group = screen.getByRole('group', { name: /开发运行模式/i });
   fireEvent.click(within(group).getByRole('button', { name }));
 
@@ -59,35 +65,33 @@ async function selectDesktopHelperMode() {
 }
 
 describe('App', () => {
-  it('shows WebDAV command preview after selecting WebDAV target', () => {
+  it('shows WebDAV storage fields without exposing command previews', () => {
     render(<App />);
 
     clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
     expect(screen.getByLabelText('WebDAV 地址')).toBeInTheDocument();
-    expect(screen.getAllByText(/CODEX_BACKUP_WEBDAV_URL=/).length).toBeGreaterThan(0);
+    expect(screen.getByText('保存位置检查')).toBeInTheDocument();
+    expect(screen.queryByText(/CODEX_BACKUP_WEBDAV_URL=/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/config.env 预览/i)).not.toBeInTheDocument();
   });
 
-  it('shows a target setup guide with validation and common failure guidance', async () => {
+  it('shows storage checks with common failure guidance without validation commands', async () => {
     render(<App />);
 
     clickNav(/存储位置/i);
 
-    expect(screen.getByText('本地目录设置向导')).toBeInTheDocument();
+    expect(screen.getByText('保存位置检查')).toBeInTheDocument();
     expect(screen.getByText('确认输出目录')).toBeInTheDocument();
-    expect(screen.getAllByText('运行目标端检查').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('检查保存位置').length).toBeGreaterThan(0);
     expect(screen.getByText(/不会安装、卸载或修改定时任务/)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /复制验证命令/i }));
-
-    await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('./scripts/codexbackup.sh --doctor --target local'));
-    });
+    expect(screen.queryByText(/验证命令/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /复制验证命令/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
-    expect(screen.getByText('WebDAV 设置向导')).toBeInTheDocument();
+    expect(screen.getByText('保存位置检查')).toBeInTheDocument();
     expect(screen.getByText('保存或临时提供密码')).toBeInTheDocument();
     expect(screen.getByText('评估加密')).toBeInTheDocument();
     expect(screen.getByText('401 或 403')).toBeInTheDocument();
@@ -101,7 +105,7 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/环境检查通过/)).toBeInTheDocument();
+      expect(screen.getAllByText(/环境检查通过/).length).toBeGreaterThan(0);
     });
   });
 
@@ -161,7 +165,11 @@ describe('App', () => {
     expect(screen.getByText('备份本机数据')).toBeInTheDocument();
 
     clickNav(/^设置$/i);
-    expect(screen.getByText('高级诊断入口')).toBeInTheDocument();
+    expect(screen.getByText('应用设置')).toBeInTheDocument();
+    expect(screen.getByText('高级诊断')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /开发运行模式/i })).not.toBeVisible();
+
+    fireEvent.click(screen.getByText('高级诊断'));
     expect(screen.getByRole('button', { name: /首启引导/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /健康检查/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /定时备份状态/i })).toBeInTheDocument();
@@ -180,9 +188,10 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText('本机内容检测')).toBeInTheDocument();
-      expect(screen.getByText('~/.codex')).toBeInTheDocument();
-      expect(screen.getByText('~/Documents/Codex')).toBeInTheDocument();
-      expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
+      expect(screen.getAllByText('0 项已发现').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('12 项未发现').length).toBeGreaterThan(0);
+      expect(screen.getByText('~/.codex')).not.toBeVisible();
+      expect(screen.getByText('~/Documents/Codex')).not.toBeVisible();
       expect(screen.getAllByText('未发现').length).toBeGreaterThan(0);
       expect(screen.getByText(/附加配置未读取/)).toBeInTheDocument();
       expect(screen.getByText(/附加备份记录未读取/)).toBeInTheDocument();
@@ -225,7 +234,7 @@ describe('App', () => {
     const invokeMock = vi.fn(async (command: string, payload?: { request?: { path?: string } }) => {
       if (command === 'local_content_snapshot') {
         return {
-          version: '0.36.3',
+          version: '0.36.4',
           paths: {
             appSupportDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
             automationStderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
@@ -248,7 +257,7 @@ describe('App', () => {
       }
       if (command === 'desktop_diagnostics') {
         return {
-          version: '0.36.3',
+          version: '0.36.4',
           helper: { online: false, managed: false, source: 'unavailable', port: 37371 },
           toolkit: { available: true, source: 'development', rootPath: '/repo', helperPath: '/repo/helper/server.mjs', scriptsPath: '/repo/scripts/codexbackup.sh' },
           paths: {
@@ -279,16 +288,14 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText('本机内容检测')).toBeInTheDocument();
-      expect(screen.getAllByText('WebDAV').length).toBeGreaterThan(0);
-      expect(screen.getByText('https://webdav.example.com/remote.php/dav/files/user/CodexBackup')).toBeInTheDocument();
-      expect(screen.getByText('/Users/test/.codex')).toBeInTheDocument();
-      expect(screen.getByText('/Users/test/Documents/Codex')).toBeInTheDocument();
-      expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
-      expect(screen.getByText('目录存在')).toBeInTheDocument();
-      expect(screen.getByText('文件存在')).toBeInTheDocument();
-      expect(screen.getAllByText('未发现').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-latest.tar.gz').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('2 项已发现').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('2 项未发现').length).toBeGreaterThan(0);
+      expect(screen.getByText('/Users/test/.codex')).not.toBeVisible();
+      expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit/config.json')).not.toBeVisible();
     });
+    fireEvent.click(screen.getByText('查看详细路径'));
+    expect(screen.getByText('/Users/test/.codex')).toBeInTheDocument();
+    expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(invokeMock).toHaveBeenCalledWith('local_content_snapshot');
     expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/config' } });
     expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/history' } });
@@ -316,7 +323,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('当前备份状态')).toBeInTheDocument();
-    expect(screen.getByText(/执行备份在备份页/)).toBeInTheDocument();
+    expect(screen.getByText(/这里显示最近一次备份和下一步动作/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /卸载定时任务/i })).not.toBeInTheDocument();
@@ -379,7 +386,8 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /刷新健康状态/i })[0]);
 
     await waitFor(() => {
-      expect(screen.getByText(/已刷新健康状态/)).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', { method: 'GET' });
+      expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/automation', { method: 'GET' });
     });
 
     await selectHttpHelperMode();
@@ -396,9 +404,9 @@ describe('App', () => {
     openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.3_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.3_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.3_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.4_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.4_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.4_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -421,7 +429,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.3_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.4_aarch64.dmg.sha256');
     });
   });
 
@@ -531,7 +539,6 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-health.tar.gz').length).toBeGreaterThan(0);
       expect(screen.getAllByText(/定时任务已加载/).length).toBeGreaterThan(0);
-      expect(screen.getByText(/已刷新健康状态/)).toBeInTheDocument();
     });
 
     expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', { method: 'GET' });
@@ -579,27 +586,18 @@ describe('App', () => {
     });
   });
 
-  it('copies command previews to the clipboard', async () => {
+  it('keeps command previews out of the main backup and storage screens', () => {
     render(<App />);
 
     openBackup();
-    fireEvent.click(screen.getByRole('button', { name: /复制备份命令预览/i }));
-
-    await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('./scripts/codexbackup.sh --target local'));
-    });
-    expect(screen.getByText('已复制')).toBeInTheDocument();
-  });
-
-  it('shows a config.env preview for the selected target', () => {
-    render(<App />);
+    expect(screen.queryByText(/备份命令预览/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\.\/scripts\/codexbackup\.sh/)).not.toBeInTheDocument();
 
     clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
-    expect(screen.getAllByText(/config.env 预览/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/CODEX_BACKUP_WEBDAV_URL=/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/# CODEX_BACKUP_WEBDAV_PASSWORD=/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/config.env 预览/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/CODEX_BACKUP_WEBDAV_URL=/)).not.toBeInTheDocument();
   });
 
   it('previews opt-in remote retention for cloud targets', () => {
@@ -609,14 +607,14 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
     expect(screen.getByLabelText('启用远端保留策略')).toBeInTheDocument();
-    expect(screen.getAllByText(/CODEX_BACKUP_REMOTE_RETENTION=0/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/CODEX_BACKUP_REMOTE_RETENTION=0/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('启用远端保留策略'));
 
-    expect(screen.getAllByText(/CODEX_BACKUP_REMOTE_RETENTION=1/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/CODEX_BACKUP_REMOTE_RETENTION=1/)).not.toBeInTheDocument();
   });
 
-  it('previews latest restore commands for the selected target', () => {
+  it('previews latest restore state without exposing restore commands', () => {
     render(<App />);
 
     clickNav(/存储位置/i);
@@ -625,8 +623,8 @@ describe('App', () => {
 
     expect(screen.getByRole('group', { name: /恢复来源/i })).toBeInTheDocument();
     expect(screen.getByText('最新备份目标端')).toBeInTheDocument();
-    expect(screen.getAllByText(/CODEX_BACKUP_TARGET=rclone/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --plan --latest/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/CODEX_BACKUP_TARGET=rclone/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\.\/scripts\/codexrestore\.sh --plan --latest/)).not.toBeInTheDocument();
     expect(screen.getByText('最新备份恢复预案')).toBeInTheDocument();
     expect(screen.getByText(/不会解压归档/)).toBeInTheDocument();
   });
@@ -638,7 +636,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /指定归档/i }));
 
     expect(screen.getByLabelText('归档路径')).toBeInTheDocument();
-    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --plan --archive/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\.\/scripts\/codexrestore\.sh --plan --archive/)).not.toBeInTheDocument();
     expect(screen.getByText('指定归档恢复预案')).toBeInTheDocument();
     expect(screen.getByText(/确认归档路径来自可信的 helper 历史或手动选择/)).toBeInTheDocument();
   });
@@ -653,7 +651,8 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/运行历史/i)).toBeInTheDocument();
-      expect(screen.getByText(/目标端检查命令/i)).toBeInTheDocument();
+      expect(screen.getByText(/保存位置检查/i)).toBeInTheDocument();
+      expect(screen.queryByText(/\.\/scripts\/codexbackup\.sh --doctor/)).not.toBeInTheDocument();
       expect(screen.getAllByText(/真实备份/i).length).toBeGreaterThan(0);
     });
   });
@@ -666,9 +665,9 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/模拟助手已接受环境检查/)).toBeInTheDocument();
-      expect(screen.getByText(/协议: codex-backup-helper\.v1/)).toBeInTheDocument();
-      expect(screen.getByText(/命令类型: 环境检查/)).toBeInTheDocument();
+      expect(screen.getByText(/保存位置检查/i)).toBeInTheDocument();
+      expect(screen.queryByText(/协议: codex-backup-helper\.v1/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/命令类型: 环境检查/)).not.toBeInTheDocument();
     });
   });
 
@@ -681,8 +680,8 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/模拟助手已接受备份执行/)).toBeInTheDocument();
-      expect(screen.getByText(/命令类型: 备份执行/)).toBeInTheDocument();
+      expect(screen.getAllByText(/模拟助手已接受备份执行/).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/命令类型: 备份执行/)).not.toBeInTheDocument();
     });
   });
 
@@ -698,7 +697,8 @@ describe('App', () => {
     fireEvent.click(screen.getByLabelText('使用 age 加密归档'));
 
     expect(screen.getByLabelText('age 收件人')).toBeInTheDocument();
-    expect(screen.getAllByText(/启用加密时必须配置 CODEX_BACKUP_AGE_RECIPIENT/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/启用加密时必须先填写加密收件人/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/CODEX_BACKUP_AGE_RECIPIENT/)).not.toBeInTheDocument();
   });
 
   it('sends backup execution requests through the HTTP helper transport', async () => {
@@ -745,8 +745,8 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
-      expect(screen.getByText(/命令类型: 备份执行/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Backup written to/).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/命令类型: 备份执行/)).not.toBeInTheDocument();
     });
     const runCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith('/run'));
     expect(runCall).toBeTruthy();
@@ -818,7 +818,7 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/Backup written to/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Backup written to/).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/codex-backup-mac\.tar\.gz/).length).toBeGreaterThan(0);
     });
 
@@ -887,7 +887,7 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/Sync action: backup-created/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Sync action: backup-created/).length).toBeGreaterThan(0);
       expect(screen.getByText('一致性备份')).toBeInTheDocument();
       expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-sync.tar.gz').length).toBeGreaterThan(0);
     });
@@ -940,8 +940,8 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/助手返回环境检查正常/)).toBeInTheDocument();
-      expect(screen.getByText(/服务: node-local-helper/)).toBeInTheDocument();
+      expect(screen.getAllByText(/助手返回环境检查正常/).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/服务: node-local-helper/)).not.toBeInTheDocument();
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'http://127.0.0.1:37371/run',
@@ -984,8 +984,8 @@ describe('App', () => {
     clickNav(/记录/i);
 
     await waitFor(() => {
-      expect(screen.getByText(/Codex restore plan/)).toBeInTheDocument();
-      expect(screen.getByText(/命令类型: 恢复预案/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Codex restore plan/).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/命令类型: 恢复预案/)).not.toBeInTheDocument();
     });
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(request.kind).toBe('restorePlan');
@@ -1012,13 +1012,14 @@ describe('App', () => {
     render(<App />);
 
     await selectHttpHelperMode();
-    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
+    openSettingsDetails('本机运行诊断');
+    fireEvent.click(screen.getByRole('button', { name: /刷新状态/i }));
 
     await waitFor(() => {
       expect(screen.getAllByText(/本机服务已连接/).length).toBeGreaterThan(0);
     });
-    clickNav(/记录/i);
-    expect(screen.getAllByText(/node-local-helper/).length).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/health');
+    expect(screen.queryByText(/node-local-helper/)).not.toBeInTheDocument();
   });
 
   it('disables helper actions after helper health check fails', async () => {
@@ -1029,11 +1030,11 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
+    openSettingsDetails('本机运行诊断');
+    fireEvent.click(screen.getByRole('button', { name: /刷新状态/i }));
 
     await waitFor(() => {
       expect(screen.getAllByText('本机服务未连接').length).toBeGreaterThan(0);
-      expect(screen.getByText(/请先启动本机服务/)).toBeInTheDocument();
     });
 
     clickNav(/存储位置/i);
@@ -1057,13 +1058,14 @@ describe('App', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
+    openSettingsDetails('本机运行诊断');
+    fireEvent.click(screen.getByRole('button', { name: /刷新状态/i }));
 
     await waitFor(() => {
       expect(screen.getByText('本机服务未连接')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /重新检查/i }));
+    fireEvent.click(screen.getByRole('button', { name: /刷新状态/i }));
 
     await waitFor(() => {
       expect(screen.getByText('本机服务已连接')).toBeInTheDocument();
@@ -1169,13 +1171,19 @@ describe('App', () => {
 
     clickNav(/^设置$/i);
 
+    expect(screen.getByText('应用设置')).toBeInTheDocument();
+    expect(screen.getAllByText('0.36.4').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('~/Library/Application Support/CodexBackupToolkit/history.json').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /启动服务/i })).not.toBeVisible();
+
+    fireEvent.click(screen.getByText('本机运行诊断'));
     expect(screen.getByText('本机服务')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /启动服务/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /停止服务/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('内置资源和路径'));
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
-    expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.36.3')).toBeInTheDocument();
   });
 
   it('shows desktop readiness in Settings for first launch', () => {
@@ -1183,9 +1191,12 @@ describe('App', () => {
 
     clickNav(/^设置$/i);
 
+    expect(screen.getByText('应用设置')).toBeInTheDocument();
+    expect(screen.getByText('高级诊断')).toBeInTheDocument();
+    expect(screen.queryByText('首次启动核对')).not.toBeVisible();
+
+    fireEvent.click(screen.getByText('高级诊断'));
     expect(screen.getByText('首次启动核对')).toBeInTheDocument();
-    expect(screen.getByText('高级诊断入口')).toBeInTheDocument();
-    expect(screen.getByText(/日常使用只需要概览、备份、存储位置、恢复和记录/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /安装验证/i })).toBeInTheDocument();
   });
 
@@ -1194,6 +1205,7 @@ describe('App', () => {
 
     clickNav(/^设置$/i);
 
+    fireEvent.click(screen.getByText('高级诊断'));
     expect(screen.getByText('首次启动核对')).toBeInTheDocument();
     expect(screen.getByText('本机服务状态')).toBeInTheDocument();
     expect(screen.getByText('toolkit 来源')).toBeInTheDocument();
@@ -1325,7 +1337,7 @@ describe('App', () => {
 
     expect(screen.getByRole('group', { name: /恢复来源/i })).toBeInTheDocument();
     expect(screen.getByLabelText('归档路径')).toHaveValue('/tmp/CodexBackups/codex-backup-mac.tar.gz');
-    expect(screen.getAllByText(/\.\/scripts\/codexrestore\.sh --plan --archive \/tmp\/CodexBackups\/codex-backup-mac\.tar\.gz/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\.\/scripts\/codexrestore\.sh --plan --archive/)).not.toBeInTheDocument();
   });
 });
 

@@ -352,6 +352,87 @@ button:disabled {
   line-height: 1.55;
 }
 
+.snapshot-summary-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+}
+
+.snapshot-sections,
+.snapshot-summary-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.snapshot-summary-card {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 12px;
+}
+
+.snapshot-summary-card strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.snapshot-summary-card span {
+  display: block;
+  margin-top: 6px;
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.snapshot-summary-card--ok {
+  border-color: rgba(31, 154, 109, 0.25);
+}
+
+.snapshot-summary-card--missing {
+  border-color: rgba(183, 128, 31, 0.25);
+}
+
+.details-panel {
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 10px 12px;
+}
+
+.details-panel summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  list-style-position: inside;
+}
+
+.details-panel .snapshot-path-group,
+.details-panel .runtime-mode-panel,
+.details-panel .panel,
+.details-panel .summary-list,
+.details-panel .action-row,
+.details-panel .muted-copy {
+  margin-top: 12px;
+}
+
+.settings-advanced {
+  background: var(--surface-card);
+}
+
+.settings-advanced .panel {
+  background: var(--surface-elevated);
+}
+
+.settings-divider {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  margin: 14px 0 0;
+}
+
 .panel-header {
   display: flex;
   align-items: center;
@@ -764,6 +845,7 @@ input[type="checkbox"] {
   .two-column,
   .form-grid,
   .readiness-layout,
+  .snapshot-summary-layout,
   .check-list--grid,
   .summary-row,
   .summary-row--action,

@@ -44,7 +44,7 @@ describe('desktop bridge', () => {
         desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
       },
       toolkit: { available: false, source: 'unavailable' },
-      version: '0.36.3',
+      version: '0.36.4',
     });
   });
 
@@ -58,7 +58,7 @@ describe('desktop bridge', () => {
       appPaths: expect.arrayContaining([
         { label: '配置文件', path: '~/Library/Application Support/CodexBackupToolkit/config.json', exists: false, kind: 'missing' },
       ]),
-      version: '0.36.3',
+      version: '0.36.4',
     }));
   });
 

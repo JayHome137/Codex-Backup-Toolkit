@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, Compass, Download, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
-import { CommandPreview } from './components/CommandPreview';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
 import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction, buildSyncLocalAuthoritativeAction } from './lib/actions';
@@ -27,7 +26,6 @@ import { buildTargetSetupGuide, type TargetSetupGuide, type TargetSetupStep } fr
 import {
   buildBackupCommand,
   buildDoctorCommand,
-  buildEnvFile,
   buildRestoreLatestCommand,
   buildRestoreCommand,
   buildSyncCheckCommand,
@@ -79,11 +77,21 @@ type RunPreviewOptions = {
   refreshHelperHistory?: boolean;
 };
 
+type VisibleHistoryEntry = HistoryEntry & {
+  outputPreview: string;
+};
+
 type FirstLaunchItem = {
   detail: string;
   id: string;
   label: string;
   status: 'ok' | 'warning';
+};
+
+type LocalSnapshotSummary = {
+  existing: LocalPathStatus[];
+  missing: LocalPathStatus[];
+  total: number;
 };
 
 const helperActionLabels: Record<Exclude<HelperActionState, null>, string> = {
@@ -106,7 +114,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.3';
+const appVersion = '0.36.4';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -116,7 +124,7 @@ function App() {
   const [restoreEncrypted, setRestoreEncrypted] = useState(false);
   const [lastResult, setLastResult] = useState<CommandResult | null>(null);
   const [runningCommand, setRunningCommand] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [history, setHistory] = useState<VisibleHistoryEntry[]>([]);
   const [helperHistory, setHelperHistory] = useState<BackupHistoryEntry[]>([]);
   const [automationStatus, setAutomationStatus] = useState<AutomationStatus | null>(null);
   const [doctorReport, setDoctorReport] = useState<DoctorReport | null>(null);
@@ -145,7 +153,6 @@ function App() {
     () => ({
       doctor: buildDoctorCommand(config),
       backup: buildBackupCommand(config),
-      envFile: buildEnvFile(config),
       syncCheck: buildSyncCheckCommand(config),
       syncLocalAuthoritative: buildSyncLocalAuthoritativeCommand(config),
       validate: buildValidateCommand(config),
@@ -285,7 +292,7 @@ function App() {
     if (command.includes('--doctor')) {
       setDoctorReport(parseDoctorOutput(result.output));
     }
-    setHistory((entries) => [{ command, label, result }, ...entries].slice(0, 8));
+    setHistory((entries) => [{ command, label, result, outputPreview: simplifyRunOutput(result.output) }, ...entries].slice(0, 8));
     if (options.refreshHelperHistory && result.status === 'success') {
       await refreshHelperHistoryAfterBackup();
     }
@@ -698,8 +705,6 @@ function App() {
           </div>
         </header>
 
-        <HelperConnectionBanner disabled={helperBusy} message={helperBannerMessage} onCheck={checkHelper} status={helperStatus} />
-
         {activeSection === 'overview' && (
           <section className="view-stack">
             <div className="metric-grid">
@@ -708,24 +713,31 @@ function App() {
               <MetricCard icon={CalendarCheck2} label="定时备份" value="03:00 / 每 3 天" tone="yellow" />
             </div>
 
-            <OverviewStatusPanel
-              backupAcceptance={backupAcceptance}
-              configErrorCount={blockingChecks.length}
-              helperOnline={helperStatus === 'online' || desktopHelperStatus.online}
-              latestBackupEntry={latestBackupEntry}
-              onOpenBackup={() => setActiveSection('backup')}
-              onOpenRestore={() => setActiveSection('restore')}
-              onOpenStorage={() => setActiveSection('targets')}
-              onOpenRecords={() => setActiveSection('logs')}
-              storageLabel={targetLabels[config.target]}
-            />
-
             <LocalSettingsSnapshotPanel
               busy={localSnapshotBusy}
               onCopy={copyText}
               onOpen={openBackupPath}
               onRead={readLocalSettingsSnapshot}
               snapshot={localSnapshot}
+            />
+
+            <StorageLocationPanel
+              config={config}
+              configErrorCount={blockingChecks.length}
+              onOpenStorage={() => setActiveSection('targets')}
+              onRunDoctor={() => runPreview(commands.doctor, '保存位置检查')}
+              runningDoctor={runningCommand === commands.doctor}
+            />
+
+            <OverviewStatusPanel
+              backupAcceptance={backupAcceptance}
+              configErrorCount={blockingChecks.length}
+              latestBackupEntry={latestBackupEntry}
+              onOpenBackup={() => setActiveSection('backup')}
+              onOpenRestore={() => setActiveSection('restore')}
+              onOpenStorage={() => setActiveSection('targets')}
+              onOpenRecords={() => setActiveSection('logs')}
+              storageLabel={targetLabels[config.target]}
             />
           </section>
         )}
@@ -746,7 +758,6 @@ function App() {
                   <SummaryRow label="存储位置" value={targetLabels[config.target]} />
                   <SummaryRow label="加密" value={config.encrypt ? '已开启 age 加密' : '未开启'} />
                   <SummaryRow label="保留策略" value={`${config.retentionCount} 份 / ${config.retentionDays} 天`} />
-                  <SummaryRow label="本机服务" value={helperStatusLabel(helperStatus)} />
                 </div>
                 <div className="readiness-copy">
                   <strong>先确认，再执行</strong>
@@ -792,7 +803,6 @@ function App() {
                 </button>
               </div>
             </section>
-            <CommandPreview command={commands.backup} title="备份命令预览" onCopy={copyText} />
           </section>
         )}
 
@@ -880,14 +890,6 @@ function App() {
 
         {activeSection === 'targets' && (
           <section className="view-stack">
-            <TargetSetupGuidePanel
-              guide={targetSetupGuide}
-              onCopy={copyText}
-              onRunDoctor={() => runPreview(commands.doctor, '目标端检查命令')}
-              runningDoctor={runningCommand === commands.doctor}
-            />
-            <TargetDoctorPanel report={doctorReport} />
-            <DoctorAdvicePanel advice={doctorAdvice} />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
@@ -907,6 +909,13 @@ function App() {
                 </button>
               </div>
             </section>
+            <TargetSetupGuidePanel
+              guide={targetSetupGuide}
+              onRunDoctor={() => runPreview(commands.doctor, '保存位置检查')}
+              runningDoctor={runningCommand === commands.doctor}
+            />
+            <TargetDoctorPanel report={doctorReport} />
+            <DoctorAdvicePanel advice={doctorAdvice} />
             {(config.target === 'smb' || config.target === 'webdav') && (
               <section className="panel">
                 <div className="panel-header">
@@ -955,9 +964,6 @@ function App() {
               </div>
               <ConfigCheckList checks={configChecks} />
             </section>
-            <CommandPreview command={commands.envFile} title="config.env 预览" onCopy={copyText} />
-            <CommandPreview command={commands.backup} title="生成的备份命令" onCopy={copyText} />
-            <CommandPreview command={commands.syncLocalAuthoritative} title="一致性同步命令" onCopy={copyText} />
           </section>
         )}
 
@@ -989,7 +995,6 @@ function App() {
                 </button>
               </div>
             </section>
-            <CommandPreview command={commands.validate} title="计划校验命令" onCopy={copyText} />
           </section>
         )}
 
@@ -1037,7 +1042,7 @@ function App() {
                   </>
                 )}
               </div>
-              <p className="muted-copy">当前浏览器版只生成恢复预案，不执行真实恢复。最新备份会使用当前目标端配置生成 `codexrestore --plan --latest`。</p>
+              <p className="muted-copy">当前只生成恢复前检查清单，不执行真实恢复，也不会写入或覆盖本机文件。</p>
               <div className="action-row">
                 <button className="button button--tertiary" onClick={() => runPreview(commands.restore, '恢复预案', actions.restorePlan)} type="button">
                   <RotateCcw size={15} aria-hidden="true" />
@@ -1046,7 +1051,6 @@ function App() {
               </div>
             </section>
             <RestorePlanGuidePanel guide={restorePlanGuide} />
-            <CommandPreview command={commands.restore} title="恢复预案命令" onCopy={copyText} />
           </section>
         )}
 
@@ -1060,7 +1064,7 @@ function App() {
                 </div>
               </div>
               <pre className="log-output">
-                <code>{runningCommand ? `${helperActionLabel ?? '命令'}正在运行...` : lastResult?.output ?? '还没有运行任何预览命令。'}</code>
+                <code>{runningCommand ? `${helperActionLabel ?? '任务'}正在运行...` : lastResult ? simplifyRunOutput(lastResult.output) : '还没有运行任何任务。'}</code>
               </pre>
             </section>
             <section className="panel panel--compact">
@@ -1093,7 +1097,7 @@ function App() {
                         <strong>{entry.label}</strong>
                         <span>{resultStatusLabel(entry.result.status)}</span>
                       </div>
-                      <code>{entry.command}</code>
+                      <code>{entry.outputPreview}</code>
                     </div>
                   ))
                 )}
@@ -1119,22 +1123,32 @@ function App() {
 
         {activeSection === 'settings' && (
           <section className="view-stack">
-            <FirstLaunchChecklist
-              helperStatus={desktopHelperStatus}
-              isDesktop={desktopBridge.isDesktop}
-              paths={desktopPaths}
-              toolkitStatus={desktopToolkitStatus}
-            />
             <section className="panel">
               <div className="panel-header">
                 <div className="panel-title">
                   <ShieldCheck size={16} aria-hidden="true" />
-                  <span>高级诊断入口</span>
+                  <span>应用设置</span>
                 </div>
+                <StatusBadge status="success" label={displayedAppVersion} />
               </div>
-              <p className="muted-copy">
-                日常使用只需要概览、备份、存储位置、恢复和记录。下面入口用于安装验收、健康检查、macOS 诊断和定时备份状态排查。
-              </p>
+              <div className="summary-list">
+                <SummaryRow label="版本" value={displayedAppVersion} />
+                <SummaryRow label="保存位置" value={targetLocationSummary(config)} />
+                <SummaryRow label="保留策略" value={`${config.retentionCount} 份 / ${config.retentionDays} 天`} />
+                <PathRow label="备份记录" path={desktopPaths.historyPath} onOpen={openDesktopPath} />
+                <PathRow label="应用数据" path={desktopPaths.appSupportDir} onOpen={openDesktopPath} />
+              </div>
+              <div className="action-row">
+                <button className="button button--primary" onClick={() => setActiveSection('targets')} type="button">
+                  <FolderOpen size={15} aria-hidden="true" />
+                  修改保存位置
+                </button>
+                <button className="button button--tertiary" onClick={() => setActiveSection('logs')} type="button">查看备份记录</button>
+              </div>
+            </section>
+            <details className="details-panel settings-advanced">
+              <summary>高级诊断</summary>
+              <p className="muted-copy">这些信息用于本机排查和开发验证，普通备份流程不需要调整。</p>
               <div className="action-row">
                 <button className="button button--tertiary" onClick={() => setActiveSection('guide')} type="button">首启引导</button>
                 <button className="button button--tertiary" onClick={() => setActiveSection('install')} type="button">安装验证</button>
@@ -1149,8 +1163,15 @@ function App() {
                   if (mode === 'desktopHelper') void refreshDesktopHelperStatus({ autoStart: true });
                 }}
               />
-            </section>
-            <section className="panel">
+              <FirstLaunchChecklist
+                helperStatus={desktopHelperStatus}
+                isDesktop={desktopBridge.isDesktop}
+                paths={desktopPaths}
+                toolkitStatus={desktopToolkitStatus}
+              />
+            </details>
+            <details className="details-panel settings-advanced">
+              <summary>本机运行诊断</summary>
               <div className="panel-header">
                 <div className="panel-title">
                   <Activity size={16} aria-hidden="true" />
@@ -1159,6 +1180,7 @@ function App() {
                 <StatusBadge status={desktopHelperStatus.online ? 'success' : 'warning'} label={desktopHelperStatusLabel(desktopHelperStatus)} />
               </div>
               <div className="summary-list">
+                <SummaryRow label="连接状态" value={helperStatusLabel(helperStatus)} />
                 <SummaryRow label="状态" value={desktopHelperStatus.online ? '在线' : '离线'} />
                 <SummaryRow label="来源" value={desktopSourceLabel(desktopHelperStatus.source)} />
                 <SummaryRow label="端口" value={String(desktopHelperStatus.port ?? 37371)} />
@@ -1166,9 +1188,9 @@ function App() {
               </div>
               <p className="muted-copy">{desktopMessage}</p>
               <div className="action-row">
-                <button className="button button--tertiary" disabled={desktopAction !== null} onClick={() => refreshDesktopHelperStatus()} type="button">
+                <button className="button button--tertiary" disabled={desktopAction !== null || helperBusy} onClick={checkHelper} type="button">
                   <Activity size={15} aria-hidden="true" />
-                  {desktopAction === 'status' ? '刷新中' : '刷新状态'}
+                  {desktopAction === 'status' || helperStatus === 'checking' ? '刷新中' : '刷新状态'}
                 </button>
                 <button className="button button--primary" disabled={desktopAction !== null || !desktopBridge.isDesktop} onClick={startDesktopHelper} type="button">
                   <Play size={15} aria-hidden="true" />
@@ -1187,8 +1209,9 @@ function App() {
                   {desktopAction === 'diagnostics' ? '诊断中' : '刷新高级诊断'}
                 </button>
               </div>
-            </section>
-            <section className="panel">
+            </details>
+            <details className="details-panel settings-advanced">
+              <summary>内置资源和路径</summary>
               <div className="panel-header">
                 <div className="panel-title">
                   <Archive size={16} aria-hidden="true" />
@@ -1209,16 +1232,8 @@ function App() {
                   打开资源目录
                 </button>
               </div>
-            </section>
-            <section className="panel">
-              <div className="panel-header">
-                <div className="panel-title">
-                  <ShieldCheck size={16} aria-hidden="true" />
-                  <span>产品路径</span>
-                </div>
-              </div>
+              <hr className="settings-divider" />
               <div className="summary-list">
-                <SummaryRow label="版本" value={displayedAppVersion} />
                 <PathRow label="配置" path={desktopPaths.configPath} onOpen={openDesktopPath} />
                 <PathRow label="历史" path={desktopPaths.historyPath} onOpen={openDesktopPath} />
                 <PathRow label="配置目录" path={desktopPaths.appSupportDir} onOpen={openDesktopPath} />
@@ -1228,7 +1243,7 @@ function App() {
                 <PathRow label="本机服务错误" path={desktopPaths.desktopHelperStderrLogPath} onOpen={openDesktopPath} />
                 <PathRow label="日志目录" path={desktopPaths.logDir} onOpen={openDesktopPath} />
               </div>
-            </section>
+            </details>
           </section>
         )}
       </main>
@@ -1278,6 +1293,35 @@ function helperErrorOutput(error: unknown): string {
   }
 
   return message;
+}
+
+function simplifyRunOutput(output: string): string {
+  const cleanedLines = output
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => {
+      const trimmed = line.trim();
+      return trimmed.length > 0
+        && trimmed !== 'undefined'
+        && !trimmed.startsWith('命令：')
+        && !trimmed.startsWith('协议:')
+        && !trimmed.startsWith('命令类型:')
+        && !trimmed.startsWith('审计信息')
+        && !trimmed.startsWith('请求 ID:')
+        && !trimmed.startsWith('决策:')
+        && !trimmed.startsWith('服务:')
+        && !trimmed.startsWith('退出码:')
+        && !trimmed.startsWith('codexbackup ')
+        && !trimmed.startsWith('codexrestore ')
+        && !trimmed.startsWith('./scripts/')
+        && !trimmed.startsWith('CODEX_BACKUP_')
+        && !trimmed.startsWith('GET http://127.0.0.1')
+        && !trimmed.startsWith('PUT http://127.0.0.1')
+        && !trimmed.startsWith('POST http://127.0.0.1')
+        && !trimmed.startsWith('DELETE http://127.0.0.1');
+    });
+
+  return cleanedLines.slice(0, 8).join('\n') || '任务已结束。';
 }
 
 function shortErrorMessage(error: unknown): string {
@@ -1348,7 +1392,6 @@ function RuntimeModePanel({
 function OverviewStatusPanel({
   backupAcceptance,
   configErrorCount,
-  helperOnline,
   latestBackupEntry,
   onOpenBackup,
   onOpenRecords,
@@ -1358,7 +1401,6 @@ function OverviewStatusPanel({
 }: {
   backupAcceptance: BackupAcceptance;
   configErrorCount: number;
-  helperOnline: boolean;
   latestBackupEntry: BackupHistoryEntry | null;
   onOpenBackup: () => void;
   onOpenRecords: () => void;
@@ -1366,15 +1408,13 @@ function OverviewStatusPanel({
   onOpenStorage: () => void;
   storageLabel: string;
 }) {
-  const backupReady = configErrorCount === 0 && helperOnline;
+  const backupReady = configErrorCount === 0;
   const integrityLabel = backupAcceptance.level === 'accepted' ? '已验证' : latestBackupEntry ? '待复核' : '待备份';
   const nextAction = configErrorCount > 0
     ? '先完善存储位置'
-    : !helperOnline
-      ? '先连接本机服务'
-      : latestBackupEntry
-        ? '查看记录或准备恢复'
-        : '执行第一次备份';
+    : latestBackupEntry
+      ? '查看记录或准备恢复'
+      : '执行第一次备份';
 
   return (
     <section className="panel readiness-panel">
@@ -1388,14 +1428,13 @@ function OverviewStatusPanel({
       <div className="readiness-layout">
         <div className="summary-list">
           <SummaryRow label="存储位置" value={storageLabel} />
-          <SummaryRow label="本机服务" value={helperOnline ? '已连接' : '未连接'} />
           <SummaryRow label="完整性" value={integrityLabel} />
           <SummaryRow label="最近备份" value={latestBackupEntry?.archivePaths[0] ?? '尚无记录'} />
           <SummaryRow label="下一步" value={nextAction} />
         </div>
         <div className="readiness-copy">
           <strong>{nextAction}</strong>
-          <p>这里保留状态总览和下一步入口；执行备份在备份页，归档、sha256、manifest 等详细结果统一放在记录页。</p>
+          <p>这里显示最近一次备份和下一步动作。归档、校验文件和清单等详细结果统一放在记录页。</p>
           <div className="action-row">
             <button className="button button--primary" onClick={configErrorCount > 0 ? onOpenStorage : onOpenBackup} type="button">
               <Archive size={15} aria-hidden="true" />
@@ -1404,6 +1443,55 @@ function OverviewStatusPanel({
             <button className="button button--tertiary" onClick={onOpenStorage} type="button">存储位置</button>
             <button className="button button--tertiary" onClick={onOpenRecords} type="button">备份记录</button>
             <button className="button button--tertiary" onClick={onOpenRestore} type="button">恢复</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StorageLocationPanel({
+  config,
+  configErrorCount,
+  onOpenStorage,
+  onRunDoctor,
+  runningDoctor,
+}: {
+  config: BackupConfig;
+  configErrorCount: number;
+  onOpenStorage: () => void;
+  onRunDoctor: () => Promise<void>;
+  runningDoctor: boolean;
+}) {
+  const storageReady = configErrorCount === 0;
+  return (
+    <section className="panel readiness-panel">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Archive size={16} aria-hidden="true" />
+          <span>备份保存位置</span>
+        </div>
+        <StatusBadge status={storageReady ? 'success' : 'error'} label={storageReady ? '已配置' : '需完善'} />
+      </div>
+      <div className="readiness-layout">
+        <div className="summary-list">
+          <SummaryRow label="类型" value={targetLabels[config.target]} />
+          <SummaryRow label="位置" value={targetLocationSummary(config)} />
+          <SummaryRow label="保留" value={`${config.retentionCount} 份 / ${config.retentionDays} 天`} />
+          <SummaryRow label="加密" value={config.encrypt ? '已开启' : '未开启'} />
+        </div>
+        <div className="readiness-copy">
+          <strong>{storageReady ? '保存位置已填写' : '先完善保存位置'}</strong>
+          <p>这里决定备份归档保存到哪里。可以是本地目录、NAS、WebDAV 或后续云盘方案。</p>
+          <div className="action-row">
+            <button className="button button--primary" onClick={onOpenStorage} type="button">
+              <FolderOpen size={15} aria-hidden="true" />
+              修改保存位置
+            </button>
+            <button className="button button--tertiary" disabled={!storageReady || runningDoctor} onClick={() => void onRunDoctor()} type="button">
+              <ShieldCheck size={15} aria-hidden="true" />
+              {runningDoctor ? '检查中' : '检查保存位置'}
+            </button>
           </div>
         </div>
       </div>
@@ -1426,6 +1514,7 @@ function LocalSettingsSnapshotPanel({
 }) {
   const latestEntry = snapshot?.history.find((entry) => entry.action === 'backup' || entry.action === 'syncLocalAuthoritative') ?? null;
   const latestArchive = latestEntry?.archivePaths[0] ?? '尚无备份记录';
+  const snapshotSummary = snapshot ? summarizeLocalSnapshot(snapshot) : null;
 
   return (
     <section className="panel readiness-panel">
@@ -1440,21 +1529,25 @@ function LocalSettingsSnapshotPanel({
         </button>
       </div>
       {!snapshot ? (
-        <p className="muted-copy">点击后只检测本机数据位置、备份保存位置、应用配置、历史、日志和最近备份记录；不会执行备份、恢复，也不会修改定时任务。</p>
+        <p className="muted-copy">点击后只检测本机可备份内容和应用保存位置；不会执行备份、恢复，也不会修改定时任务。</p>
       ) : (
-        <div className="readiness-layout">
+        <div className="snapshot-summary-layout">
           <div className="summary-list">
-            <SummaryRow label="读取时间" value={formatDateTime(snapshot.capturedAt)} />
-            <SummaryRow label="本机服务" value={snapshot.serviceStatus} />
-            <SummaryRow label="备份类型" value={targetLabels[snapshot.config.target]} />
+            <SummaryRow label="检测时间" value={formatDateTime(snapshot.capturedAt)} />
+            <SummaryRow label="可备份内容" value={snapshotSummary ? `${snapshotSummary.existing.length} 项已发现` : '未检测'} />
+            <SummaryRow label="未发现内容" value={snapshotSummary ? `${snapshotSummary.missing.length} 项` : '未检测'} />
             <SummaryRow label="备份保存位置" value={targetLocationSummary(snapshot.config)} />
             <SummaryRow label="保留策略" value={`${snapshot.config.retentionCount} 份 / ${snapshot.config.retentionDays} 天`} />
             <SummaryRow label="完整性" value="备份后生成 sha256 和 manifest" />
             <SummaryRow label="最近备份" value={latestArchive} />
           </div>
           <div className="snapshot-sections">
-            <SnapshotPathGroup title="本机数据位置" paths={snapshot.dataPaths} onCopy={onCopy} onOpen={onOpen} />
-            <SnapshotPathGroup title="应用保存目录" paths={snapshot.appPaths} onCopy={onCopy} onOpen={onOpen} />
+            {snapshotSummary && <SnapshotSummaryCards summary={snapshotSummary} />}
+            <details className="details-panel">
+              <summary>查看详细路径</summary>
+              <SnapshotPathGroup title="本机数据位置" paths={snapshot.dataPaths} onCopy={onCopy} onOpen={onOpen} />
+              <SnapshotPathGroup title="应用保存目录" paths={snapshot.appPaths} onCopy={onCopy} onOpen={onOpen} />
+            </details>
             {snapshot.warnings.length > 0 && (
               <div className="check-list check-list--compact">
                 {snapshot.warnings.map((warning) => (
@@ -1504,6 +1597,33 @@ function SnapshotPathGroup({
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function summarizeLocalSnapshot(snapshot: LocalSettingsSnapshot): LocalSnapshotSummary {
+  const items = [...snapshot.dataPaths, ...snapshot.appPaths];
+  return {
+    existing: items.filter((item) => item.exists),
+    missing: items.filter((item) => !item.exists),
+    total: items.length,
+  };
+}
+
+function SnapshotSummaryCards({ summary }: { summary: LocalSnapshotSummary }) {
+  const visibleExisting = summary.existing.slice(0, 4);
+  const visibleMissing = summary.missing.slice(0, 4);
+
+  return (
+    <div className="snapshot-summary-cards">
+      <div className="snapshot-summary-card snapshot-summary-card--ok">
+        <strong>{summary.existing.length} 项已发现</strong>
+        <span>{visibleExisting.length > 0 ? visibleExisting.map((item) => item.label).join('、') : '还没有发现可备份内容'}</span>
+      </div>
+      <div className="snapshot-summary-card snapshot-summary-card--missing">
+        <strong>{summary.missing.length} 项未发现</strong>
+        <span>{visibleMissing.length > 0 ? visibleMissing.map((item) => item.label).join('、') : '主要位置都已发现'}</span>
       </div>
     </div>
   );
@@ -2191,12 +2311,10 @@ function PostInstallItemCard({ item }: { item: PostInstallItem }) {
 
 function TargetSetupGuidePanel({
   guide,
-  onCopy,
   onRunDoctor,
   runningDoctor,
 }: {
   guide: TargetSetupGuide;
-  onCopy: (text: string) => Promise<void>;
   onRunDoctor: () => Promise<void>;
   runningDoctor: boolean;
 }) {
@@ -2205,27 +2323,24 @@ function TargetSetupGuidePanel({
       <div className="panel-header">
         <div className="panel-title">
           <Compass size={16} aria-hidden="true" />
-          <span>{guide.title}</span>
+          <span>保存位置检查</span>
         </div>
         <StatusBadge status={guide.level === 'blocked' ? 'error' : guide.level === 'ready' ? 'success' : 'warning'} label={targetSetupLevelLabel(guide.level)} />
       </div>
       <div className="readiness-layout">
         <div className="summary-list">
+          <SummaryRow label="保存类型" value={guide.title.replace('设置向导', '').replace('检查', '')} />
           <SummaryRow label="下一步" value={guide.nextAction} />
-          <SummaryRow label="验证命令" value={guide.validationCommand} />
-          <SummaryRow label="安全边界" value={guide.safetyNotes[0]} />
+          <SummaryRow label="检查方式" value="只检查保存位置是否可用" />
+          <SummaryRow label="安全边界" value="不会创建备份，也不会修改定时任务" />
         </div>
         <div className="readiness-copy">
-          <strong>先连通，再备份</strong>
-          <p>按顺序补齐目标端信息、运行只读 doctor 检查，再回到概览页手动确认真实备份。这里不会保存密码明文，也不会修改自动化任务。</p>
+          <strong>先确认能保存，再开始备份</strong>
+          <p>检查会确认当前保存位置、权限和基础依赖是否可用。检查通过后再回到备份页执行真实备份。</p>
           <div className="action-row">
             <button className="button button--primary" disabled={runningDoctor || guide.level === 'blocked'} onClick={() => void onRunDoctor()} type="button">
               <ShieldCheck size={15} aria-hidden="true" />
-              {runningDoctor ? '检查中' : '运行目标端检查'}
-            </button>
-            <button className="button button--tertiary" onClick={() => void onCopy(guide.validationCommand)} type="button">
-              <ClipboardCheck size={15} aria-hidden="true" />
-              复制验证命令
+              {runningDoctor ? '检查中' : '检查保存位置'}
             </button>
           </div>
         </div>
