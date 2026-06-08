@@ -130,14 +130,14 @@ describe('App', () => {
     });
   });
 
-  it('shows a simplified product flow on overview and keeps diagnostics out of the main nav', () => {
+  it('shows a simplified overview status without duplicating backup execution details', () => {
     render(<App />);
 
-    expect(screen.getByText('备份流程')).toBeInTheDocument();
-    expect(screen.getByText('1. 打包本机数据')).toBeInTheDocument();
-    expect(screen.getByText('2. 上传到存储位置')).toBeInTheDocument();
-    expect(screen.getByText('3. 验证完整性')).toBeInTheDocument();
-    expect(screen.getByText('4. 换设备恢复')).toBeInTheDocument();
+    expect(screen.getByText('当前备份状态')).toBeInTheDocument();
+    expect(screen.getAllByText('存储位置').length).toBeGreaterThan(0);
+    expect(screen.getByText('下一步')).toBeInTheDocument();
+    expect(screen.queryByText('备份本机数据')).not.toBeInTheDocument();
+    expect(screen.queryByText('最新备份结果')).not.toBeInTheDocument();
 
     expectNav(/^概览$/i);
     expectNav(/^备份$/i);
@@ -233,8 +233,8 @@ describe('App', () => {
   it('keeps automation mutation and real restore controls out of the simplified overview', () => {
     render(<App />);
 
-    expect(screen.getByText('备份流程')).toBeInTheDocument();
-    expect(screen.getByText(/主流程只关注备份、存储位置、完整性校验和恢复/)).toBeInTheDocument();
+    expect(screen.getByText('当前备份状态')).toBeInTheDocument();
+    expect(screen.getByText(/执行备份在备份页/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /执行真实恢复/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /安装定时任务/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /卸载定时任务/i })).not.toBeInTheDocument();
@@ -314,9 +314,9 @@ describe('App', () => {
     openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.1_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.1_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.1_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.2_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.2_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.2_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -339,7 +339,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.1_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.2_aarch64.dmg.sha256');
     });
   });
 
@@ -1093,7 +1093,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.36.1')).toBeInTheDocument();
+    expect(screen.getByText('0.36.2')).toBeInTheDocument();
   });
 
   it('shows desktop readiness in Settings for first launch', () => {

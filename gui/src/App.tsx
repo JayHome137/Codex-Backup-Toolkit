@@ -104,7 +104,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.1';
+const appVersion = '0.36.2';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -693,7 +693,7 @@ function App() {
               <MetricCard icon={CalendarCheck2} label="定时备份" value="03:00 / 每 3 天" tone="yellow" />
             </div>
 
-            <SimpleProductFlow
+            <OverviewStatusPanel
               backupAcceptance={backupAcceptance}
               configErrorCount={blockingChecks.length}
               helperOnline={helperStatus === 'online' || desktopHelperStatus.online}
@@ -712,8 +712,6 @@ function App() {
               onRead={readLocalSettingsSnapshot}
               snapshot={localSnapshot}
             />
-
-            <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} onRestorePlan={useArchiveForRestorePlan} />
           </section>
         )}
 
@@ -779,8 +777,6 @@ function App() {
                 </button>
               </div>
             </section>
-
-            <LatestBackupResult entry={latestBackupEntry} onCopy={copyText} onOpen={openBackupPath} onRestorePlan={useArchiveForRestorePlan} />
             <CommandPreview command={commands.backup} title="备份命令预览" onCopy={copyText} />
           </section>
         )}
@@ -1323,7 +1319,7 @@ function RuntimeModePanel({
   );
 }
 
-function SimpleProductFlow({
+function OverviewStatusPanel({
   backupAcceptance,
   configErrorCount,
   helperOnline,
@@ -1359,20 +1355,21 @@ function SimpleProductFlow({
       <div className="panel-header">
         <div className="panel-title">
           <Archive size={16} aria-hidden="true" />
-          <span>备份流程</span>
+          <span>当前备份状态</span>
         </div>
         <StatusBadge status={backupReady ? 'success' : 'warning'} label={nextAction} />
       </div>
       <div className="readiness-layout">
         <div className="summary-list">
-          <SummaryRow label="1. 打包本机数据" value={backupReady ? '可执行' : '等待准备'} />
-          <SummaryRow label="2. 上传到存储位置" value={storageLabel} />
-          <SummaryRow label="3. 验证完整性" value={integrityLabel} />
-          <SummaryRow label="4. 换设备恢复" value="先校验，再写入" />
+          <SummaryRow label="存储位置" value={storageLabel} />
+          <SummaryRow label="本机服务" value={helperOnline ? '已连接' : '未连接'} />
+          <SummaryRow label="完整性" value={integrityLabel} />
+          <SummaryRow label="最近备份" value={latestBackupEntry?.archivePaths[0] ?? '尚无记录'} />
+          <SummaryRow label="下一步" value={nextAction} />
         </div>
         <div className="readiness-copy">
           <strong>{nextAction}</strong>
-          <p>主流程只关注备份、存储位置、完整性校验和恢复。高级诊断和内部服务状态已放到设置里。</p>
+          <p>这里保留状态总览和下一步入口；执行备份在备份页，归档、sha256、manifest 等详细结果统一放在记录页。</p>
           <div className="action-row">
             <button className="button button--primary" onClick={configErrorCount > 0 ? onOpenStorage : onOpenBackup} type="button">
               <Archive size={15} aria-hidden="true" />
