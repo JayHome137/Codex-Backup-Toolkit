@@ -168,13 +168,40 @@ describe('App', () => {
     expect(screen.getByRole('group', { name: /开发运行模式/i })).toBeInTheDocument();
   });
 
-  it('reads local settings and saved paths from one overview action', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith('/config')) {
-        return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok', config: { ...baseConfigResponse(), target: 'webdav' } });
+  it('detects local content even when helper config and history are offline', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error('helper offline');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /一键检测本机内容/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('本机内容检测')).toBeInTheDocument();
+      expect(screen.getByText('~/.codex')).toBeInTheDocument();
+      expect(screen.getByText('~/Documents/Codex')).toBeInTheDocument();
+      expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
+      expect(screen.getAllByText('未发现').length).toBeGreaterThan(0);
+      expect(screen.getByText(/附加配置未读取/)).toBeInTheDocument();
+      expect(screen.getByText(/附加备份记录未读取/)).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
+  });
+
+  it('detects desktop local content through Tauri before helper enrichment', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error('desktop helper requests should use Tauri invoke');
+    });
+    const helperResponse = (path: string) => {
+      if (path === '/config') {
+        return { schema: 'codex-backup-helper.v1', version: 1, status: 'ok', config: { ...baseConfigResponse(), target: 'webdav' } };
       }
-      if (String(input).endsWith('/history')) {
-        return jsonResponse({
+      if (path === '/history') {
+        return {
           schema: 'codex-backup-helper.v1',
           version: 1,
           status: 'ok',
@@ -190,27 +217,82 @@ describe('App', () => {
               archivePaths: ['/tmp/CodexBackups/codex-backup-latest.tar.gz'],
             }],
           },
-        });
+        };
       }
-      return jsonResponse({ schema: 'codex-backup-helper.v1', version: 1, status: 'ok' });
-    });
+      return { schema: 'codex-backup-helper.v1', version: 1, status: 'ok' };
+    };
     vi.stubGlobal('fetch', fetchMock);
+    const invokeMock = vi.fn(async (command: string, payload?: { request?: { path?: string } }) => {
+      if (command === 'local_content_snapshot') {
+        return {
+          version: '0.36.3',
+          paths: {
+            appSupportDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+            automationStderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+            automationStdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+            configPath: '/Users/test/Library/Application Support/CodexBackupToolkit/config.json',
+            desktopHelperStderrLogPath: '/Users/test/Library/Logs/CodexBackup/desktop-helper.err.log',
+            desktopHelperStdoutLogPath: '/Users/test/Library/Logs/CodexBackup/desktop-helper.out.log',
+            historyPath: '/Users/test/Library/Application Support/CodexBackupToolkit/history.json',
+            logDir: '/Users/test/Library/Logs/CodexBackup',
+          },
+          dataPaths: [
+            { label: 'Codex 配置目录', path: '/Users/test/.codex', exists: true, kind: 'directory' },
+            { label: 'Codex 工作区', path: '/Users/test/Documents/Codex', exists: false, kind: 'missing' },
+          ],
+          appPaths: [
+            { label: '配置文件', path: '/Users/test/Library/Application Support/CodexBackupToolkit/config.json', exists: true, kind: 'file' },
+            { label: '历史文件', path: '/Users/test/Library/Application Support/CodexBackupToolkit/history.json', exists: false, kind: 'missing' },
+          ],
+        };
+      }
+      if (command === 'desktop_diagnostics') {
+        return {
+          version: '0.36.3',
+          helper: { online: false, managed: false, source: 'unavailable', port: 37371 },
+          toolkit: { available: true, source: 'development', rootPath: '/repo', helperPath: '/repo/helper/server.mjs', scriptsPath: '/repo/scripts/codexbackup.sh' },
+          paths: {
+            appSupportDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
+            automationStderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
+            automationStdoutLogPath: '/Users/test/Library/Logs/CodexBackup/backup.out.log',
+            configPath: '/Users/test/Library/Application Support/CodexBackupToolkit/config.json',
+            desktopHelperStderrLogPath: '/Users/test/Library/Logs/CodexBackup/desktop-helper.err.log',
+            desktopHelperStdoutLogPath: '/Users/test/Library/Logs/CodexBackup/desktop-helper.out.log',
+            historyPath: '/Users/test/Library/Application Support/CodexBackupToolkit/history.json',
+            logDir: '/Users/test/Library/Logs/CodexBackup',
+          },
+        };
+      }
+      if (command === 'helper_status' || command === 'helper_start') {
+        return { online: false, managed: false, source: 'unavailable', port: 37371 };
+      }
+      if (command === 'helper_request' && payload?.request?.path) {
+        return helperResponse(payload.request.path);
+      }
+      throw new Error(`unexpected command ${command}`);
+    });
+    vi.stubGlobal('__TAURI__', { core: { invoke: invokeMock } });
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: /一键读取本机设置/i }));
+    fireEvent.click(screen.getByRole('button', { name: /一键检测本机内容/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('本机设置和保存目录')).toBeInTheDocument();
+      expect(screen.getByText('本机内容检测')).toBeInTheDocument();
       expect(screen.getAllByText('WebDAV').length).toBeGreaterThan(0);
       expect(screen.getByText('https://webdav.example.com/remote.php/dav/files/user/CodexBackup')).toBeInTheDocument();
-      expect(screen.getByText('~/.codex')).toBeInTheDocument();
-      expect(screen.getByText('~/Documents/Codex')).toBeInTheDocument();
-      expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
+      expect(screen.getByText('/Users/test/.codex')).toBeInTheDocument();
+      expect(screen.getByText('/Users/test/Documents/Codex')).toBeInTheDocument();
+      expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
+      expect(screen.getByText('目录存在')).toBeInTheDocument();
+      expect(screen.getByText('文件存在')).toBeInTheDocument();
+      expect(screen.getAllByText('未发现').length).toBeGreaterThan(0);
       expect(screen.getAllByText('/tmp/CodexBackups/codex-backup-latest.tar.gz').length).toBeGreaterThan(0);
     });
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'GET' }));
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
+    expect(invokeMock).toHaveBeenCalledWith('local_content_snapshot');
+    expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/config' } });
+    expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/history' } });
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
   });
 
@@ -314,9 +396,9 @@ describe('App', () => {
     openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.2_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.2_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.2_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.3_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.3_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.3_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -339,7 +421,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.2_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.3_aarch64.dmg.sha256');
     });
   });
 
@@ -1093,7 +1175,7 @@ describe('App', () => {
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Application Support/CodexBackupToolkit/history.json')).toBeInTheDocument();
     expect(screen.getByText('~/Library/Logs/CodexBackup/desktop-helper.out.log')).toBeInTheDocument();
-    expect(screen.getByText('0.36.2')).toBeInTheDocument();
+    expect(screen.getByText('0.36.3')).toBeInTheDocument();
   });
 
   it('shows desktop readiness in Settings for first launch', () => {

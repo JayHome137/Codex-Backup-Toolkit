@@ -63,6 +63,24 @@ struct DesktopDiagnostics {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct LocalPathStatus {
+    exists: bool,
+    kind: LocalPathKind,
+    label: String,
+    path: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LocalContentSnapshot {
+    app_paths: Vec<LocalPathStatus>,
+    data_paths: Vec<LocalPathStatus>,
+    paths: DesktopPaths,
+    version: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 enum HelperSource {
     Managed,
     External,
@@ -76,6 +94,15 @@ enum ToolkitSource {
     Environment,
     Development,
     Unavailable,
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum LocalPathKind {
+    Directory,
+    File,
+    Missing,
+    Other,
 }
 
 #[derive(Debug, Deserialize)]
@@ -105,6 +132,18 @@ fn desktop_diagnostics(
         helper: build_status(&state)?,
         paths: desktop_paths()?,
         toolkit: build_toolkit_status(Some(&app)),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    })
+}
+
+#[tauri::command]
+fn local_content_snapshot() -> Result<LocalContentSnapshot, String> {
+    let home = home_dir()?;
+    let paths = desktop_paths()?;
+    Ok(LocalContentSnapshot {
+        app_paths: app_path_statuses(&paths),
+        data_paths: data_path_statuses(&home),
+        paths,
         version: env!("CARGO_PKG_VERSION").to_string(),
     })
 }
@@ -224,6 +263,7 @@ pub fn run() {
             helper_status,
             toolkit_status,
             desktop_diagnostics,
+            local_content_snapshot,
             helper_start,
             helper_stop,
             helper_request,
@@ -326,6 +366,66 @@ fn desktop_paths() -> Result<DesktopPaths, String> {
         history_path: path_string(&app_support_dir.join("history.json")),
         log_dir: path_string(&log_dir),
     })
+}
+
+fn data_path_statuses(home: &Path) -> Vec<LocalPathStatus> {
+    vec![
+        path_status("Codex 配置目录", home.join(".codex")),
+        path_status(
+            "Codex 应用数据",
+            home.join("Library/Application Support/Codex"),
+        ),
+        path_status(
+            "OpenAI 应用数据",
+            home.join("Library/Application Support/OpenAI"),
+        ),
+        path_status(
+            "OpenAI Codex 数据",
+            home.join("Library/Application Support/OpenAI/Codex"),
+        ),
+        path_status(
+            "Codex 桌面容器",
+            home.join("Library/Application Support/com.openai.codex"),
+        ),
+        path_status("Codex 工作区", home.join("Documents/Codex")),
+    ]
+}
+
+fn app_path_statuses(paths: &DesktopPaths) -> Vec<LocalPathStatus> {
+    vec![
+        path_status("配置文件", PathBuf::from(&paths.config_path)),
+        path_status("历史文件", PathBuf::from(&paths.history_path)),
+        path_status("应用配置目录", PathBuf::from(&paths.app_support_dir)),
+        path_status("日志目录", PathBuf::from(&paths.log_dir)),
+        path_status(
+            "自动化标准输出",
+            PathBuf::from(&paths.automation_stdout_log_path),
+        ),
+        path_status(
+            "自动化错误输出",
+            PathBuf::from(&paths.automation_stderr_log_path),
+        ),
+    ]
+}
+
+fn path_status(label: &str, path: PathBuf) -> LocalPathStatus {
+    let kind = fs::metadata(&path)
+        .map(|metadata| {
+            if metadata.is_dir() {
+                LocalPathKind::Directory
+            } else if metadata.is_file() {
+                LocalPathKind::File
+            } else {
+                LocalPathKind::Other
+            }
+        })
+        .unwrap_or(LocalPathKind::Missing);
+    LocalPathStatus {
+        exists: kind != LocalPathKind::Missing,
+        kind,
+        label: label.to_string(),
+        path: path_string(&path),
+    }
 }
 
 fn app_support_dir() -> Result<PathBuf, String> {
@@ -600,6 +700,28 @@ mod tests {
         assert!(paths
             .desktop_helper_stderr_log_path
             .ends_with("Library/Logs/CodexBackup/desktop-helper.err.log"));
+    }
+
+    #[test]
+    fn reports_local_content_path_statuses_without_writing() {
+        let root = make_temp_root("local-snapshot");
+        fs::create_dir_all(root.join(".codex")).unwrap();
+        fs::create_dir_all(root.join("Documents/Codex")).unwrap();
+
+        let statuses = data_path_statuses(&root);
+        let codex = statuses.iter().find(|item| item.label == "Codex 配置目录").unwrap();
+        let workspace = statuses.iter().find(|item| item.label == "Codex 工作区").unwrap();
+        let openai = statuses.iter().find(|item| item.label == "OpenAI 应用数据").unwrap();
+
+        assert!(codex.exists);
+        assert_eq!(codex.kind, LocalPathKind::Directory);
+        assert!(workspace.exists);
+        assert_eq!(workspace.kind, LocalPathKind::Directory);
+        assert!(!openai.exists);
+        assert_eq!(openai.kind, LocalPathKind::Missing);
+        assert!(!root.join("Library/Application Support/OpenAI").exists());
+
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]

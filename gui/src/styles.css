@@ -709,6 +709,31 @@ input[type="checkbox"] {
   overflow-wrap: anywhere;
 }
 
+.artifact-row--path-status {
+  grid-template-columns: minmax(96px, 140px) minmax(0, 1fr) auto;
+}
+
+.path-status {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  height: 26px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.path-status--ok {
+  background: rgba(31, 154, 109, 0.13);
+  color: var(--green);
+}
+
+.path-status--missing {
+  background: rgba(183, 128, 31, 0.14);
+  color: var(--yellow);
+}
+
 .artifact-actions {
   display: flex;
   flex-wrap: wrap;

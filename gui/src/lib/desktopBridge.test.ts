@@ -20,12 +20,14 @@ describe('desktop bridge', () => {
     const bridge = createDesktopBridge({ invoke });
 
     await bridge.desktopDiagnostics();
+    await bridge.localContentSnapshot();
     await bridge.helperStatus();
     await bridge.helperStart();
     await bridge.helperStop();
     await bridge.toolkitStatus();
 
     expect(invokeMock).toHaveBeenCalledWith('desktop_diagnostics');
+    expect(invokeMock).toHaveBeenCalledWith('local_content_snapshot');
     expect(invokeMock).toHaveBeenCalledWith('helper_status');
     expect(invokeMock).toHaveBeenCalledWith('helper_start');
     expect(invokeMock).toHaveBeenCalledWith('helper_stop');
@@ -42,8 +44,22 @@ describe('desktop bridge', () => {
         desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
       },
       toolkit: { available: false, source: 'unavailable' },
-      version: '0.36.2',
+      version: '0.36.3',
     });
+  });
+
+  it('returns local content fallback outside Tauri desktop', async () => {
+    const bridge = createDesktopBridge({ invoke: null });
+
+    await expect(bridge.localContentSnapshot()).resolves.toEqual(expect.objectContaining({
+      dataPaths: expect.arrayContaining([
+        { label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' },
+      ]),
+      appPaths: expect.arrayContaining([
+        { label: '配置文件', path: '~/Library/Application Support/CodexBackupToolkit/config.json', exists: false, kind: 'missing' },
+      ]),
+      version: '0.36.3',
+    }));
   });
 
   it('sends helper requests through the desktop helper api', async () => {

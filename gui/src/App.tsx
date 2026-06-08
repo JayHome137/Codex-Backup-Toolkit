@@ -20,7 +20,7 @@ import { checkHelperHealth, createHttpHelperTransport } from './lib/helperProtoc
 import { createLocalBridgeRunner } from './lib/localBridge';
 import { buildDoctorAdvice, type DoctorAdvice, type DoctorAdviceCard } from './lib/doctorAdvice';
 import { parseDoctorOutput, type DoctorReport } from './lib/doctorReport';
-import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopDiagnostics, type DesktopHelperStatus, type DesktopPaths, type DesktopToolkitStatus } from './lib/desktopBridge';
+import { createDesktopBridge, createDesktopHelperApi, createDesktopHelperTransport, getBackupArtifacts, type DesktopDiagnostics, type DesktopHelperStatus, type DesktopPaths, type DesktopToolkitStatus, type LocalPathStatus } from './lib/desktopBridge';
 import { buildPostInstallExperience, type PostInstallExperience, type PostInstallItem } from './lib/postInstallExperience';
 import { buildRestorePlanGuide, type RestorePlanGuide } from './lib/restorePlanGuide';
 import { buildTargetSetupGuide, type TargetSetupGuide, type TargetSetupStep } from './lib/targetSetupGuide';
@@ -65,8 +65,10 @@ type HealthActionState = 'refresh' | null;
 type DesktopActionState = 'diagnostics' | 'status' | 'start' | 'stop' | null;
 
 type LocalSettingsSnapshot = {
+  appPaths: LocalPathStatus[];
   capturedAt: string;
   config: BackupConfig;
+  dataPaths: LocalPathStatus[];
   history: BackupHistoryEntry[];
   paths: DesktopPaths;
   serviceStatus: string;
@@ -104,7 +106,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.2';
+const appVersion = '0.36.3';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -453,25 +455,17 @@ function App() {
     let snapshotConfig = config;
     let snapshotHistory = helperHistory;
     let snapshotPaths = desktopPaths;
+    let snapshotDataPaths = fallbackLocalDataPaths();
+    let snapshotAppPaths = fallbackLocalAppPaths(snapshotPaths);
     let snapshotServiceStatus = helperStatusLabel(helperStatus === 'unknown' && desktopHelperStatus.online ? 'online' : helperStatus);
 
     try {
-      const loadedConfig = await helperApi.loadConfig();
-      snapshotConfig = { ...defaultConfig, ...loadedConfig };
-      setHelperStatus('online');
-      snapshotServiceStatus = helperStatusLabel('online');
+      const localContent = await desktopBridge.localContentSnapshot();
+      snapshotPaths = localContent.paths;
+      snapshotDataPaths = localContent.dataPaths;
+      snapshotAppPaths = localContent.appPaths;
     } catch (error) {
-      warnings.push(`保存配置读取失败，已显示当前界面配置：${shortErrorMessage(error)}`);
-    }
-
-    try {
-      const entries = await helperApi.loadHistory();
-      snapshotHistory = entries;
-      setHelperHistory(entries);
-      setHelperStatus('online');
-      snapshotServiceStatus = helperStatusLabel('online');
-    } catch (error) {
-      warnings.push(`备份记录读取失败，已显示当前已加载记录：${shortErrorMessage(error)}`);
+      warnings.push(`本机路径检测失败，已显示默认路径：${shortErrorMessage(error)}`);
     }
 
     if (desktopBridge.isDesktop) {
@@ -483,13 +477,34 @@ function App() {
         snapshotPaths = diagnostics.paths;
         if (diagnostics.helper.online) snapshotServiceStatus = helperStatusLabel('online');
       } catch (error) {
-        warnings.push(`桌面路径刷新失败，已显示默认路径：${shortErrorMessage(error)}`);
+        warnings.push(`桌面状态刷新失败，本机路径检测结果仍可使用：${shortErrorMessage(error)}`);
       }
     }
 
+    try {
+      const loadedConfig = await helperApi.loadConfig();
+      snapshotConfig = { ...defaultConfig, ...loadedConfig };
+      setHelperStatus('online');
+      snapshotServiceStatus = helperStatusLabel('online');
+    } catch (error) {
+      warnings.push(`附加配置未读取，已显示当前界面配置：${shortErrorMessage(error)}`);
+    }
+
+    try {
+      const entries = await helperApi.loadHistory();
+      snapshotHistory = entries;
+      setHelperHistory(entries);
+      setHelperStatus('online');
+      snapshotServiceStatus = helperStatusLabel('online');
+    } catch (error) {
+      warnings.push(`附加备份记录未读取，已显示当前已加载记录：${shortErrorMessage(error)}`);
+    }
+
     setLocalSnapshot({
+      appPaths: snapshotAppPaths,
       capturedAt: new Date().toISOString(),
       config: snapshotConfig,
+      dataPaths: snapshotDataPaths,
       history: snapshotHistory,
       paths: snapshotPaths,
       serviceStatus: snapshotServiceStatus,
@@ -498,8 +513,8 @@ function App() {
     setLastResult({
       status: warnings.length === 0 ? 'success' : 'warning',
       output: warnings.length === 0
-        ? '已读取本机设置和保存目录。这个操作只读取配置、历史和路径，不执行备份或恢复。'
-        : ['已读取本机设置和保存目录，但有部分信息未能从本机服务读取：', '', ...warnings].join('\n'),
+        ? '已完成本机内容检测。这个操作只读取路径状态、配置摘要和历史摘要，不执行备份或恢复。'
+        : ['已完成本机内容检测，但有部分附加信息未读取：', '', ...warnings].join('\n'),
     });
     setLocalSnapshotBusy(false);
   };
@@ -1270,14 +1285,25 @@ function shortErrorMessage(error: unknown): string {
   return message.split('\n')[0] ?? message;
 }
 
-function sourceLocations(): string[] {
+function fallbackLocalDataPaths(): LocalPathStatus[] {
   return [
-    '~/.codex',
-    '~/Library/Application Support/Codex',
-    '~/Library/Application Support/OpenAI',
-    '~/Library/Application Support/OpenAI/Codex',
-    '~/Library/Application Support/com.openai.codex',
-    '~/Documents/Codex',
+    { label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' },
+    { label: 'Codex 应用数据', path: '~/Library/Application Support/Codex', exists: false, kind: 'missing' },
+    { label: 'OpenAI 应用数据', path: '~/Library/Application Support/OpenAI', exists: false, kind: 'missing' },
+    { label: 'OpenAI Codex 数据', path: '~/Library/Application Support/OpenAI/Codex', exists: false, kind: 'missing' },
+    { label: 'Codex 桌面容器', path: '~/Library/Application Support/com.openai.codex', exists: false, kind: 'missing' },
+    { label: 'Codex 工作区', path: '~/Documents/Codex', exists: false, kind: 'missing' },
+  ];
+}
+
+function fallbackLocalAppPaths(paths: DesktopPaths): LocalPathStatus[] {
+  return [
+    { label: '配置文件', path: paths.configPath, exists: false, kind: 'missing' },
+    { label: '历史文件', path: paths.historyPath, exists: false, kind: 'missing' },
+    { label: '应用配置目录', path: paths.appSupportDir, exists: false, kind: 'missing' },
+    { label: '日志目录', path: paths.logDir, exists: false, kind: 'missing' },
+    { label: '自动化标准输出', path: paths.automationStdoutLogPath, exists: false, kind: 'missing' },
+    { label: '自动化错误输出', path: paths.automationStderrLogPath, exists: false, kind: 'missing' },
   ];
 }
 
@@ -1406,15 +1432,15 @@ function LocalSettingsSnapshotPanel({
       <div className="panel-header">
         <div className="panel-title">
           <FolderOpen size={16} aria-hidden="true" />
-          <span>本机设置和保存目录</span>
+          <span>本机内容检测</span>
         </div>
         <button className="button button--primary" disabled={busy} onClick={() => void onRead()} type="button">
           <FolderOpen size={15} aria-hidden="true" />
-          {busy ? '读取中' : '一键读取本机设置'}
+          {busy ? '检测中' : '一键检测本机内容'}
         </button>
       </div>
       {!snapshot ? (
-        <p className="muted-copy">点击后只读取本机数据位置、备份保存位置、应用配置、历史、日志和最近备份记录；不会执行备份、恢复，也不会修改定时任务。</p>
+        <p className="muted-copy">点击后只检测本机数据位置、备份保存位置、应用配置、历史、日志和最近备份记录；不会执行备份、恢复，也不会修改定时任务。</p>
       ) : (
         <div className="readiness-layout">
           <div className="summary-list">
@@ -1427,20 +1453,8 @@ function LocalSettingsSnapshotPanel({
             <SummaryRow label="最近备份" value={latestArchive} />
           </div>
           <div className="snapshot-sections">
-            <SnapshotPathGroup title="本机数据位置" paths={sourceLocations()} onCopy={onCopy} onOpen={onOpen} />
-            <SnapshotPathGroup
-              title="应用保存目录"
-              paths={[
-                snapshot.paths.configPath,
-                snapshot.paths.historyPath,
-                snapshot.paths.appSupportDir,
-                snapshot.paths.logDir,
-                snapshot.paths.automationStdoutLogPath,
-                snapshot.paths.automationStderrLogPath,
-              ]}
-              onCopy={onCopy}
-              onOpen={onOpen}
-            />
+            <SnapshotPathGroup title="本机数据位置" paths={snapshot.dataPaths} onCopy={onCopy} onOpen={onOpen} />
+            <SnapshotPathGroup title="应用保存目录" paths={snapshot.appPaths} onCopy={onCopy} onOpen={onOpen} />
             {snapshot.warnings.length > 0 && (
               <div className="check-list check-list--compact">
                 {snapshot.warnings.map((warning) => (
@@ -1469,19 +1483,21 @@ function SnapshotPathGroup({
 }: {
   onCopy: (text: string) => Promise<void>;
   onOpen: (path: string) => Promise<void>;
-  paths: string[];
+  paths: LocalPathStatus[];
   title: string;
 }) {
   return (
     <div className="snapshot-path-group">
       <strong>{title}</strong>
       <div className="artifact-list">
-        {paths.map((path) => (
-          <div className="artifact-row" key={path}>
-            <code>{path}</code>
+        {paths.map((item) => (
+          <div className="artifact-row artifact-row--path-status" key={`${item.label}-${item.path}`}>
+            <span>{item.label}</span>
+            <code>{item.path}</code>
             <div className="artifact-actions">
-              <button className="button button--tertiary" onClick={() => void onCopy(path)} type="button">复制</button>
-              <button className="button button--tertiary" disabled={path.startsWith('~')} onClick={() => void onOpen(path)} type="button">
+              <span className={`path-status path-status--${item.exists ? 'ok' : 'missing'}`}>{pathStatusLabel(item)}</span>
+              <button className="button button--tertiary" onClick={() => void onCopy(item.path)} type="button">复制</button>
+              <button className="button button--tertiary" disabled={item.path.startsWith('~')} onClick={() => void onOpen(item.path)} type="button">
                 <FolderOpen size={14} aria-hidden="true" />
                 打开
               </button>
@@ -1491,6 +1507,13 @@ function SnapshotPathGroup({
       </div>
     </div>
   );
+}
+
+function pathStatusLabel(item: LocalPathStatus): string {
+  if (!item.exists) return '未发现';
+  if (item.kind === 'directory') return '目录存在';
+  if (item.kind === 'file') return '文件存在';
+  return '已发现';
 }
 
 function HelperConnectionBanner({

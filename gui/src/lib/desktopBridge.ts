@@ -34,6 +34,22 @@ export type DesktopPaths = {
   logDir: string;
 };
 
+export type LocalPathKind = 'directory' | 'file' | 'missing' | 'other';
+
+export type LocalPathStatus = {
+  exists: boolean;
+  kind: LocalPathKind;
+  label: string;
+  path: string;
+};
+
+export type LocalContentSnapshot = {
+  appPaths: LocalPathStatus[];
+  dataPaths: LocalPathStatus[];
+  paths: DesktopPaths;
+  version: string;
+};
+
 export type DesktopDiagnostics = {
   helper: DesktopHelperStatus;
   paths: DesktopPaths;
@@ -48,6 +64,7 @@ export type DesktopBridge = {
   helperStatus(): Promise<DesktopHelperStatus>;
   helperStop(): Promise<DesktopHelperStatus>;
   isDesktop: boolean;
+  localContentSnapshot(): Promise<LocalContentSnapshot>;
   openPath(path: string): Promise<{ status: 'ok' }>;
   toolkitStatus(): Promise<DesktopToolkitStatus>;
 };
@@ -63,6 +80,7 @@ type BridgeOptions = {
 };
 
 const schema = 'codex-backup-helper.v1' as const;
+const fallbackVersion = '0.36.3';
 
 export function createDesktopBridge(options: BridgeOptions = {}): DesktopBridge {
   const invoke = options.invoke ?? getTauriInvoke();
@@ -88,6 +106,9 @@ export function createDesktopBridge(options: BridgeOptions = {}): DesktopBridge 
       return invoke<DesktopHelperStatus>('helper_stop');
     },
     isDesktop: true,
+    localContentSnapshot(): Promise<LocalContentSnapshot> {
+      return invoke<LocalContentSnapshot>('local_content_snapshot');
+    },
     openPath(path: string): Promise<{ status: 'ok' }> {
       return invoke<{ status: 'ok' }>('open_path', { path });
     },
@@ -177,6 +198,9 @@ function createUnavailableBridge(): DesktopBridge {
       return unavailableStatus();
     },
     isDesktop: false,
+    async localContentSnapshot(): Promise<LocalContentSnapshot> {
+      return unavailableLocalContentSnapshot();
+    },
     async openPath(): Promise<never> {
       throw new Error('ERR_DESKTOP_UNAVAILABLE: 当前不是 Tauri 桌面环境。');
     },
@@ -191,8 +215,40 @@ function unavailableDiagnostics(): DesktopDiagnostics {
     helper: unavailableStatus(),
     paths: defaultDesktopPaths(),
     toolkit: { available: false, lastError: '当前不是 Tauri 桌面环境。', source: 'unavailable' },
-    version: '0.36.2',
+    version: fallbackVersion,
   };
+}
+
+function unavailableLocalContentSnapshot(): LocalContentSnapshot {
+  const paths = defaultDesktopPaths();
+  return {
+    appPaths: fallbackAppPathStatuses(paths),
+    dataPaths: fallbackDataPathStatuses(),
+    paths,
+    version: fallbackVersion,
+  };
+}
+
+function fallbackDataPathStatuses(): LocalPathStatus[] {
+  return [
+    { label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' },
+    { label: 'Codex 应用数据', path: '~/Library/Application Support/Codex', exists: false, kind: 'missing' },
+    { label: 'OpenAI 应用数据', path: '~/Library/Application Support/OpenAI', exists: false, kind: 'missing' },
+    { label: 'OpenAI Codex 数据', path: '~/Library/Application Support/OpenAI/Codex', exists: false, kind: 'missing' },
+    { label: 'Codex 桌面容器', path: '~/Library/Application Support/com.openai.codex', exists: false, kind: 'missing' },
+    { label: 'Codex 工作区', path: '~/Documents/Codex', exists: false, kind: 'missing' },
+  ];
+}
+
+function fallbackAppPathStatuses(paths: DesktopPaths): LocalPathStatus[] {
+  return [
+    { label: '配置文件', path: paths.configPath, exists: false, kind: 'missing' },
+    { label: '历史文件', path: paths.historyPath, exists: false, kind: 'missing' },
+    { label: '应用配置目录', path: paths.appSupportDir, exists: false, kind: 'missing' },
+    { label: '日志目录', path: paths.logDir, exists: false, kind: 'missing' },
+    { label: '自动化标准输出', path: paths.automationStdoutLogPath, exists: false, kind: 'missing' },
+    { label: '自动化错误输出', path: paths.automationStderrLogPath, exists: false, kind: 'missing' },
+  ];
 }
 
 function defaultDesktopPaths(): DesktopPaths {
