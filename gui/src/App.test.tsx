@@ -189,19 +189,19 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('本机内容检测')).toBeInTheDocument();
       expect(screen.getAllByText('0 项已发现').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('12 项未发现').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('6 项未发现').length).toBeGreaterThan(0);
       expect(screen.getByText('~/.codex')).not.toBeVisible();
       expect(screen.getByText('~/Documents/Codex')).not.toBeVisible();
       expect(screen.getAllByText('未发现').length).toBeGreaterThan(0);
-      expect(screen.getByText(/附加配置未读取/)).toBeInTheDocument();
-      expect(screen.getByText(/附加备份记录未读取/)).toBeInTheDocument();
+      expect(screen.queryByText(/附加配置未读取/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/附加备份记录未读取/)).not.toBeInTheDocument();
     });
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'GET' }));
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).not.toHaveBeenCalledWith('http://127.0.0.1:37371/config', expect.objectContaining({ method: 'GET' }));
+    expect(fetchMock).not.toHaveBeenCalledWith('http://127.0.0.1:37371/history', expect.objectContaining({ method: 'GET' }));
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
   });
 
-  it('detects desktop local content through Tauri before helper enrichment', async () => {
+  it('detects desktop local backup content through Tauri without helper enrichment', async () => {
     const fetchMock = vi.fn(async () => {
       throw new Error('desktop helper requests should use Tauri invoke');
     });
@@ -234,7 +234,7 @@ describe('App', () => {
     const invokeMock = vi.fn(async (command: string, payload?: { request?: { path?: string } }) => {
       if (command === 'local_content_snapshot') {
         return {
-          version: '0.36.4',
+          version: '0.36.5',
           paths: {
             appSupportDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
             automationStderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
@@ -257,7 +257,7 @@ describe('App', () => {
       }
       if (command === 'desktop_diagnostics') {
         return {
-          version: '0.36.4',
+          version: '0.36.5',
           helper: { online: false, managed: false, source: 'unavailable', port: 37371 },
           toolkit: { available: true, source: 'development', rootPath: '/repo', helperPath: '/repo/helper/server.mjs', scriptsPath: '/repo/scripts/codexbackup.sh' },
           paths: {
@@ -288,8 +288,8 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText('本机内容检测')).toBeInTheDocument();
-      expect(screen.getAllByText('2 项已发现').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('2 项未发现').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('1 项已发现').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('1 项未发现').length).toBeGreaterThan(0);
       expect(screen.getByText('/Users/test/.codex')).not.toBeVisible();
       expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit/config.json')).not.toBeVisible();
     });
@@ -297,8 +297,8 @@ describe('App', () => {
     expect(screen.getByText('/Users/test/.codex')).toBeInTheDocument();
     expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit/config.json')).toBeInTheDocument();
     expect(invokeMock).toHaveBeenCalledWith('local_content_snapshot');
-    expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/config' } });
-    expect(invokeMock).toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/history' } });
+    expect(invokeMock).not.toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/config' } });
+    expect(invokeMock).not.toHaveBeenCalledWith('helper_request', { request: { method: 'GET', path: '/history' } });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/run'), expect.anything());
   });
@@ -404,9 +404,9 @@ describe('App', () => {
     openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.4_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.4_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.4_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.5_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.5_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.5_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -429,7 +429,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.4_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.5_aarch64.dmg.sha256');
     });
   });
 
@@ -1172,7 +1172,7 @@ describe('App', () => {
     clickNav(/^设置$/i);
 
     expect(screen.getByText('应用设置')).toBeInTheDocument();
-    expect(screen.getAllByText('0.36.4').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0.36.5').length).toBeGreaterThan(0);
     expect(screen.getAllByText('~/Library/Application Support/CodexBackupToolkit/history.json').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /启动服务/i })).not.toBeVisible();
 

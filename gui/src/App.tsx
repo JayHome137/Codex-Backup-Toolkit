@@ -69,7 +69,6 @@ type LocalSettingsSnapshot = {
   dataPaths: LocalPathStatus[];
   history: BackupHistoryEntry[];
   paths: DesktopPaths;
-  serviceStatus: string;
   warnings: string[];
 };
 
@@ -114,7 +113,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.4';
+const appVersion = '0.36.5';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -459,12 +458,9 @@ function App() {
   const readLocalSettingsSnapshot = async () => {
     setLocalSnapshotBusy(true);
     const warnings: string[] = [];
-    let snapshotConfig = config;
-    let snapshotHistory = helperHistory;
     let snapshotPaths = desktopPaths;
     let snapshotDataPaths = fallbackLocalDataPaths();
     let snapshotAppPaths = fallbackLocalAppPaths(snapshotPaths);
-    let snapshotServiceStatus = helperStatusLabel(helperStatus === 'unknown' && desktopHelperStatus.online ? 'online' : helperStatus);
 
     try {
       const localContent = await desktopBridge.localContentSnapshot();
@@ -482,39 +478,18 @@ function App() {
         applyDesktopStatus(diagnostics.helper);
         setDesktopToolkitStatus(diagnostics.toolkit);
         snapshotPaths = diagnostics.paths;
-        if (diagnostics.helper.online) snapshotServiceStatus = helperStatusLabel('online');
       } catch (error) {
         warnings.push(`桌面状态刷新失败，本机路径检测结果仍可使用：${shortErrorMessage(error)}`);
       }
     }
 
-    try {
-      const loadedConfig = await helperApi.loadConfig();
-      snapshotConfig = { ...defaultConfig, ...loadedConfig };
-      setHelperStatus('online');
-      snapshotServiceStatus = helperStatusLabel('online');
-    } catch (error) {
-      warnings.push(`附加配置未读取，已显示当前界面配置：${shortErrorMessage(error)}`);
-    }
-
-    try {
-      const entries = await helperApi.loadHistory();
-      snapshotHistory = entries;
-      setHelperHistory(entries);
-      setHelperStatus('online');
-      snapshotServiceStatus = helperStatusLabel('online');
-    } catch (error) {
-      warnings.push(`附加备份记录未读取，已显示当前已加载记录：${shortErrorMessage(error)}`);
-    }
-
     setLocalSnapshot({
       appPaths: snapshotAppPaths,
       capturedAt: new Date().toISOString(),
-      config: snapshotConfig,
+      config,
       dataPaths: snapshotDataPaths,
-      history: snapshotHistory,
+      history: helperHistory,
       paths: snapshotPaths,
-      serviceStatus: snapshotServiceStatus,
       warnings,
     });
     setLastResult({
@@ -1603,7 +1578,7 @@ function SnapshotPathGroup({
 }
 
 function summarizeLocalSnapshot(snapshot: LocalSettingsSnapshot): LocalSnapshotSummary {
-  const items = [...snapshot.dataPaths, ...snapshot.appPaths];
+  const items = snapshot.dataPaths;
   return {
     existing: items.filter((item) => item.exists),
     missing: items.filter((item) => !item.exists),
