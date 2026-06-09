@@ -73,8 +73,8 @@ export function TargetForm({ config, onChange, onWebdavPasswordChange, webdavPas
               />
             </label>
             <div className="target-note">
-              <strong>先在 WebDAV 服务端创建目标文件夹。</strong>
-              <span>检测会验证账号、密码和目录访问权限，但不会替你创建根目录。</span>
+              <strong>地址填 WebDAV 根目录，先手动创建里面的 codex-backups 文件夹。</strong>
+              <span>备份归档会保存到 codex-backups；检测会验证账号、密码、目录访问和写入权限。</span>
             </div>
             <details className="inline-help">
               <summary>地址示例</summary>

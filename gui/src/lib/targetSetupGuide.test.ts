@@ -21,11 +21,12 @@ describe('target setup guide', () => {
 
     expect(guide.title).toBe('WebDAV 设置向导');
     expect(guide.steps.map((step) => step.label)).toContain('保存或临时提供密码');
-    expect(guide.steps.map((step) => step.label)).toContain('手动创建目标文件夹');
+    expect(guide.steps.map((step) => step.label)).toContain('手动创建备份文件夹');
+    expect(guide.steps.map((step) => step.detail).join(' ')).toContain('codex-backups');
     expect(guide.steps.map((step) => step.label)).toContain('评估加密');
     expect(guide.commonFailures).toEqual(expect.arrayContaining([
       expect.objectContaining({ label: '401 或 403' }),
-      expect.objectContaining({ label: '目标文件夹不存在' }),
+      expect.objectContaining({ label: '备份文件夹不存在' }),
       expect.objectContaining({ label: '地址不可访问' }),
     ]));
   });

@@ -326,8 +326,77 @@ doctor_saved_secret() {
   security find-generic-password -s "$service" -a "$account" -w 2>/dev/null || true
 }
 
+webdav_propfind_status() {
+  local url="$1"
+  local user="$2"
+  local password="$3"
+  curl -sS -o /dev/null -w '%{http_code}' -u "${user}:${password}" -X PROPFIND -H 'Depth: 0' "${url%/}/" 2>/dev/null || true
+}
+
+webdav_check_folder() {
+  local label="$1"
+  local url="$2"
+  local user="$3"
+  local password="$4"
+  local missing_message="$5"
+  local http_status
+  http_status="$(webdav_propfind_status "$url" "$user" "$password")"
+  case "$http_status" in
+    200|207)
+      printf 'ok: %s\n' "$label"
+      return 0
+      ;;
+    401|403)
+      echo "fail: WebDAV credentials rejected"
+      return 1
+      ;;
+    404|405)
+      printf 'fail: %s\n' "$missing_message"
+      return 1
+      ;;
+    *)
+      printf 'fail: %s unreachable\n' "$label"
+      echo "warn: WebDAV PROPFIND returned HTTP ${http_status:-000}"
+      return 1
+      ;;
+  esac
+}
+
+webdav_write_probe() {
+  local url="$1"
+  local user="$2"
+  local password="$3"
+  local probe_file probe_name http_status
+  probe_file="${WORK_DIR}/webdav-write-check.txt"
+  probe_name=".codexbackup-write-check-${TIMESTAMP}.txt"
+  print -r -- "codexbackup webdav write check ${TIMESTAMP}" > "$probe_file"
+  http_status="$(curl -sS -o /dev/null -w '%{http_code}' -u "${user}:${password}" -T "$probe_file" "${url%/}/${probe_name}" 2>/dev/null || true)"
+  case "$http_status" in
+    200|201|204|207)
+      curl -fsS -u "${user}:${password}" -X DELETE "${url%/}/${probe_name}" >/dev/null 2>&1 || true
+      echo "ok: WebDAV backup folder writable"
+      return 0
+      ;;
+    401|403)
+      echo "fail: WebDAV backup folder is not writable"
+      echo "warn: check the WebDAV account permission for ${url}"
+      return 1
+      ;;
+    404|405)
+      echo "fail: WebDAV backup folder missing"
+      echo "warn: create this WebDAV folder manually before backing up: ${url}"
+      return 1
+      ;;
+    *)
+      echo "fail: WebDAV backup write check failed"
+      echo "warn: WebDAV PUT returned HTTP ${http_status:-000}"
+      return 1
+      ;;
+  esac
+}
+
 doctor_webdav_check() {
-  local password http_status
+  local password base_url backup_url
   password="${CODEX_BACKUP_WEBDAV_PASSWORD:-}"
   if [[ -z "$password" ]]; then
     password="$(doctor_saved_secret "$WEBDAV_KEYCHAIN_SERVICE" "$WEBDAV_KEYCHAIN_ACCOUNT")"
@@ -338,27 +407,17 @@ doctor_webdav_check() {
     return 1
   fi
 
-  http_status="$(curl -sS -o /dev/null -w '%{http_code}' -u "${WEBDAV_USER}:${password}" -X PROPFIND -H 'Depth: 0' "${WEBDAV_URL%/}/" 2>/dev/null || true)"
-  case "$http_status" in
-    200|207)
-      echo "ok: WebDAV target reachable"
-      return 0
-      ;;
-    401|403)
-      echo "fail: WebDAV credentials rejected"
-      return 1
-      ;;
-    404|405)
-      echo "fail: WebDAV target folder missing"
-      echo "warn: create the target WebDAV folder manually before backing up: ${WEBDAV_URL}"
-      return 1
-      ;;
-    *)
-      echo "fail: WebDAV target unreachable"
-      echo "warn: WebDAV PROPFIND returned HTTP ${http_status:-000}"
-      return 1
-      ;;
-  esac
+  base_url="${WEBDAV_URL%/}"
+  backup_url="${base_url}/${REMOTE_DIR}"
+  webdav_check_folder "WebDAV target reachable" "$base_url" "$WEBDAV_USER" "$password" "WebDAV target folder missing" || {
+    echo "warn: create the target WebDAV folder manually before backing up: ${base_url}"
+    return 1
+  }
+  webdav_check_folder "WebDAV backup folder reachable" "$backup_url" "$WEBDAV_USER" "$password" "WebDAV backup folder missing" || {
+    echo "warn: create this WebDAV folder manually before backing up: ${backup_url}"
+    return 1
+  }
+  webdav_write_probe "$backup_url" "$WEBDAV_USER" "$password"
 }
 
 run_doctor() {
@@ -767,6 +826,18 @@ webdav_delete_file() {
   curl -fsS -u "${user}:${password}" -X DELETE "${url%/}/${file_name}" >/dev/null
 }
 
+publish_restore_toolkit_to_webdav() {
+  local toolkit_url="$1"
+  local scripts_url="$2"
+  local user="$3"
+  local password="$4"
+  webdav_upload "${TOOLKIT_DIR}/README.md" "$toolkit_url" "$user" "$password"
+  webdav_upload "${TOOLKIT_DIR}/scripts/codexbackup.sh" "$scripts_url" "$user" "$password"
+  webdav_upload "${TOOLKIT_DIR}/scripts/codexscheduledbackup.sh" "$scripts_url" "$user" "$password"
+  webdav_upload "${TOOLKIT_DIR}/scripts/codexrestore.sh" "$scripts_url" "$user" "$password"
+  webdav_upload "${TOOLKIT_DIR}/scripts/codexinstallautomation.sh" "$scripts_url" "$user" "$password"
+}
+
 publish_to_webdav() {
   [[ -n "$WEBDAV_URL" ]] || { echo "CODEX_BACKUP_WEBDAV_URL is required for webdav target." >&2; exit 2; }
   [[ -n "$WEBDAV_USER" ]] || { echo "CODEX_BACKUP_WEBDAV_USER is required for webdav target." >&2; exit 2; }
@@ -785,11 +856,9 @@ publish_to_webdav() {
     webdav_upload "${SPOOL_DIR}/$(basename "$file")" "$backup_url" "$WEBDAV_USER" "$password"
   done
   apply_webdav_retention "$backup_url" "$WEBDAV_USER" "$password"
-  webdav_upload "${TOOLKIT_DIR}/README.md" "$toolkit_url" "$WEBDAV_USER" "$password"
-  webdav_upload "${TOOLKIT_DIR}/scripts/codexbackup.sh" "$scripts_url" "$WEBDAV_USER" "$password"
-  webdav_upload "${TOOLKIT_DIR}/scripts/codexscheduledbackup.sh" "$scripts_url" "$WEBDAV_USER" "$password"
-  webdav_upload "${TOOLKIT_DIR}/scripts/codexrestore.sh" "$scripts_url" "$WEBDAV_USER" "$password"
-  webdav_upload "${TOOLKIT_DIR}/scripts/codexinstallautomation.sh" "$scripts_url" "$WEBDAV_USER" "$password"
+  if ! publish_restore_toolkit_to_webdav "$toolkit_url" "$scripts_url" "$WEBDAV_USER" "$password"; then
+    echo "warn: WebDAV restore toolkit upload skipped. Backup archive upload already completed; create ${toolkit_url} and ${scripts_url} manually if you want the restore helper files online." >&2
+  fi
   print -r -- "$backup_url"
 }
 

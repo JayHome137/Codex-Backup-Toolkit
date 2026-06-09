@@ -75,7 +75,8 @@ describe('App', () => {
     expect(screen.getByLabelText('WebDAV 地址')).toBeInTheDocument();
     expect(screen.getByLabelText('WebDAV 账号')).toBeInTheDocument();
     expect(screen.getByLabelText('WebDAV 密码')).toBeInTheDocument();
-    expect(screen.getByText(/先在 WebDAV 服务端创建目标文件夹/i)).toBeInTheDocument();
+    expect(screen.getByText(/地址填 WebDAV 根目录/i)).toBeInTheDocument();
+    expect(screen.getByText(/备份归档会保存到 codex-backups/i)).toBeInTheDocument();
     expect(screen.getByText('连接检测')).toBeInTheDocument();
     expect(screen.queryByText(/CODEX_BACKUP_WEBDAV_URL=/)).not.toBeInTheDocument();
     expect(screen.queryByText(/config.env 预览/i)).not.toBeInTheDocument();
@@ -109,7 +110,7 @@ describe('App', () => {
     expect(screen.getByText('连接检测')).toBeInTheDocument();
     fireEvent.click(screen.getByText('查看检测范围'));
     expect(screen.getByText('保存或临时提供密码')).toBeInTheDocument();
-    expect(screen.getByText('手动创建目标文件夹')).toBeInTheDocument();
+    expect(screen.getByText('手动创建备份文件夹')).toBeInTheDocument();
     expect(screen.getByText('评估加密')).toBeInTheDocument();
     expect(screen.queryByText('401 或 403')).not.toBeInTheDocument();
   });
@@ -250,7 +251,7 @@ describe('App', () => {
     const invokeMock = vi.fn(async (command: string, payload?: { request?: { path?: string } }) => {
       if (command === 'local_content_snapshot') {
         return {
-          version: '0.36.8',
+          version: '0.36.9',
           paths: {
             appSupportDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
             automationStderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
@@ -273,7 +274,7 @@ describe('App', () => {
       }
       if (command === 'desktop_diagnostics') {
         return {
-          version: '0.36.8',
+          version: '0.36.9',
           helper: { online: false, managed: false, source: 'unavailable', port: 37371 },
           toolkit: { available: true, source: 'development', rootPath: '/repo', helperPath: '/repo/helper/server.mjs', scriptsPath: '/repo/scripts/codexbackup.sh' },
           paths: {
@@ -420,9 +421,9 @@ describe('App', () => {
     openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.8_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.8_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.8_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.9_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.9_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.9_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -445,7 +446,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.8_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.9_aarch64.dmg.sha256');
     });
   });
 
@@ -1167,7 +1168,7 @@ describe('App', () => {
           version: 1,
           requestId: 'test-webdav-doctor',
           status: 'ok',
-          stdout: 'codexbackup doctor\nTarget: webdav\nok: WebDAV target reachable\nDoctor passed.',
+          stdout: 'codexbackup doctor\nTarget: webdav\nok: WebDAV target reachable\nok: WebDAV backup folder reachable\nok: WebDAV backup folder writable\nDoctor passed.',
           stderr: '',
           exitCode: 0,
           audit: {
@@ -1218,7 +1219,7 @@ describe('App', () => {
           version: 1,
           requestId: 'test-webdav-save-doctor',
           status: 'ok',
-          stdout: 'codexbackup doctor\nTarget: webdav\nok: WebDAV target reachable\nDoctor passed.',
+          stdout: 'codexbackup doctor\nTarget: webdav\nok: WebDAV target reachable\nok: WebDAV backup folder reachable\nok: WebDAV backup folder writable\nDoctor passed.',
           stderr: '',
           exitCode: 0,
           audit: {
@@ -1299,7 +1300,7 @@ describe('App', () => {
     clickNav(/^设置$/i);
 
     expect(screen.getByText('应用设置')).toBeInTheDocument();
-    expect(screen.getAllByText('0.36.8').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0.36.9').length).toBeGreaterThan(0);
     expect(screen.getAllByText('~/Library/Application Support/CodexBackupToolkit/history.json').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /启动服务/i })).not.toBeVisible();
 

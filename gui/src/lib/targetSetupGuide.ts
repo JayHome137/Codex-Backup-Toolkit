@@ -67,8 +67,8 @@ function buildSteps(config: BackupConfig, blocking?: ConfigCheck): TargetSetupSt
 
   if (config.target === 'webdav') {
     steps.splice(1, 0, {
-      label: '手动创建目标文件夹',
-      detail: `请先在 WebDAV 服务端创建目标目录：${config.webdavUrl}`,
+      label: '手动创建备份文件夹',
+      detail: `请先在 WebDAV 服务端创建根目录 ${config.webdavUrl}，并在里面创建 codex-backups。`,
       status: 'todo',
     });
   }
@@ -109,7 +109,7 @@ function targetSpecificStep(config: BackupConfig): TargetSetupStep {
 function nextAction(config: BackupConfig): string {
   if (config.target === 'local') return '运行目标端检查，确认本地目录和基础依赖可用。';
   if (config.target === 'smb') return '确认 NAS 信息和密码来源后运行目标端检查。';
-  if (config.target === 'webdav') return '确认 WebDAV 地址、账号、密码和目标文件夹后运行连接检测。';
+  if (config.target === 'webdav') return '确认 WebDAV 地址、账号、密码和 codex-backups 文件夹后运行连接检测。';
   return '确认 rclone config 和 remote 名称后运行目标端检查。';
 }
 
@@ -130,7 +130,7 @@ function commonFailures(target: BackupConfig['target']): TargetSetupFailure[] {
   if (target === 'webdav') {
     return [
       { label: '401 或 403', detail: '确认 WebDAV 用户、应用密码或服务端权限。' },
-      { label: '目标文件夹不存在', detail: '请先在 WebDAV 服务端手动创建目标文件夹，再运行连接检测。' },
+      { label: '备份文件夹不存在', detail: '请先在 WebDAV 根目录里手动创建 codex-backups，再运行连接检测。' },
       { label: '地址不可访问', detail: '确认 URL 是完整 WebDAV 目录地址，并能从本机访问。' },
       { label: '云端空间不足', detail: '确认 WebDAV 目标目录有足够可用容量。' },
     ];

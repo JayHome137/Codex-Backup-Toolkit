@@ -50,6 +50,9 @@ jobs:
       - name: Run WebDAV doctor check
         run: ./tests/test-webdav-doctor.sh
 
+      - name: Run WebDAV backup e2e
+        run: ./tests/test-webdav-backup-e2e.sh
+
       - name: Run local authoritative sync check
         run: ./tests/test-sync-local-authoritative.sh
 

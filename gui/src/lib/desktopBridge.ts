@@ -81,7 +81,7 @@ type BridgeOptions = {
 };
 
 const schema = 'codex-backup-helper.v1' as const;
-const fallbackVersion = '0.36.8';
+const fallbackVersion = '0.36.9';
 
 export function createDesktopBridge(options: BridgeOptions = {}): DesktopBridge {
   const invoke = options.invoke ?? getTauriInvoke();
