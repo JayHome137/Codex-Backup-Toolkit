@@ -205,7 +205,7 @@ function getCredentialCheck(config: BackupConfig): ConfigCheck {
       id: 'credentials',
       label: '密钥',
       status: 'warning',
-      detail: 'WebDAV 密码不会写入配置文件；请保存到系统钥匙串。',
+      detail: 'WebDAV 密码不会写入配置文件；请保存到系统钥匙串后再检测连接。',
     };
   }
 
@@ -273,7 +273,7 @@ function getSyncCheck(config: BackupConfig): ConfigCheck {
       id: 'sync',
       label: '一致性检查',
       status: 'warning',
-      detail: '0.14.0 的本地为准一致性检查先支持本地目录和 SMB/NAS；云端目标仍可使用普通备份。',
+      detail: '本地为准一致性检查先支持本地目录；WebDAV 当前用于普通备份和恢复。',
     };
   }
 

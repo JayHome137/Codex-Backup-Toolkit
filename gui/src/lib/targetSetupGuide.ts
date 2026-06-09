@@ -32,7 +32,7 @@ export function buildTargetSetupGuide(config: BackupConfig, checks: ConfigCheck[
     nextAction: blocking ? `先处理配置阻断项：${blocking.detail}` : nextAction(config),
     safetyNotes: [
       '目标端检查只运行 codexbackup --doctor，不会创建备份归档。',
-      '保存配置不会写入密码；SMB/WebDAV 密码请使用 Keychain 或运行前临时环境变量。',
+      '保存配置不会写入密码；WebDAV 密码请使用 Keychain 或运行前临时环境变量。',
       '这个向导不会安装、卸载或修改定时任务；恢复仍只生成预案。',
     ],
     steps,
@@ -60,7 +60,15 @@ function buildSteps(config: BackupConfig, blocking?: ConfigCheck): TargetSetupSt
       label: '保存或临时提供密码',
       detail: config.target === 'smb'
         ? 'SMB 密码不要写入 config.env，可在设置页写入 Keychain 或运行前临时导出 CODEX_BACKUP_PASSWORD。'
-        : 'WebDAV 密码不要写入 config.env，可在设置页写入 Keychain 或运行前临时导出 CODEX_BACKUP_WEBDAV_PASSWORD。',
+        : 'WebDAV 密码不要写入配置文件，可在本页保存到 Keychain 后再检测连接。',
+      status: 'todo',
+    });
+  }
+
+  if (config.target === 'webdav') {
+    steps.splice(1, 0, {
+      label: '手动创建目标文件夹',
+      detail: `请先在 WebDAV 服务端创建目标目录：${config.webdavUrl}`,
       status: 'todo',
     });
   }
@@ -101,7 +109,7 @@ function targetSpecificStep(config: BackupConfig): TargetSetupStep {
 function nextAction(config: BackupConfig): string {
   if (config.target === 'local') return '运行目标端检查，确认本地目录和基础依赖可用。';
   if (config.target === 'smb') return '确认 NAS 信息和密码来源后运行目标端检查。';
-  if (config.target === 'webdav') return '确认 WebDAV 地址、用户和密码来源后运行目标端检查。';
+  if (config.target === 'webdav') return '确认 WebDAV 地址、账号、密码和目标文件夹后运行连接检测。';
   return '确认 rclone config 和 remote 名称后运行目标端检查。';
 }
 
@@ -122,6 +130,7 @@ function commonFailures(target: BackupConfig['target']): TargetSetupFailure[] {
   if (target === 'webdav') {
     return [
       { label: '401 或 403', detail: '确认 WebDAV 用户、应用密码或服务端权限。' },
+      { label: '目标文件夹不存在', detail: '请先在 WebDAV 服务端手动创建目标文件夹，再运行连接检测。' },
       { label: '地址不可访问', detail: '确认 URL 是完整 WebDAV 目录地址，并能从本机访问。' },
       { label: '云端空间不足', detail: '确认 WebDAV 目标目录有足够可用容量。' },
     ];

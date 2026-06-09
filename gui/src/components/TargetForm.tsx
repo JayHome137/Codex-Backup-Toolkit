@@ -4,12 +4,13 @@ import { targetLabels } from '../lib/config';
 type TargetFormProps = {
   config: BackupConfig;
   onChange(config: BackupConfig): void;
+  onWebdavPasswordChange(value: string): void;
+  webdavPassword: string;
 };
 
 const primaryTargets: BackupTarget[] = ['local', 'webdav'];
-const advancedTargets: BackupTarget[] = ['smb', 'rclone'];
 
-export function TargetForm({ config, onChange }: TargetFormProps) {
+export function TargetForm({ config, onChange, onWebdavPasswordChange, webdavPassword }: TargetFormProps) {
   const update = <Key extends keyof BackupConfig>(key: Key, value: BackupConfig[Key]) => {
     onChange({ ...config, [key]: value });
   };
@@ -29,65 +30,39 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
         ))}
       </div>
 
-      <details className="details-panel target-advanced-options">
-        <summary>高级保存位置</summary>
-        <div className="segmented-control" role="group" aria-label="高级备份目标端">
-          {advancedTargets.map((target) => (
-            <button
-              className={config.target === target ? 'segment segment--active' : 'segment'}
-              key={target}
-              onClick={() => update('target', target)}
-              type="button"
-            >
-              {targetLabels[target]}
-            </button>
-          ))}
-        </div>
-      </details>
-
       <div className="form-grid">
         {config.target === 'local' && (
-          <label className="field field--wide">
-            <span>本地输出目录</span>
-            <input value={config.localDir} onChange={(event) => update('localDir', event.target.value)} />
-          </label>
-        )}
-
-        {config.target === 'smb' && (
-          <>
+          <div className="target-card field--wide">
             <label className="field">
-              <span>SMB 主机</span>
-              <input value={config.smbHost} onChange={(event) => update('smbHost', event.target.value)} />
+              <span>本地备份目录</span>
+              <input aria-label="本地备份目录" value={config.localDir} onChange={(event) => update('localDir', event.target.value)} />
             </label>
-            <label className="field">
-              <span>SMB 用户</span>
-              <input value={config.smbUser} onChange={(event) => update('smbUser', event.target.value)} />
-            </label>
-            <label className="field field--wide">
-              <span>SMB 共享名</span>
-              <input value={config.smbShare} onChange={(event) => update('smbShare', event.target.value)} />
-            </label>
-          </>
+            <p className="muted-copy">备份文件会保存到这个文件夹；如果文件夹不存在，检查时会确认它能否创建。</p>
+          </div>
         )}
 
         {config.target === 'webdav' && (
-          <>
+          <div className="target-card field--wide">
             <label className="field field--wide">
               <span>WebDAV 地址</span>
-              <input value={config.webdavUrl} onChange={(event) => update('webdavUrl', event.target.value)} />
+              <input aria-label="WebDAV 地址" placeholder="https://example.com/remote.php/dav/files/user/CodexBackup" value={config.webdavUrl} onChange={(event) => update('webdavUrl', event.target.value)} />
             </label>
             <label className="field field--wide">
-              <span>WebDAV 用户</span>
-              <input value={config.webdavUser} onChange={(event) => update('webdavUser', event.target.value)} />
+              <span>WebDAV 账号</span>
+              <input aria-label="WebDAV 账号" autoComplete="username" value={config.webdavUser} onChange={(event) => update('webdavUser', event.target.value)} />
             </label>
-          </>
-        )}
-
-        {config.target === 'rclone' && (
-          <label className="field field--wide">
-            <span>rclone remote</span>
-            <input value={config.rcloneRemote} onChange={(event) => update('rcloneRemote', event.target.value)} />
-          </label>
+            <label className="field field--wide">
+              <span>WebDAV 密码或应用专用密码</span>
+              <input
+                aria-label="WebDAV 密码"
+                autoComplete="current-password"
+                type="password"
+                value={webdavPassword}
+                onChange={(event) => onWebdavPasswordChange(event.target.value)}
+              />
+            </label>
+            <p className="target-note">请先在 WebDAV 服务端手动创建这个目标文件夹。连接检测会验证账号密码和目录是否可访问，但不会自动创建根目录。</p>
+          </div>
         )}
 
         <label className="field">

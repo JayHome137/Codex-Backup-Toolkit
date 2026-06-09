@@ -113,7 +113,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.6';
+const appVersion = '0.36.7';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -179,7 +179,7 @@ function App() {
     || helperStatus === 'offline'
     || (runnerMode === 'desktopHelper' && !desktopBridge.isDesktop)
   );
-  const syncTargetSupported = config.target === 'local' || config.target === 'smb';
+  const syncTargetSupported = config.target === 'local';
   const realSyncDisabled = realRunnerMode && (
     blockingChecks.length > 0
     || !syncTargetSupported
@@ -278,8 +278,9 @@ function App() {
   }, [desktopBridge]);
 
   const setConfigAndSecretDefaults = (nextConfig: BackupConfig) => {
-    setConfig(nextConfig);
-    setSecretDraft((draft) => ({ ...defaultSecretDraft(nextConfig), secret: draft.secret }));
+    const guiConfig = normalizeGuiConfig(nextConfig);
+    setConfig(guiConfig);
+    setSecretDraft((draft) => ({ ...defaultSecretDraft(guiConfig), secret: draft.secret }));
     setBackupConfirmed(false);
   };
 
@@ -400,6 +401,33 @@ function App() {
       setHelperAction(null);
       setRunningCommand(null);
     }
+  };
+
+  const ensureWebdavSecretSaved = async () => {
+    if (config.target !== 'webdav' || secretDraft.secret.length === 0) return true;
+
+    setHelperAction('secret-save');
+    setRunningCommand('POST http://127.0.0.1:37371/secret');
+    try {
+      await helperApi.saveSecret(secretDraft);
+      setSecretDraft((draft) => ({ ...draft, secret: '' }));
+      setHelperStatus('online');
+      setHelperMessage('本机服务已连接，WebDAV 密码已保存到 Keychain。');
+      return true;
+    } catch (error) {
+      updateHelperFailureState(error);
+      setLastResult({ status: 'error', output: helperErrorOutput(error) });
+      return false;
+    } finally {
+      setHelperAction(null);
+      setRunningCommand(null);
+    }
+  };
+
+  const runStorageCheck = async () => {
+    const secretReady = await ensureWebdavSecretSaved();
+    if (!secretReady) return;
+    await runPreview(commands.doctor, '保存位置检查');
   };
 
   const deleteSecret = async () => {
@@ -764,7 +792,7 @@ function App() {
                 <SummaryRow label="规则" value="本地数据永远优先" />
                 <SummaryRow label="频率" value={`每 ${config.syncCheckIntervalHours} 小时检查 / 最短 ${config.syncMinBackupIntervalHours} 小时生成新备份`} />
                 <SummaryRow label="归档" value="不覆盖旧备份，按时间戳生成并套用保留策略" />
-                <SummaryRow label="存储位置" value={syncTargetSupported ? '当前存储位置支持一致性检查' : '当前先支持本地目录和 NAS'} />
+                <SummaryRow label="存储位置" value={syncTargetSupported ? '当前存储位置支持一致性检查' : 'WebDAV 当前使用普通备份'} />
               </div>
               <p className="muted-copy">这个功能用于定期发现本机和备份位置不一致的情况；发现不一致时生成新备份，不会从备份反向覆盖本机。</p>
               <div className="action-row">
@@ -872,8 +900,23 @@ function App() {
                   <span>存储位置</span>
                 </div>
               </div>
-              <TargetForm config={config} onChange={setConfigAndSecretDefaults} />
+              <TargetForm
+                config={config}
+                onChange={setConfigAndSecretDefaults}
+                onWebdavPasswordChange={(secret) => setSecretDraft((draft) => ({ ...defaultSecretDraft(config), secret }))}
+                webdavPassword={config.target === 'webdav' ? secretDraft.secret : ''}
+              />
               <div className="action-row">
+                {config.target === 'webdav' && (
+                  <button className="button button--tertiary" disabled={helperActionsDisabled || secretDraft.secret.length === 0} onClick={saveSecret} type="button">
+                    <KeyRound size={15} aria-hidden="true" />
+                    {helperAction === 'secret-save' ? '保存中' : '保存 WebDAV 密码'}
+                  </button>
+                )}
+                <button className="button button--tertiary" disabled={blockingChecks.length > 0 || runningCommand === commands.doctor || helperAction === 'secret-save'} onClick={() => void runStorageCheck()} type="button">
+                  <ShieldCheck size={15} aria-hidden="true" />
+                  {runningCommand === commands.doctor || helperAction === 'secret-save' ? '检查中' : config.target === 'webdav' ? '检测 WebDAV 连接' : '检测本地目录'}
+                </button>
                 <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={loadPersistedConfig} type="button">
                   <Activity size={15} aria-hidden="true" />
                   {helperAction === 'config-load' ? '加载中' : '加载配置'}
@@ -886,14 +929,14 @@ function App() {
             </section>
             <TargetSetupGuidePanel
               guide={targetSetupGuide}
-              onRunDoctor={() => runPreview(commands.doctor, '保存位置检查')}
+              onRunDoctor={runStorageCheck}
               runningDoctor={runningCommand === commands.doctor}
             />
             <details className="details-panel settings-advanced">
               <summary>高级保存设置</summary>
               <TargetDoctorPanel report={doctorReport} />
               <DoctorAdvicePanel advice={doctorAdvice} />
-              {(config.target === 'smb' || config.target === 'webdav') && (
+              {config.target === 'smb' && (
                 <section className="panel">
                   <div className="panel-header">
                     <div className="panel-title">
@@ -1245,6 +1288,11 @@ function defaultSecretDraft(config: BackupConfig): SecretDraft {
   };
 }
 
+function normalizeGuiConfig(config: BackupConfig): BackupConfig {
+  if (config.target === 'local' || config.target === 'webdav') return config;
+  return { ...config, target: 'local' };
+}
+
 function helperErrorOutput(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
 
@@ -1556,17 +1604,18 @@ function SnapshotPathGroup({
   return (
     <div className="snapshot-path-group">
       <strong>{title}</strong>
-      <div className="artifact-list">
+      <div className="compact-path-list">
         {paths.map((item) => (
-          <div className="artifact-row artifact-row--path-status" key={`${item.label}-${item.path}`}>
-            <span>{item.label}</span>
-            <code>{item.path}</code>
-            <div className="artifact-actions">
+          <div className="compact-path-row" key={`${item.label}-${item.path}`}>
+            <div className="compact-path-main">
+              <span>{item.label}</span>
+              <code title={item.path}>{item.path}</code>
+            </div>
+            <div className="compact-path-actions">
               <span className={`path-status path-status--${item.exists ? 'ok' : 'missing'}`}>{pathStatusLabel(item)}</span>
-              <button className="button button--tertiary" onClick={() => void onCopy(item.path)} type="button">复制</button>
-              <button className="button button--tertiary" disabled={item.path.startsWith('~')} onClick={() => void onOpen(item.path)} type="button">
+              <button className="icon-button" aria-label={`复制 ${item.label}`} onClick={() => void onCopy(item.path)} type="button">复制</button>
+              <button className="icon-button" aria-label={`打开 ${item.label}`} disabled={item.path.startsWith('~')} onClick={() => void onOpen(item.path)} type="button">
                 <FolderOpen size={14} aria-hidden="true" />
-                打开
               </button>
             </div>
           </div>
@@ -2299,52 +2348,22 @@ function TargetSetupGuidePanel({
         </div>
         <StatusBadge status={guide.level === 'blocked' ? 'error' : guide.level === 'ready' ? 'success' : 'warning'} label={targetSetupLevelLabel(guide.level)} />
       </div>
-      <div className="readiness-layout">
-        <div className="summary-list">
-          <SummaryRow label="保存类型" value={guide.title.replace('设置向导', '').replace('检查', '')} />
-          <SummaryRow label="下一步" value={guide.nextAction} />
-          <SummaryRow label="检查方式" value="只检查保存位置是否可用" />
-          <SummaryRow label="安全边界" value="不会创建备份，也不会修改定时任务" />
+      <div className="compact-check-panel">
+        <div>
+          <strong>{guide.nextAction}</strong>
+          <p>只检查保存位置是否可用，不会创建备份、执行恢复或修改定时任务。</p>
         </div>
-        <div className="readiness-copy">
-          <strong>先确认能保存，再开始备份</strong>
-          <p>检查会确认当前保存位置、权限和基础依赖是否可用。检查通过后再回到备份页执行真实备份。</p>
-          <div className="action-row">
-            <button className="button button--primary" disabled={runningDoctor || guide.level === 'blocked'} onClick={() => void onRunDoctor()} type="button">
-              <ShieldCheck size={15} aria-hidden="true" />
-              {runningDoctor ? '检查中' : '检查保存位置'}
-            </button>
-          </div>
+        <button className="button button--primary" disabled={runningDoctor || guide.level === 'blocked'} onClick={() => void onRunDoctor()} type="button">
+          <ShieldCheck size={15} aria-hidden="true" />
+          {runningDoctor ? '检查中' : '检查保存位置'}
+        </button>
+      </div>
+      <details className="details-panel compact-details">
+        <summary>查看检查说明</summary>
+        <div className="check-list check-list--grid">
+          {guide.steps.map((step) => <TargetSetupStepCard key={`${step.label}-${step.detail}`} step={step} />)}
         </div>
-      </div>
-      <div className="check-list check-list--grid">
-        {guide.steps.map((step) => <TargetSetupStepCard key={`${step.label}-${step.detail}`} step={step} />)}
-      </div>
-      <div className="two-column two-column--tight">
-        <section className="sub-panel">
-          <div className="panel-title">
-            <TriangleAlert size={16} aria-hidden="true" />
-            <span>常见失败</span>
-          </div>
-          <div className="history-list">
-            {guide.commonFailures.map((failure) => (
-              <div className="history-item" key={failure.label}>
-                <div>
-                  <strong>{failure.label}</strong>
-                  <span>{failure.detail}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-        <section className="sub-panel">
-          <div className="panel-title">
-            <ShieldCheck size={16} aria-hidden="true" />
-            <span>安全说明</span>
-          </div>
-          <StepList steps={guide.safetyNotes} />
-        </section>
-      </div>
+      </details>
     </section>
   );
 }

@@ -352,6 +352,31 @@ button:disabled {
   line-height: 1.55;
 }
 
+.compact-check-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 10px 12px;
+}
+
+.compact-check-panel strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.compact-check-panel p {
+  margin: 3px 0 0;
+  color: var(--mute);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .snapshot-summary-layout {
   display: grid;
   grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
@@ -436,6 +461,26 @@ button:disabled {
   border: 0;
   border-top: 1px solid var(--hairline);
   margin: 14px 0 0;
+}
+
+.target-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 12px;
+}
+
+.target-note {
+  margin: 0;
+  border: 1px solid rgba(255, 197, 51, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 197, 51, 0.08);
+  color: var(--body);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 9px 10px;
 }
 
 .panel-header {
@@ -830,6 +875,61 @@ input[type="checkbox"] {
   gap: 6px;
 }
 
+.compact-path-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.compact-path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: #0b0c0d;
+  padding: 8px 9px;
+  min-width: 0;
+}
+
+.compact-path-main {
+  display: grid;
+  grid-template-columns: minmax(96px, 150px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.compact-path-main span {
+  color: var(--mute);
+  font-size: 12px;
+}
+
+.compact-path-main code {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--body);
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-path-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compact-path-actions .icon-button {
+  width: auto;
+  min-width: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -870,5 +970,19 @@ input[type="checkbox"] {
   .helper-banner {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .compact-check-panel,
+  .compact-path-row,
+  .compact-path-main {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-check-panel {
+    align-items: stretch;
+  }
+
+  .compact-path-actions {
+    justify-content: flex-start;
   }
 }

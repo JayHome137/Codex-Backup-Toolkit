@@ -78,6 +78,7 @@ assert_file tests/test-install-validate.sh
 assert_file tests/test-retention.sh
 assert_file tests/test-remote-latest-restore.sh
 assert_file tests/test-remote-retention.sh
+assert_file tests/test-webdav-doctor.sh
 assert_file tests/test-sync-local-authoritative.sh
 assert_file tests/test-scheduled-sync-mode.sh
 assert_file tests/test-profile-plan.sh
@@ -117,7 +118,7 @@ assert_contains README_EN.md 'Codex-Backup-toolkit'
 assert_contains README_EN.md 'macOS-first backup and restore toolkit'
 assert_contains README_EN.md 'Windows preview'
 assert_contains README_EN.md 'Restore the latest WebDAV or rclone backup'
-assert_contains gui/package.json '"version": "0\.36\.6"'
+assert_contains gui/package.json '"version": "0\.36\.7"'
 assert_file gui/src/lib/backupHealth.ts
 assert_file gui/src/lib/firstRunJourney.ts
 assert_file gui/src/lib/firstUsePath.ts
@@ -173,6 +174,7 @@ assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS'
 assert_contains scripts/codexbackup.sh 'CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS'
 assert_contains scripts/codexbackup.sh 'age'
 assert_contains scripts/codexbackup.sh 'webdav'
+assert_contains scripts/codexbackup.sh 'WebDAV target folder missing'
 assert_contains scripts/codexbackup.sh 'rclone'
 assert_contains scripts/codexrestore.sh 'download_webdav_latest'
 assert_contains scripts/codexrestore.sh 'download_rclone_latest'
@@ -197,6 +199,7 @@ assert_contains .github/workflows/ci.yml 'test-install-validate'
 assert_contains .github/workflows/ci.yml 'test-retention'
 assert_contains .github/workflows/ci.yml 'test-remote-latest-restore'
 assert_contains .github/workflows/ci.yml 'test-remote-retention'
+assert_contains .github/workflows/ci.yml 'test-webdav-doctor'
 assert_contains .github/workflows/ci.yml 'test-sync-local-authoritative'
 assert_contains .github/workflows/ci.yml 'test-scheduled-sync-mode'
 assert_contains .github/workflows/ci.yml 'test-profile-plan'

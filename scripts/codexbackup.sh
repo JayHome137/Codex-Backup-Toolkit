@@ -320,6 +320,47 @@ doctor_path_check() {
   return 1
 }
 
+doctor_saved_secret() {
+  local service="$1"
+  local account="$2"
+  security find-generic-password -s "$service" -a "$account" -w 2>/dev/null || true
+}
+
+doctor_webdav_check() {
+  local password http_status
+  password="${CODEX_BACKUP_WEBDAV_PASSWORD:-}"
+  if [[ -z "$password" ]]; then
+    password="$(doctor_saved_secret "$WEBDAV_KEYCHAIN_SERVICE" "$WEBDAV_KEYCHAIN_ACCOUNT")"
+  fi
+  if [[ -z "$password" ]]; then
+    echo "fail: WebDAV password missing"
+    echo "warn: save the WebDAV password in Keychain or set CODEX_BACKUP_WEBDAV_PASSWORD for this check"
+    return 1
+  fi
+
+  http_status="$(curl -sS -o /dev/null -w '%{http_code}' -u "${WEBDAV_USER}:${password}" -X PROPFIND -H 'Depth: 0' "${WEBDAV_URL%/}/" 2>/dev/null || true)"
+  case "$http_status" in
+    200|207)
+      echo "ok: WebDAV target reachable"
+      return 0
+      ;;
+    401|403)
+      echo "fail: WebDAV credentials rejected"
+      return 1
+      ;;
+    404|405)
+      echo "fail: WebDAV target folder missing"
+      echo "warn: create the target WebDAV folder manually before backing up: ${WEBDAV_URL}"
+      return 1
+      ;;
+    *)
+      echo "fail: WebDAV target unreachable"
+      echo "warn: WebDAV PROPFIND returned HTTP ${http_status:-000}"
+      return 1
+      ;;
+  esac
+}
+
 run_doctor() {
   local failures=0
   echo "codexbackup doctor"
@@ -352,6 +393,9 @@ run_doctor() {
       doctor_check "curl available" command -v curl || failures=$((failures + 1))
       [[ -n "$WEBDAV_URL" ]] && echo "ok: CODEX_BACKUP_WEBDAV_URL set" || { echo "fail: CODEX_BACKUP_WEBDAV_URL missing"; failures=$((failures + 1)); }
       [[ -n "$WEBDAV_USER" ]] && echo "ok: CODEX_BACKUP_WEBDAV_USER set" || { echo "fail: CODEX_BACKUP_WEBDAV_USER missing"; failures=$((failures + 1)); }
+      if [[ -n "$WEBDAV_URL" && -n "$WEBDAV_USER" ]]; then
+        doctor_webdav_check || failures=$((failures + 1))
+      fi
       ;;
     rclone)
       doctor_check "rclone available" command -v rclone || failures=$((failures + 1))

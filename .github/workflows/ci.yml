@@ -47,6 +47,9 @@ jobs:
       - name: Run remote retention check
         run: ./tests/test-remote-retention.sh
 
+      - name: Run WebDAV doctor check
+        run: ./tests/test-webdav-doctor.sh
+
       - name: Run local authoritative sync check
         run: ./tests/test-sync-local-authoritative.sh
 
