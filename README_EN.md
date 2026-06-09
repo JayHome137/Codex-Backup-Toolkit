@@ -9,7 +9,6 @@ The current public scope is Codex Desktop backup, restore, automation, and a Tau
 - `~/.codex`
 - `~/Library/Application Support/Codex`
 - `~/Library/Application Support/OpenAI`
-- `~/Library/Application Support/OpenAI/Codex`
 - `~/Library/Application Support/com.openai.codex`
 - `~/Documents/Codex`
 

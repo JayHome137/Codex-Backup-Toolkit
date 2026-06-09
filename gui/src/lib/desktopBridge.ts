@@ -1,6 +1,7 @@
 import type { BackupConfig } from './config';
 import type { AutomationStatus, BackupHistoryEntry, DeleteSecretInput, SecretInput } from './helperApi';
 import type { HelperRequest, HelperResponse, HelperTransport } from './helperProtocol';
+import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 
 type InvokeFunction = <T = unknown>(command: string, args?: Record<string, unknown>) => Promise<T>;
 
@@ -80,7 +81,7 @@ type BridgeOptions = {
 };
 
 const schema = 'codex-backup-helper.v1' as const;
-const fallbackVersion = '0.36.5';
+const fallbackVersion = '0.36.6';
 
 export function createDesktopBridge(options: BridgeOptions = {}): DesktopBridge {
   const invoke = options.invoke ?? getTauriInvoke();
@@ -234,7 +235,6 @@ function fallbackDataPathStatuses(): LocalPathStatus[] {
     { label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' },
     { label: 'Codex 应用数据', path: '~/Library/Application Support/Codex', exists: false, kind: 'missing' },
     { label: 'OpenAI 应用数据', path: '~/Library/Application Support/OpenAI', exists: false, kind: 'missing' },
-    { label: 'OpenAI Codex 数据', path: '~/Library/Application Support/OpenAI/Codex', exists: false, kind: 'missing' },
     { label: 'Codex 桌面容器', path: '~/Library/Application Support/com.openai.codex', exists: false, kind: 'missing' },
     { label: 'Codex 工作区', path: '~/Documents/Codex', exists: false, kind: 'missing' },
   ];
@@ -269,8 +269,13 @@ function unavailableStatus(): DesktopHelperStatus {
 }
 
 function getTauriInvoke(): InvokeFunction | null {
-  const maybeWindow = globalThis as typeof globalThis & { __TAURI__?: { core?: { invoke?: InvokeFunction } } };
-  return maybeWindow.__TAURI__?.core?.invoke ?? null;
+  const maybeWindow = globalThis as typeof globalThis & {
+    __TAURI__?: { core?: { invoke?: InvokeFunction } };
+    __TAURI_INTERNALS__?: unknown;
+  };
+  if (maybeWindow.__TAURI__?.core?.invoke) return maybeWindow.__TAURI__.core.invoke;
+  if (!maybeWindow.__TAURI_INTERNALS__) return null;
+  return tauriInvoke as InvokeFunction;
 }
 
 function isOkResponse(value: unknown): value is { schema: typeof schema; status: 'ok'; version: 1 } {

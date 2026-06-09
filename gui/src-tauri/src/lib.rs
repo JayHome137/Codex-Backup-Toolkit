@@ -380,10 +380,6 @@ fn data_path_statuses(home: &Path) -> Vec<LocalPathStatus> {
             home.join("Library/Application Support/OpenAI"),
         ),
         path_status(
-            "OpenAI Codex 数据",
-            home.join("Library/Application Support/OpenAI/Codex"),
-        ),
-        path_status(
             "Codex 桌面容器",
             home.join("Library/Application Support/com.openai.codex"),
         ),

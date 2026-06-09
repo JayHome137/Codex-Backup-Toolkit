@@ -44,22 +44,19 @@ describe('desktop bridge', () => {
         desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
       },
       toolkit: { available: false, source: 'unavailable' },
-      version: '0.36.5',
+      version: '0.36.6',
     });
   });
 
   it('returns local content fallback outside Tauri desktop', async () => {
     const bridge = createDesktopBridge({ invoke: null });
 
-    await expect(bridge.localContentSnapshot()).resolves.toEqual(expect.objectContaining({
-      dataPaths: expect.arrayContaining([
-        { label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' },
-      ]),
-      appPaths: expect.arrayContaining([
-        { label: '配置文件', path: '~/Library/Application Support/CodexBackupToolkit/config.json', exists: false, kind: 'missing' },
-      ]),
-      version: '0.36.5',
-    }));
+    const snapshot = await bridge.localContentSnapshot();
+
+    expect(snapshot.version).toBe('0.36.6');
+    expect(snapshot.dataPaths).toContainEqual({ label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' });
+    expect(snapshot.dataPaths).not.toContainEqual(expect.objectContaining({ label: 'OpenAI Codex 数据' }));
+    expect(snapshot.appPaths).toContainEqual({ label: '配置文件', path: '~/Library/Application Support/CodexBackupToolkit/config.json', exists: false, kind: 'missing' });
   });
 
   it('sends helper requests through the desktop helper api', async () => {

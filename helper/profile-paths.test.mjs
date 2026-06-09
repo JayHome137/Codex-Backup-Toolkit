@@ -12,7 +12,6 @@ test('builds the current macOS Codex profile path plan', () => {
     'home/.codex',
     'Library/Application Support/Codex',
     'Library/Application Support/OpenAI',
-    'Library/Application Support/OpenAI/Codex',
     'Library/Application Support/com.openai.codex',
     'Documents/Codex',
   ]);
@@ -62,7 +61,6 @@ test('maps macOS profile sources into deterministic staging paths', () => {
     '/tmp/codex-backup/staging/home',
     '/tmp/codex-backup/staging/Library/Application Support',
     '/tmp/codex-backup/staging/Library/Application Support',
-    '/tmp/codex-backup/staging/Library/Application Support/OpenAI',
     '/tmp/codex-backup/staging/Library/Application Support',
     '/tmp/codex-backup/staging/Documents',
   ]);

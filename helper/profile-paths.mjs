@@ -59,7 +59,6 @@ function macosCodexPlan(options, platform) {
       source(`${homeDir}/.codex`, 'home/.codex'),
       source(`${homeDir}/Library/Application Support/Codex`, 'Library/Application Support/Codex'),
       source(`${homeDir}/Library/Application Support/OpenAI`, 'Library/Application Support/OpenAI'),
-      source(`${homeDir}/Library/Application Support/OpenAI/Codex`, 'Library/Application Support/OpenAI/Codex'),
       source(`${homeDir}/Library/Application Support/com.openai.codex`, 'Library/Application Support/com.openai.codex'),
       source(`${homeDir}/Documents/Codex`, 'Documents/Codex'),
     ],

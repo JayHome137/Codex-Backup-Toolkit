@@ -113,7 +113,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.5';
+const appVersion = '0.36.6';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -889,56 +889,59 @@ function App() {
               onRunDoctor={() => runPreview(commands.doctor, '保存位置检查')}
               runningDoctor={runningCommand === commands.doctor}
             />
-            <TargetDoctorPanel report={doctorReport} />
-            <DoctorAdvicePanel advice={doctorAdvice} />
-            {(config.target === 'smb' || config.target === 'webdav') && (
+            <details className="details-panel settings-advanced">
+              <summary>高级保存设置</summary>
+              <TargetDoctorPanel report={doctorReport} />
+              <DoctorAdvicePanel advice={doctorAdvice} />
+              {(config.target === 'smb' || config.target === 'webdav') && (
+                <section className="panel">
+                  <div className="panel-header">
+                    <div className="panel-title">
+                      <KeyRound size={16} aria-hidden="true" />
+                      <span>Keychain 密钥</span>
+                    </div>
+                  </div>
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>Service</span>
+                      <input value={secretDraft.service} onChange={(event) => setSecretDraft({ ...secretDraft, service: event.target.value })} />
+                    </label>
+                    <label className="field">
+                      <span>Account</span>
+                      <input value={secretDraft.account} onChange={(event) => setSecretDraft({ ...secretDraft, account: event.target.value })} />
+                    </label>
+                    <label className="field field--wide">
+                      <span>Secret</span>
+                      <input
+                        autoComplete="off"
+                        type="password"
+                        value={secretDraft.secret}
+                        onChange={(event) => setSecretDraft({ ...secretDraft, secret: event.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <div className="action-row">
+                    <button className="button button--primary" disabled={helperActionsDisabled || secretDraft.secret.length === 0} onClick={saveSecret} type="button">
+                      <KeyRound size={15} aria-hidden="true" />
+                      {helperAction === 'secret-save' ? '保存中' : '保存密钥'}
+                    </button>
+                    <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={deleteSecret} type="button">
+                      <Trash2 size={15} aria-hidden="true" />
+                      {helperAction === 'secret-delete' ? '删除中' : '删除密钥'}
+                    </button>
+                  </div>
+                </section>
+              )}
               <section className="panel">
                 <div className="panel-header">
                   <div className="panel-title">
-                    <KeyRound size={16} aria-hidden="true" />
-                    <span>Keychain 密钥</span>
+                    <ShieldCheck size={16} aria-hidden="true" />
+                    <span>配置检查</span>
                   </div>
                 </div>
-                <div className="form-grid">
-                  <label className="field">
-                    <span>Service</span>
-                    <input value={secretDraft.service} onChange={(event) => setSecretDraft({ ...secretDraft, service: event.target.value })} />
-                  </label>
-                  <label className="field">
-                    <span>Account</span>
-                    <input value={secretDraft.account} onChange={(event) => setSecretDraft({ ...secretDraft, account: event.target.value })} />
-                  </label>
-                  <label className="field field--wide">
-                    <span>Secret</span>
-                    <input
-                      autoComplete="off"
-                      type="password"
-                      value={secretDraft.secret}
-                      onChange={(event) => setSecretDraft({ ...secretDraft, secret: event.target.value })}
-                    />
-                  </label>
-                </div>
-                <div className="action-row">
-                  <button className="button button--primary" disabled={helperActionsDisabled || secretDraft.secret.length === 0} onClick={saveSecret} type="button">
-                    <KeyRound size={15} aria-hidden="true" />
-                    {helperAction === 'secret-save' ? '保存中' : '保存密钥'}
-                  </button>
-                  <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={deleteSecret} type="button">
-                    <Trash2 size={15} aria-hidden="true" />
-                    {helperAction === 'secret-delete' ? '删除中' : '删除密钥'}
-                  </button>
-                </div>
+                <ConfigCheckList checks={configChecks} />
               </section>
-            )}
-            <section className="panel">
-              <div className="panel-header">
-                <div className="panel-title">
-                  <ShieldCheck size={16} aria-hidden="true" />
-                  <span>配置检查</span>
-                </div>
-              </div>
-              <ConfigCheckList checks={configChecks} />
-            </section>
+            </details>
           </section>
         )}
 
@@ -1309,7 +1312,6 @@ function fallbackLocalDataPaths(): LocalPathStatus[] {
     { label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' },
     { label: 'Codex 应用数据', path: '~/Library/Application Support/Codex', exists: false, kind: 'missing' },
     { label: 'OpenAI 应用数据', path: '~/Library/Application Support/OpenAI', exists: false, kind: 'missing' },
-    { label: 'OpenAI Codex 数据', path: '~/Library/Application Support/OpenAI/Codex', exists: false, kind: 'missing' },
     { label: 'Codex 桌面容器', path: '~/Library/Application Support/com.openai.codex', exists: false, kind: 'missing' },
     { label: 'Codex 工作区', path: '~/Documents/Codex', exists: false, kind: 'missing' },
   ];
@@ -1457,7 +1459,7 @@ function StorageLocationPanel({
         </div>
         <div className="readiness-copy">
           <strong>{storageReady ? '保存位置已填写' : '先完善保存位置'}</strong>
-          <p>这里决定备份归档保存到哪里。可以是本地目录、NAS、WebDAV 或后续云盘方案。</p>
+          <p>这里决定备份归档保存到哪里。普通使用建议选择本地目录或 WebDAV。</p>
           <div className="action-row">
             <button className="button button--primary" onClick={onOpenStorage} type="button">
               <FolderOpen size={15} aria-hidden="true" />
@@ -1510,10 +1512,7 @@ function LocalSettingsSnapshotPanel({
           <div className="summary-list">
             <SummaryRow label="检测时间" value={formatDateTime(snapshot.capturedAt)} />
             <SummaryRow label="可备份内容" value={snapshotSummary ? `${snapshotSummary.existing.length} 项已发现` : '未检测'} />
-            <SummaryRow label="未发现内容" value={snapshotSummary ? `${snapshotSummary.missing.length} 项` : '未检测'} />
             <SummaryRow label="备份保存位置" value={targetLocationSummary(snapshot.config)} />
-            <SummaryRow label="保留策略" value={`${snapshot.config.retentionCount} 份 / ${snapshot.config.retentionDays} 天`} />
-            <SummaryRow label="完整性" value="备份后生成 sha256 和 manifest" />
             <SummaryRow label="最近备份" value={latestArchive} />
           </div>
           <div className="snapshot-sections">
@@ -1587,18 +1586,16 @@ function summarizeLocalSnapshot(snapshot: LocalSettingsSnapshot): LocalSnapshotS
 }
 
 function SnapshotSummaryCards({ summary }: { summary: LocalSnapshotSummary }) {
-  const visibleExisting = summary.existing.slice(0, 4);
-  const visibleMissing = summary.missing.slice(0, 4);
+  const detectedLabels = summary.existing.slice(0, 3).map((item) => item.label).join('、');
+  const statusText = summary.existing.length > 0
+    ? `已找到 ${summary.existing.length} 项可备份内容${detectedLabels ? `：${detectedLabels}` : ''}`
+    : '暂未读到可备份内容；请在桌面 App 中重新检测。';
 
   return (
     <div className="snapshot-summary-cards">
       <div className="snapshot-summary-card snapshot-summary-card--ok">
-        <strong>{summary.existing.length} 项已发现</strong>
-        <span>{visibleExisting.length > 0 ? visibleExisting.map((item) => item.label).join('、') : '还没有发现可备份内容'}</span>
-      </div>
-      <div className="snapshot-summary-card snapshot-summary-card--missing">
-        <strong>{summary.missing.length} 项未发现</strong>
-        <span>{visibleMissing.length > 0 ? visibleMissing.map((item) => item.label).join('、') : '主要位置都已发现'}</span>
+        <strong>{summary.existing.length} / {summary.total} 项已发现</strong>
+        <span>{statusText}</span>
       </div>
     </div>
   );

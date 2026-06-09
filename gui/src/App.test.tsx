@@ -37,6 +37,10 @@ function runDoctorFromStorage() {
   fireEvent.click(screen.getByRole('button', { name: /检查保存位置/i }));
 }
 
+function openAdvancedStorageTargets() {
+  fireEvent.click(screen.getByText('高级保存位置'));
+}
+
 function openBackup() {
   clickNav(/备份/i);
 }
@@ -75,6 +79,21 @@ describe('App', () => {
     expect(screen.getByText('保存位置检查')).toBeInTheDocument();
     expect(screen.queryByText(/CODEX_BACKUP_WEBDAV_URL=/)).not.toBeInTheDocument();
     expect(screen.queryByText(/config.env 预览/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps storage choices focused on local and WebDAV by default', () => {
+    render(<App />);
+
+    clickNav(/存储位置/i);
+
+    expect(screen.getByRole('button', { name: /^本地目录$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^WebDAV$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /SMB/i })).not.toBeVisible();
+    expect(screen.queryByRole('button', { name: /rclone/i })).not.toBeVisible();
+
+    openAdvancedStorageTargets();
+    expect(screen.getByRole('button', { name: /SMB/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /rclone/i })).toBeInTheDocument();
   });
 
   it('shows storage checks with common failure guidance without validation commands', async () => {
@@ -189,10 +208,10 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('本机内容检测')).toBeInTheDocument();
       expect(screen.getAllByText('0 项已发现').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('6 项未发现').length).toBeGreaterThan(0);
+      expect(screen.getByText('0 / 5 项已发现')).toBeInTheDocument();
       expect(screen.getByText('~/.codex')).not.toBeVisible();
       expect(screen.getByText('~/Documents/Codex')).not.toBeVisible();
-      expect(screen.getAllByText('未发现').length).toBeGreaterThan(0);
+      expect(screen.queryByText('未发现内容')).not.toBeInTheDocument();
       expect(screen.queryByText(/附加配置未读取/)).not.toBeInTheDocument();
       expect(screen.queryByText(/附加备份记录未读取/)).not.toBeInTheDocument();
     });
@@ -234,7 +253,7 @@ describe('App', () => {
     const invokeMock = vi.fn(async (command: string, payload?: { request?: { path?: string } }) => {
       if (command === 'local_content_snapshot') {
         return {
-          version: '0.36.5',
+          version: '0.36.6',
           paths: {
             appSupportDir: '/Users/test/Library/Application Support/CodexBackupToolkit',
             automationStderrLogPath: '/Users/test/Library/Logs/CodexBackup/backup.err.log',
@@ -257,7 +276,7 @@ describe('App', () => {
       }
       if (command === 'desktop_diagnostics') {
         return {
-          version: '0.36.5',
+          version: '0.36.6',
           helper: { online: false, managed: false, source: 'unavailable', port: 37371 },
           toolkit: { available: true, source: 'development', rootPath: '/repo', helperPath: '/repo/helper/server.mjs', scriptsPath: '/repo/scripts/codexbackup.sh' },
           paths: {
@@ -289,7 +308,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('本机内容检测')).toBeInTheDocument();
       expect(screen.getAllByText('1 项已发现').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('1 项未发现').length).toBeGreaterThan(0);
+      expect(screen.getByText('1 / 2 项已发现')).toBeInTheDocument();
       expect(screen.getByText('/Users/test/.codex')).not.toBeVisible();
       expect(screen.getByText('/Users/test/Library/Application Support/CodexBackupToolkit/config.json')).not.toBeVisible();
     });
@@ -404,9 +423,9 @@ describe('App', () => {
     openAdvancedSection(/安装验证/i);
 
     expect(screen.getByText('安装后验证')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.5_aarch64.dmg')).toBeInTheDocument();
-    expect(screen.getByText('CodexBackup_0.36.5_aarch64.dmg.sha256')).toBeInTheDocument();
-    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.5_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.6_aarch64.dmg')).toBeInTheDocument();
+    expect(screen.getByText('CodexBackup_0.36.6_aarch64.dmg.sha256')).toBeInTheDocument();
+    expect(screen.getByText('shasum -a 256 -c CodexBackup_0.36.6_aarch64.dmg.sha256')).toBeInTheDocument();
     expect(screen.getByText('未签名限制')).toBeInTheDocument();
     expect(screen.getByText('校验结果判断')).toBeInTheDocument();
     expect(screen.getByText(/OK 表示下载文件和发布校验一致/)).toBeInTheDocument();
@@ -429,7 +448,7 @@ describe('App', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /复制校验命令/i })[0]);
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.5_aarch64.dmg.sha256');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('shasum -a 256 -c CodexBackup_0.36.6_aarch64.dmg.sha256');
     });
   });
 
@@ -606,6 +625,7 @@ describe('App', () => {
     clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
 
+    fireEvent.click(screen.getByText('高级备份设置'));
     expect(screen.getByLabelText('启用远端保留策略')).toBeInTheDocument();
     expect(screen.queryByText(/CODEX_BACKUP_REMOTE_RETENTION=0/)).not.toBeInTheDocument();
 
@@ -618,6 +638,7 @@ describe('App', () => {
     render(<App />);
 
     clickNav(/存储位置/i);
+    openAdvancedStorageTargets();
     fireEvent.click(screen.getByRole('button', { name: /rclone/i }));
     clickNav(/恢复/i);
 
@@ -690,10 +711,12 @@ describe('App', () => {
 
     clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
+    fireEvent.click(screen.getByText('高级保存设置'));
 
     expect(screen.getByText('配置检查')).toBeInTheDocument();
     expect(screen.getByText(/云端或第三方存储建议开启 age 加密/)).toBeInTheDocument();
 
+    fireEvent.click(screen.getByText('高级备份设置'));
     fireEvent.click(screen.getByLabelText('使用 age 加密归档'));
 
     expect(screen.getByLabelText('age 收件人')).toBeInTheDocument();
@@ -1125,6 +1148,7 @@ describe('App', () => {
 
     clickNav(/存储位置/i);
     fireEvent.click(screen.getByRole('button', { name: /webdav/i }));
+    fireEvent.click(screen.getByText('高级保存设置'));
     fireEvent.change(screen.getByLabelText('Secret'), { target: { value: 'secret-value' } });
     fireEvent.click(screen.getByRole('button', { name: /保存密钥/i }));
     clickNav(/记录/i);
@@ -1172,7 +1196,7 @@ describe('App', () => {
     clickNav(/^设置$/i);
 
     expect(screen.getByText('应用设置')).toBeInTheDocument();
-    expect(screen.getAllByText('0.36.5').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0.36.6').length).toBeGreaterThan(0);
     expect(screen.getAllByText('~/Library/Application Support/CodexBackupToolkit/history.json').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /启动服务/i })).not.toBeVisible();
 

@@ -6,7 +6,8 @@ type TargetFormProps = {
   onChange(config: BackupConfig): void;
 };
 
-const targets = Object.keys(targetLabels) as BackupTarget[];
+const primaryTargets: BackupTarget[] = ['local', 'webdav'];
+const advancedTargets: BackupTarget[] = ['smb', 'rclone'];
 
 export function TargetForm({ config, onChange }: TargetFormProps) {
   const update = <Key extends keyof BackupConfig>(key: Key, value: BackupConfig[Key]) => {
@@ -16,7 +17,7 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
   return (
     <div className="target-form">
       <div className="segmented-control" role="group" aria-label="备份目标端">
-        {targets.map((target) => (
+        {primaryTargets.map((target) => (
           <button
             className={config.target === target ? 'segment segment--active' : 'segment'}
             key={target}
@@ -27,6 +28,22 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
           </button>
         ))}
       </div>
+
+      <details className="details-panel target-advanced-options">
+        <summary>高级保存位置</summary>
+        <div className="segmented-control" role="group" aria-label="高级备份目标端">
+          {advancedTargets.map((target) => (
+            <button
+              className={config.target === target ? 'segment segment--active' : 'segment'}
+              key={target}
+              onClick={() => update('target', target)}
+              type="button"
+            >
+              {targetLabels[target]}
+            </button>
+          ))}
+        </div>
+      </details>
 
       <div className="form-grid">
         {config.target === 'local' && (
@@ -73,39 +90,6 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
           </label>
         )}
 
-        {(config.target === 'webdav' || config.target === 'rclone') && (
-          <label className="toggle-row field--wide">
-            <input checked={config.remoteRetention} onChange={(event) => update('remoteRetention', event.target.checked)} type="checkbox" />
-            <span>启用远端保留策略</span>
-          </label>
-        )}
-
-        <label className="toggle-row field--wide">
-          <input checked={config.encrypt} onChange={(event) => update('encrypt', event.target.checked)} type="checkbox" />
-          <span>使用 age 加密归档</span>
-        </label>
-
-        {config.encrypt && (
-          <>
-            <label className="field field--wide">
-              <span>age 收件人</span>
-              <input
-                placeholder="age1..."
-                value={config.ageRecipient}
-                onChange={(event) => update('ageRecipient', event.target.value)}
-              />
-            </label>
-            <label className="field field--wide">
-              <span>age 收件人文件</span>
-              <input
-                placeholder="/path/to/recipients.txt"
-                value={config.ageRecipientFile}
-                onChange={(event) => update('ageRecipientFile', event.target.value)}
-              />
-            </label>
-          </>
-        )}
-
         <label className="field">
           <span>保留份数</span>
           <input
@@ -125,29 +109,67 @@ export function TargetForm({ config, onChange }: TargetFormProps) {
           />
         </label>
 
-        <label className="toggle-row field--wide">
-          <input checked={config.syncEnabled} onChange={(event) => update('syncEnabled', event.target.checked)} type="checkbox" />
-          <span>启用定时一致性检查</span>
-        </label>
+        <details className="details-panel field--wide target-advanced-options">
+          <summary>高级备份设置</summary>
+          <div className="form-grid form-grid--nested">
+            {(config.target === 'webdav' || config.target === 'rclone') && (
+              <label className="toggle-row field--wide">
+                <input checked={config.remoteRetention} onChange={(event) => update('remoteRetention', event.target.checked)} type="checkbox" />
+                <span>启用远端保留策略</span>
+              </label>
+            )}
 
-        <label className="field">
-          <span>检查频率（小时）</span>
-          <input
-            min="1"
-            type="number"
-            value={config.syncCheckIntervalHours}
-            onChange={(event) => update('syncCheckIntervalHours', Number(event.target.value))}
-          />
-        </label>
-        <label className="field">
-          <span>最小备份间隔（小时）</span>
-          <input
-            min="1"
-            type="number"
-            value={config.syncMinBackupIntervalHours}
-            onChange={(event) => update('syncMinBackupIntervalHours', Number(event.target.value))}
-          />
-        </label>
+            <label className="toggle-row field--wide">
+              <input checked={config.encrypt} onChange={(event) => update('encrypt', event.target.checked)} type="checkbox" />
+              <span>使用 age 加密归档</span>
+            </label>
+
+            {config.encrypt && (
+              <>
+                <label className="field field--wide">
+                  <span>age 收件人</span>
+                  <input
+                    placeholder="age1..."
+                    value={config.ageRecipient}
+                    onChange={(event) => update('ageRecipient', event.target.value)}
+                  />
+                </label>
+                <label className="field field--wide">
+                  <span>age 收件人文件</span>
+                  <input
+                    placeholder="/path/to/recipients.txt"
+                    value={config.ageRecipientFile}
+                    onChange={(event) => update('ageRecipientFile', event.target.value)}
+                  />
+                </label>
+              </>
+            )}
+
+            <label className="toggle-row field--wide">
+              <input checked={config.syncEnabled} onChange={(event) => update('syncEnabled', event.target.checked)} type="checkbox" />
+              <span>启用定时一致性检查</span>
+            </label>
+
+            <label className="field">
+              <span>检查频率（小时）</span>
+              <input
+                min="1"
+                type="number"
+                value={config.syncCheckIntervalHours}
+                onChange={(event) => update('syncCheckIntervalHours', Number(event.target.value))}
+              />
+            </label>
+            <label className="field">
+              <span>最小备份间隔（小时）</span>
+              <input
+                min="1"
+                type="number"
+                value={config.syncMinBackupIntervalHours}
+                onChange={(event) => update('syncMinBackupIntervalHours', Number(event.target.value))}
+              />
+            </label>
+          </div>
+        </details>
       </div>
     </div>
   );
