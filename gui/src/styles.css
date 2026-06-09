@@ -472,7 +472,37 @@ button:disabled {
   padding: 12px;
 }
 
+.target-card--webdav {
+  gap: 12px;
+}
+
+.target-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 2px;
+}
+
+.target-card-heading div {
+  display: grid;
+  gap: 3px;
+}
+
+.target-card-heading strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.target-card-heading span {
+  color: var(--mute);
+  font-size: 12px;
+}
+
 .target-note {
+  display: grid;
+  gap: 3px;
   margin: 0;
   border: 1px solid rgba(255, 197, 51, 0.2);
   border-radius: 8px;
@@ -481,6 +511,44 @@ button:disabled {
   font-size: 12px;
   line-height: 1.55;
   padding: 9px 10px;
+}
+
+.target-note strong {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.target-note span {
+  color: var(--body);
+}
+
+.inline-help {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 0 0;
+}
+
+.inline-help summary {
+  color: var(--mute);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.inline-help ul {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.inline-help li {
+  color: var(--body);
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .panel-header {

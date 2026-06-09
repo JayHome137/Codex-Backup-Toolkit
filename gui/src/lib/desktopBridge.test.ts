@@ -44,7 +44,7 @@ describe('desktop bridge', () => {
         desktopHelperStdoutLogPath: '~/Library/Logs/CodexBackup/desktop-helper.out.log',
       },
       toolkit: { available: false, source: 'unavailable' },
-      version: '0.36.7',
+      version: '0.36.8',
     });
   });
 
@@ -53,7 +53,7 @@ describe('desktop bridge', () => {
 
     const snapshot = await bridge.localContentSnapshot();
 
-    expect(snapshot.version).toBe('0.36.7');
+    expect(snapshot.version).toBe('0.36.8');
     expect(snapshot.dataPaths).toContainEqual({ label: 'Codex 配置目录', path: '~/.codex', exists: false, kind: 'missing' });
     expect(snapshot.dataPaths).not.toContainEqual(expect.objectContaining({ label: 'OpenAI Codex 数据' }));
     expect(snapshot.appPaths).toContainEqual({ label: '配置文件', path: '~/Library/Application Support/CodexBackupToolkit/config.json', exists: false, kind: 'missing' });

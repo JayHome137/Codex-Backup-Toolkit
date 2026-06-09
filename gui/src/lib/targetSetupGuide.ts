@@ -32,7 +32,7 @@ export function buildTargetSetupGuide(config: BackupConfig, checks: ConfigCheck[
     nextAction: blocking ? `先处理配置阻断项：${blocking.detail}` : nextAction(config),
     safetyNotes: [
       '目标端检查只运行 codexbackup --doctor，不会创建备份归档。',
-      '保存配置不会写入密码；WebDAV 密码请使用 Keychain 或运行前临时环境变量。',
+      '保存配置不会写入密码；WebDAV 密码只保存到系统安全存储。',
       '这个向导不会安装、卸载或修改定时任务；恢复仍只生成预案。',
     ],
     steps,
@@ -60,7 +60,7 @@ function buildSteps(config: BackupConfig, blocking?: ConfigCheck): TargetSetupSt
       label: '保存或临时提供密码',
       detail: config.target === 'smb'
         ? 'SMB 密码不要写入 config.env，可在设置页写入 Keychain 或运行前临时导出 CODEX_BACKUP_PASSWORD。'
-        : 'WebDAV 密码不要写入配置文件，可在本页保存到 Keychain 后再检测连接。',
+        : 'WebDAV 密码不要写入配置文件，测试连接时会保存到系统安全存储。',
       status: 'todo',
     });
   }

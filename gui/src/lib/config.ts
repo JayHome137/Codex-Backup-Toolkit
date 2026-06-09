@@ -203,9 +203,9 @@ function getCredentialCheck(config: BackupConfig): ConfigCheck {
   if (config.target === 'webdav') {
     return {
       id: 'credentials',
-      label: '密钥',
+      label: '密码',
       status: 'warning',
-      detail: 'WebDAV 密码不会写入配置文件；请保存到系统钥匙串后再检测连接。',
+      detail: 'WebDAV 密码不会写入配置文件；测试连接时会保存到系统安全存储。',
     };
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, Compass, Download, FolderOpen, KeyRound, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
+import { Activity, Archive, CalendarCheck2, CheckCircle2, ClipboardCheck, Compass, Download, FolderOpen, Play, RotateCcw, Save, ShieldCheck, TimerReset, Trash2, TriangleAlert, UnlockKeyhole } from 'lucide-react';
 import { Sidebar, type SectionId } from './components/Sidebar';
 import { StatusBadge } from './components/StatusBadge';
 import { buildBackupAction, buildLatestRestorePlanAction, buildRestorePlanAction, buildSyncLocalAuthoritativeAction } from './lib/actions';
@@ -113,7 +113,7 @@ const fallbackDesktopPaths: DesktopPaths = {
   logDir: '~/Library/Logs/CodexBackup',
 };
 
-const appVersion = '0.36.7';
+const appVersion = '0.36.8';
 
 function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('overview');
@@ -297,6 +297,7 @@ function App() {
       await refreshHelperHistoryAfterBackup();
     }
     setRunningCommand(null);
+    return result;
   };
 
   const runConfirmedBackup = async () => {
@@ -392,8 +393,8 @@ function App() {
       await helperApi.saveSecret(secretDraft);
       setSecretDraft((draft) => ({ ...draft, secret: '' }));
       setHelperStatus('online');
-      setHelperMessage('本机服务已连接，密钥已写入 Keychain。');
-      setLastResult({ status: 'success', output: `密钥已写入 macOS Keychain。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
+      setHelperMessage('本机服务已连接，密码已保存到系统安全存储。');
+      setLastResult({ status: 'success', output: '密码已保存到系统安全存储，不会写入配置文件。' });
     } catch (error) {
       updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
@@ -412,7 +413,7 @@ function App() {
       await helperApi.saveSecret(secretDraft);
       setSecretDraft((draft) => ({ ...draft, secret: '' }));
       setHelperStatus('online');
-      setHelperMessage('本机服务已连接，WebDAV 密码已保存到 Keychain。');
+      setHelperMessage('本机服务已连接，WebDAV 密码已保存到系统安全存储。');
       return true;
     } catch (error) {
       updateHelperFailureState(error);
@@ -430,14 +431,22 @@ function App() {
     await runPreview(commands.doctor, '保存位置检查');
   };
 
+  const testAndSaveStorage = async () => {
+    const secretReady = await ensureWebdavSecretSaved();
+    if (!secretReady) return;
+    const checkResult = await runPreview(commands.doctor, '保存位置检查');
+    if (checkResult.status !== 'success') return;
+    await savePersistedConfig();
+  };
+
   const deleteSecret = async () => {
     setHelperAction('secret-delete');
     setRunningCommand('DELETE http://127.0.0.1:37371/secret');
     try {
       await helperApi.deleteSecret({ service: secretDraft.service, account: secretDraft.account });
       setHelperStatus('online');
-      setHelperMessage('本机服务已连接，Keychain 密钥已删除。');
-      setLastResult({ status: 'success', output: `Keychain 密钥已删除。\nservice: ${secretDraft.service}\naccount: ${secretDraft.account}` });
+      setHelperMessage('本机服务已连接，已删除系统安全存储里的密码。');
+      setLastResult({ status: 'success', output: '已删除系统安全存储里的密码。' });
     } catch (error) {
       updateHelperFailureState(error);
       setLastResult({ status: 'error', output: helperErrorOutput(error) });
@@ -728,7 +737,7 @@ function App() {
               config={config}
               configErrorCount={blockingChecks.length}
               onOpenStorage={() => setActiveSection('targets')}
-              onRunDoctor={() => runPreview(commands.doctor, '保存位置检查')}
+              onRunDoctor={async () => { await runPreview(commands.doctor, '保存位置检查'); }}
               runningDoctor={runningCommand === commands.doctor}
             />
 
@@ -821,7 +830,7 @@ function App() {
               onOpenSettings={() => setActiveSection('settings')}
               onOpenTargets={() => setActiveSection('targets')}
               onRefreshHealth={refreshBackupHealth}
-              onRunDoctor={() => runPreview(commands.doctor, '环境检查命令')}
+              onRunDoctor={async () => { await runPreview(commands.doctor, '环境检查命令'); }}
               refreshing={healthBusy}
               runningDoctor={runningCommand === commands.doctor}
             />
@@ -907,84 +916,31 @@ function App() {
                 webdavPassword={config.target === 'webdav' ? secretDraft.secret : ''}
               />
               <div className="action-row">
-                {config.target === 'webdav' && (
-                  <button className="button button--tertiary" disabled={helperActionsDisabled || secretDraft.secret.length === 0} onClick={saveSecret} type="button">
-                    <KeyRound size={15} aria-hidden="true" />
-                    {helperAction === 'secret-save' ? '保存中' : '保存 WebDAV 密码'}
-                  </button>
-                )}
                 <button className="button button--tertiary" disabled={blockingChecks.length > 0 || runningCommand === commands.doctor || helperAction === 'secret-save'} onClick={() => void runStorageCheck()} type="button">
                   <ShieldCheck size={15} aria-hidden="true" />
                   {runningCommand === commands.doctor || helperAction === 'secret-save' ? '检查中' : config.target === 'webdav' ? '检测 WebDAV 连接' : '检测本地目录'}
+                </button>
+                <button className="button button--primary" disabled={helperActionsDisabled || blockingChecks.length > 0 || runningCommand === commands.doctor || helperAction === 'secret-save' || helperAction === 'config-save'} onClick={() => void testAndSaveStorage()} type="button">
+                  <Save size={15} aria-hidden="true" />
+                  {helperAction === 'secret-save' || helperAction === 'config-save' || runningCommand === commands.doctor ? '处理中' : config.target === 'webdav' ? '测试并保存 WebDAV' : '测试并保存目录'}
+                </button>
+                <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={savePersistedConfig} type="button">
+                  <Save size={15} aria-hidden="true" />
+                  {helperAction === 'config-save' ? '保存中' : '保存配置'}
                 </button>
                 <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={loadPersistedConfig} type="button">
                   <Activity size={15} aria-hidden="true" />
                   {helperAction === 'config-load' ? '加载中' : '加载配置'}
                 </button>
-                <button className="button button--primary" disabled={helperActionsDisabled} onClick={savePersistedConfig} type="button">
-                  <Save size={15} aria-hidden="true" />
-                  {helperAction === 'config-save' ? '保存中' : '保存配置'}
-                </button>
               </div>
             </section>
-            <TargetSetupGuidePanel
+            <StorageCheckSummaryPanel
+              advice={doctorAdvice}
               guide={targetSetupGuide}
               onRunDoctor={runStorageCheck}
+              report={doctorReport}
               runningDoctor={runningCommand === commands.doctor}
             />
-            <details className="details-panel settings-advanced">
-              <summary>高级保存设置</summary>
-              <TargetDoctorPanel report={doctorReport} />
-              <DoctorAdvicePanel advice={doctorAdvice} />
-              {config.target === 'smb' && (
-                <section className="panel">
-                  <div className="panel-header">
-                    <div className="panel-title">
-                      <KeyRound size={16} aria-hidden="true" />
-                      <span>Keychain 密钥</span>
-                    </div>
-                  </div>
-                  <div className="form-grid">
-                    <label className="field">
-                      <span>Service</span>
-                      <input value={secretDraft.service} onChange={(event) => setSecretDraft({ ...secretDraft, service: event.target.value })} />
-                    </label>
-                    <label className="field">
-                      <span>Account</span>
-                      <input value={secretDraft.account} onChange={(event) => setSecretDraft({ ...secretDraft, account: event.target.value })} />
-                    </label>
-                    <label className="field field--wide">
-                      <span>Secret</span>
-                      <input
-                        autoComplete="off"
-                        type="password"
-                        value={secretDraft.secret}
-                        onChange={(event) => setSecretDraft({ ...secretDraft, secret: event.target.value })}
-                      />
-                    </label>
-                  </div>
-                  <div className="action-row">
-                    <button className="button button--primary" disabled={helperActionsDisabled || secretDraft.secret.length === 0} onClick={saveSecret} type="button">
-                      <KeyRound size={15} aria-hidden="true" />
-                      {helperAction === 'secret-save' ? '保存中' : '保存密钥'}
-                    </button>
-                    <button className="button button--tertiary" disabled={helperActionsDisabled} onClick={deleteSecret} type="button">
-                      <Trash2 size={15} aria-hidden="true" />
-                      {helperAction === 'secret-delete' ? '删除中' : '删除密钥'}
-                    </button>
-                  </div>
-                </section>
-              )}
-              <section className="panel">
-                <div className="panel-header">
-                  <div className="panel-title">
-                    <ShieldCheck size={16} aria-hidden="true" />
-                    <span>配置检查</span>
-                  </div>
-                </div>
-                <ConfigCheckList checks={configChecks} />
-              </section>
-            </details>
           </section>
         )}
 
@@ -2330,39 +2286,45 @@ function PostInstallItemCard({ item }: { item: PostInstallItem }) {
   );
 }
 
-function TargetSetupGuidePanel({
+function StorageCheckSummaryPanel({
+  advice,
   guide,
   onRunDoctor,
+  report,
   runningDoctor,
 }: {
+  advice: DoctorAdvice;
   guide: TargetSetupGuide;
   onRunDoctor: () => Promise<void>;
+  report: DoctorReport | null;
   runningDoctor: boolean;
 }) {
   return (
-    <section className="panel readiness-panel">
+    <section className="panel readiness-panel storage-check-summary">
       <div className="panel-header">
         <div className="panel-title">
-          <Compass size={16} aria-hidden="true" />
-          <span>保存位置检查</span>
+          <ShieldCheck size={16} aria-hidden="true" />
+          <span>连接检测</span>
         </div>
         <StatusBadge status={guide.level === 'blocked' ? 'error' : guide.level === 'ready' ? 'success' : 'warning'} label={targetSetupLevelLabel(guide.level)} />
       </div>
       <div className="compact-check-panel">
         <div>
           <strong>{guide.nextAction}</strong>
-          <p>只检查保存位置是否可用，不会创建备份、执行恢复或修改定时任务。</p>
+          <p>检测只验证当前保存位置是否可访问，不会执行备份、恢复或修改定时任务。</p>
         </div>
-        <button className="button button--primary" disabled={runningDoctor || guide.level === 'blocked'} onClick={() => void onRunDoctor()} type="button">
+        <button className="button button--tertiary" disabled={runningDoctor || guide.level === 'blocked'} onClick={() => void onRunDoctor()} type="button">
           <ShieldCheck size={15} aria-hidden="true" />
-          {runningDoctor ? '检查中' : '检查保存位置'}
+          {runningDoctor ? '检测中' : '重新检测'}
         </button>
       </div>
       <details className="details-panel compact-details">
-        <summary>查看检查说明</summary>
+        <summary>查看检测范围</summary>
         <div className="check-list check-list--grid">
           {guide.steps.map((step) => <TargetSetupStepCard key={`${step.label}-${step.detail}`} step={step} />)}
         </div>
+        <TargetDoctorPanel report={report} />
+        <DoctorAdvicePanel advice={advice} />
       </details>
     </section>
   );

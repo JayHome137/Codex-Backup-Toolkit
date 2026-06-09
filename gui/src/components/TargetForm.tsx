@@ -9,6 +9,11 @@ type TargetFormProps = {
 };
 
 const primaryTargets: BackupTarget[] = ['local', 'webdav'];
+const webdavExamples = [
+  'https://dav.jianguoyun.com/dav/CodexBackup',
+  'https://example.com/remote.php/dav/files/user/CodexBackup',
+  'https://webdav.example.com/CodexBackup',
+];
 
 export function TargetForm({ config, onChange, onWebdavPasswordChange, webdavPassword }: TargetFormProps) {
   const update = <Key extends keyof BackupConfig>(key: Key, value: BackupConfig[Key]) => {
@@ -32,27 +37,33 @@ export function TargetForm({ config, onChange, onWebdavPasswordChange, webdavPas
 
       <div className="form-grid">
         {config.target === 'local' && (
-          <div className="target-card field--wide">
+          <div className="target-card target-card--simple field--wide">
             <label className="field">
               <span>本地备份目录</span>
               <input aria-label="本地备份目录" value={config.localDir} onChange={(event) => update('localDir', event.target.value)} />
             </label>
-            <p className="muted-copy">备份文件会保存到这个文件夹；如果文件夹不存在，检查时会确认它能否创建。</p>
+            <p className="muted-copy">备份文件会保存到这个文件夹；检测时只确认目录是否可用。</p>
           </div>
         )}
 
         {config.target === 'webdav' && (
-          <div className="target-card field--wide">
+          <div className="target-card target-card--webdav field--wide">
+            <div className="target-card-heading">
+              <div>
+                <strong>WebDAV 连接信息</strong>
+                <span>填写服务商给出的目录地址和账号密码。</span>
+              </div>
+            </div>
             <label className="field field--wide">
-              <span>WebDAV 地址</span>
-              <input aria-label="WebDAV 地址" placeholder="https://example.com/remote.php/dav/files/user/CodexBackup" value={config.webdavUrl} onChange={(event) => update('webdavUrl', event.target.value)} />
+              <span>服务器地址</span>
+              <input aria-label="WebDAV 地址" placeholder="https://example.com/dav/CodexBackup" value={config.webdavUrl} onChange={(event) => update('webdavUrl', event.target.value)} />
             </label>
             <label className="field field--wide">
-              <span>WebDAV 账号</span>
+              <span>账号</span>
               <input aria-label="WebDAV 账号" autoComplete="username" value={config.webdavUser} onChange={(event) => update('webdavUser', event.target.value)} />
             </label>
             <label className="field field--wide">
-              <span>WebDAV 密码或应用专用密码</span>
+              <span>密码或应用专用密码</span>
               <input
                 aria-label="WebDAV 密码"
                 autoComplete="current-password"
@@ -61,7 +72,16 @@ export function TargetForm({ config, onChange, onWebdavPasswordChange, webdavPas
                 onChange={(event) => onWebdavPasswordChange(event.target.value)}
               />
             </label>
-            <p className="target-note">请先在 WebDAV 服务端手动创建这个目标文件夹。连接检测会验证账号密码和目录是否可访问，但不会自动创建根目录。</p>
+            <div className="target-note">
+              <strong>先在 WebDAV 服务端创建目标文件夹。</strong>
+              <span>检测会验证账号、密码和目录访问权限，但不会替你创建根目录。</span>
+            </div>
+            <details className="inline-help">
+              <summary>地址示例</summary>
+              <ul>
+                {webdavExamples.map((example) => <li key={example}>{example}</li>)}
+              </ul>
+            </details>
           </div>
         )}
 
