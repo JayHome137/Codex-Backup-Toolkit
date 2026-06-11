@@ -1,0 +1,260 @@
+:root {
+  color: #17211b;
+  background: #f5f6f1;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 860px;
+  min-height: 640px;
+  background:
+    linear-gradient(135deg, rgba(55, 95, 78, 0.12), transparent 34%),
+    linear-gradient(315deg, rgba(198, 121, 80, 0.12), transparent 36%),
+    #f5f6f1;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  width: min(1120px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 34px 0 28px;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 18px 0 28px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 42px;
+  line-height: 1.05;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.hero p {
+  width: min(620px, 100%);
+  margin: 12px 0 0;
+  color: #5f685f;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d9ded2;
+  background: rgba(255, 255, 255, 0.68);
+  color: #476052;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.status-pill.bad {
+  color: #8b3e36;
+  border-color: #e9c8c2;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.panel {
+  border: 1px solid rgba(33, 47, 38, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 16px 44px rgba(45, 51, 43, 0.08);
+  padding: 22px;
+}
+
+.primary-panel {
+  min-height: 360px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.panel-heading h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 740;
+  letter-spacing: 0;
+}
+
+.panel-heading p {
+  margin: 5px 0 0;
+  color: #687268;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.field > span {
+  color: #687268;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.path-button,
+select,
+input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #d8ded4;
+  border-radius: 8px;
+  background: #fbfcf8;
+  color: #17211b;
+  padding: 0 13px;
+  outline: none;
+}
+
+.path-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.path-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.split-fields {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 14px;
+}
+
+.primary-action,
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 18px;
+  font-weight: 740;
+}
+
+.primary-action {
+  width: 100%;
+  margin-top: 6px;
+  background: #22372d;
+  color: #ffffff;
+}
+
+.secondary-action {
+  background: #e6eadf;
+  color: #24352c;
+}
+
+.primary-action:disabled,
+.secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.metric-list {
+  display: grid;
+  gap: 14px;
+}
+
+.metric-list > div,
+.plan-box > div {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f6f8f2;
+}
+
+.metric-list span,
+.plan-box span {
+  color: #687268;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.metric-list strong,
+.plan-box strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #1f2d25;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.restore-panel {
+  margin-top: 18px;
+}
+
+.restore-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 12px;
+}
+
+.plan-box {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.log-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-top: 18px;
+  padding: 0 14px;
+  border: 1px solid rgba(33, 47, 38, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #4f5b52;
+  font-size: 13px;
+}

@@ -1,155 +1,85 @@
-# Codex-Backup-toolkit
+# Codex Backup
 
-[English README](README_EN.md)
+Codex Backup 是一个极简桌面端备份工具，用来把 Codex 本地状态和 `~/Documents/Codex` 备份到用户指定的本地目录。第一版只做本地路径、手动备份、自动周期备份和恢复预案，不接 WebDAV、SMB、rclone、NAS 自动挂载、账号凭据或复杂诊断。
 
-`codexbackup` 是一个当前以 macOS 为主的 Codex Desktop 备份、恢复和自动化工具。它可以把 Codex 本机状态打包成归档，并发布到本地目录、SMB/NAS、WebDAV 或 rclone 远端。Windows 支持已纳入后续路线，当前版本不会把 Windows 标记为已可用。
+当前结构分为两层：
 
-## 主要能力
+- `codex-local-backup/`：可复用 skill 和备份核心脚本，负责打包、校验、恢复预案和确认恢复。
+- `desktop/`：Tauri 桌面壳，负责界面、备份位置、周期设置、手动备份、自动到期检查和菜单栏常驻。
 
-- 备份 `~/.codex`、Codex app/browser 状态、skills、plugins、memories、sessions，以及 `~/Documents/Codex`。
-- 支持 `local`、`smb`、`webdav`、`rclone` 四类目标端。
-- 支持 `codexrestore --latest` 从本地、SMB、WebDAV、rclone 拉取最新备份。
-- 支持 `codexrestore --plan` 生成恢复预案，不改文件、不创建安全备份。
-- 支持可选 age 加密、本地/SMB 保留策略，以及默认关闭的 WebDAV/rclone 远端保留策略。
-- 支持 macOS `launchd` 定时备份，默认每天 03:00 检查，间隔 3 天执行一次真实备份。
-- 支持默认关闭的本地为准一致性检查：按可选频率对比本地状态和最新备份，不一致时生成新的时间戳备份，并套用保留策略。
-- 提供 macOS 桌面 App 和浏览器开发模式。桌面主流程聚焦 `概览`、`备份`、`存储位置`、`恢复`、`记录` 和 `设置`，本机服务细节收在设置和高级诊断里。
-- Windows 预览已加入：提供 PowerShell 入口、Windows 路径计划、本地 zip 备份预览、恢复预案、Credential Manager/Task Scheduler validate-only 骨架，以及 Tauri Windows 打包配置；GitHub Actions 已覆盖 Windows 原生预览验证、安装包构建 artifact 和隔离安装布局 smoke，远端目标原生验证、签名、真实系统安装后 smoke 和真实恢复仍待完成。
+## 产品边界
 
-## 快速开始
+v1 只做这些事：
 
-环境检查：
+- 选择本地备份目录。
+- 设置备份周期：手动、每天、每 3 天、每 7 天、每 14 天、每 30 天或自定义天数。
+- 软件运行时自动检查是否到期，到期后执行备份。
+- 用户可以随时点击 `立即备份`。
+- 关闭窗口时隐藏到菜单栏，备份检查继续运行。
+- 通过菜单栏重新打开窗口或退出应用。
+- 选择 `.tar.gz` 备份包并生成恢复预案。
 
-```zsh
-./scripts/codexbackup.sh --doctor --target local
+v1 不做这些事：
+
+- WebDAV / SMB / rclone / NAS 远端目标
+- Keychain / 账号密码管理
+- 系统级 `launchd` 安装或卸载
+- Windows preview
+- 复杂 doctor / 高级诊断
+- 自动发布和 Release 管理
+
+## 默认备份范围
+
+存在时会备份：
+
+```text
+~/.codex
+~/Documents/Codex
+~/Library/Application Support/Codex
+~/Library/Application Support/com.openai.chat
+~/Library/Application Support/OpenAI
 ```
 
-查看目标端配置说明：
+`~/Documents/Codex` 默认包含，因为它可能保存大量对话记录、项目内容和阶段上下文。
+
+## 使用核心脚本
+
+创建备份：
 
 ```zsh
-./scripts/codexbackup.sh --config-guide --target webdav
+python3 codex-local-backup/scripts/codex_local_backup.py backup \
+  --output-dir "$HOME/CodexBackups"
 ```
 
-创建本地备份：
+检查备份：
 
 ```zsh
-./scripts/codexbackup.sh --target local --local-output "$HOME/CodexBackups"
+python3 codex-local-backup/scripts/codex_local_backup.py inspect \
+  --archive "$HOME/CodexBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz"
 ```
 
 生成恢复预案：
 
 ```zsh
-./scripts/codexrestore.sh --plan --archive /path/to/codex-backup-host-YYYYmmdd-HHMMSS.tar.gz
+python3 codex-local-backup/scripts/codex_local_backup.py restore-plan \
+  --archive "$HOME/CodexBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz"
 ```
 
-恢复最新本地备份：
+确认恢复：
 
 ```zsh
-CODEX_BACKUP_TARGET=local \
-CODEX_BACKUP_LOCAL_DIR="$HOME/CodexBackups" \
-./scripts/codexrestore.sh --latest
+python3 codex-local-backup/scripts/codex_local_backup.py restore \
+  --archive "$HOME/CodexBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz" \
+  --confirm
 ```
 
-恢复最新 WebDAV 或 rclone 备份：
+## 桌面端开发
+
+安装依赖：
 
 ```zsh
-CODEX_BACKUP_TARGET=webdav \
-CODEX_BACKUP_WEBDAV_URL="https://webdav.example.com/remote.php/dav/files/user/CodexBackup" \
-CODEX_BACKUP_WEBDAV_USER=backup-user \
-./scripts/codexrestore.sh --latest
-
-CODEX_BACKUP_TARGET=rclone \
-CODEX_BACKUP_RCLONE_REMOTE="gdrive:CodexBackup" \
-./scripts/codexrestore.sh --latest
-```
-
-## 配置
-
-复制示例配置：
-
-```zsh
-cp config.example.env config.env
-$EDITOR config.env
-source ./config.env
-```
-
-支持目标端：
-
-- `local`：写入本机目录。
-- `smb`：通过 `mount_smbfs` 使用 SMB/NAS 共享。
-- `webdav`：通过 `curl` 上传和下载 WebDAV 备份。
-- `rclone`：通过已配置的 rclone remote 上传和下载。
-
-更多说明见 [storage-targets.md](docs/storage-targets.md) 和 [examples](examples)。
-
-完整命令、选项和环境变量见 [CLI 参考](docs/cli-reference.md)。
-
-跨平台状态见 [roadmap.md](docs/roadmap.md)。当前 macOS CLI 和桌面产物已本机验证；Windows 预览代码路径已加入，并已通过 GitHub Actions 的 Windows 原生预览验证和安装包构建检查，但仍不标记为正式可用。
-
-0.28.0 起，macOS 真实备份、dry-run 和 fingerprint 都会从同一份 profile/archive 计划读取路径；这不会改变当前 macOS 归档结构，但会让后续 Windows 路径接入更稳。你也可以先查看 Codex profile 路径计划：
-
-```zsh
-./scripts/codexbackup.sh --profile-plan --platform darwin
-./scripts/codexbackup.sh --profile-plan --platform win32
-```
-
-`win32` 输出会标记为 `planned`，只用于后续实现和验证，不代表 Windows 真实备份已经启用。
-
-0.29.0 起可以查看 Windows 预览入口说明：
-
-```powershell
-pwsh -File .\scripts\windows\codexbackup.ps1 -ProfilePlan
-pwsh -File .\scripts\windows\codexbackup.ps1 -Doctor -Target local
-pwsh -File .\scripts\windows\codexrestore.ps1 -Plan -Archive "$HOME\CodexBackups\codex-backup-host-YYYYmmdd-HHMMSS.zip"
-pwsh -File .\scripts\windows\codexcredential.ps1 -ValidateOnly
-pwsh -File .\scripts\windows\codexscheduledbackup.ps1 -ValidateOnly
-```
-
-完整说明见 [Windows 预览](docs/windows.md)。这些入口不会安装、修改或删除任务计划程序任务，也不会执行真实恢复。
-
-0.30.0 起，GitHub Actions 会在 `windows-latest` runner 上运行 `tests/windows-native.ps1`，原生验证 Windows profile plan、doctor、本地 zip 备份预览、sha256、manifest、恢复预案和 validate-only 安全边界。
-
-0.31.0 起，Windows runner 会执行 `npm run desktop:build:windows`，并用 `npm run desktop:smoke:windows-installer` 检查 `.msi` 或 `.exe` 安装包。CI 会上传 `codexbackup-windows-installers` artifact；签名、自动更新和真实恢复执行仍未启用。
-
-0.32.0 起，Windows runner 会执行 `tests/windows-install-smoke.ps1`，用 MSI 行政安装模式把安装包提取到临时目录，检查 `CodexBackup.exe`、内置 helper、Windows PowerShell 脚本、示例配置和 validate-only 安全边界。这个检查会自动清理临时目录，不注册真实系统应用，不写 Task Scheduler，也不修改 Credential Manager。
-
-## 自动备份
-
-安装定时任务：
-
-```zsh
-source ./config.env
-./scripts/codexinstallautomation.sh install
-```
-
-查看、校验或移除任务：
-
-```zsh
-./scripts/codexinstallautomation.sh status
-./scripts/codexinstallautomation.sh validate
-./scripts/codexinstallautomation.sh uninstall
-```
-
-默认安装路径：`~/Library/Application Support/CodexBackupToolkit/`
-日志路径：`~/Library/Logs/CodexBackup/`
-
-## 桌面 App 和 GUI
-
-GUI 已接入 Tauri v2 桌面壳。0.36.0 起，桌面界面做了产品降噪：主导航只保留日常会用到的 `概览`、`备份`、`存储位置`、`恢复`、`记录` 和 `设置`；安装验证、健康检查、macOS 诊断、定时备份状态等高级入口统一收进设置页。
-
-当前桌面主流程是：
-
-- 在 `存储位置` 选择本地目录、NAS/SMB、WebDAV 或 rclone 远端，并运行目标端检查。
-- 在 `备份` 打包本机 Codex 数据，可选择真实备份或本地为准一致性备份。
-- 在 `记录` 查看运行输出、备份历史、归档路径、sha256 和 manifest。
-- 在 `恢复` 生成恢复预案；真实恢复仍由 CLI 明确执行，不在 GUI 内一键触发。
-- 在 `设置` 管理本机服务、配置路径、日志路径、版本信息和高级诊断入口。
-
-安装前端依赖：
-
-```zsh
-cd gui
-npm ci
+cd desktop
+npm install
 ```
 
 浏览器开发模式：
@@ -158,168 +88,45 @@ npm ci
 npm run dev
 ```
 
-默认地址：`http://127.0.0.1:5173`
-
-检查桌面构建环境：
-
-```zsh
-npm run desktop:doctor
-```
-
-启动桌面开发模式：
+Tauri 桌面开发模式：
 
 ```zsh
 npm run desktop:dev
 ```
 
-构建未签名桌面产物：
+构建前端：
 
 ```zsh
-npm run desktop:build
+npm run build
 ```
 
-生成 DMG 校验文件：
+检查 Rust/Tauri：
 
 ```zsh
-npm run desktop:checksum
+cd desktop/src-tauri
+cargo check
 ```
 
-检查已构建桌面产物的内置资源：
+## 验证
+
+核心脚本测试：
 
 ```zsh
-npm run desktop:smoke
+python3 -m unittest tests/test_codex_local_backup.py
 ```
 
-当前目标是本机可运行的未签名 `.app`；如果 Tauri 和本机打包环境支持，也会生成 `.dmg`。当前不包含 Apple Developer 签名、公证和自动更新。缺少 Rust 工具链时，`desktop:build` 会输出中文提示，并指向 `https://rustup.rs/`。
-
-桌面 App 启动后会检查 `127.0.0.1:37371` 的本机服务。如果发现外部服务已在线，只会连接它，退出 App 时不会停止外部进程；如果由 App 启动托管服务，退出时会尝试清理该托管进程。打包产物会内置 `helper/`、`scripts/`、`config.example.env` 和 `examples/`。托管服务输出会写入：
-
-```text
-~/Library/Logs/CodexBackup/desktop-helper.out.log
-~/Library/Logs/CodexBackup/desktop-helper.err.log
-```
-
-开发或调试时如需指定仓库根目录，可设置：
+skill 结构校验：
 
 ```zsh
-CODEX_BACKUP_TOOLKIT_ROOT=/path/to/Codex-Backup-toolkit npm run desktop:dev
+/tmp/codex-skill-validate-venv/bin/python /Users/jayboy137/.codex/skills/.system/skill-creator/scripts/quick_validate.py codex-local-backup
 ```
 
-macOS 本地安装测试可参考 [本地安装测试清单](docs/local-install-test.md)。安装到 `/Applications/CodexBackup.app` 后可运行：
+桌面端测试和构建：
 
 ```zsh
-./tests/test-macos-local-install-smoke.sh
+cd desktop
+npm test
+npm run build
+cd src-tauri
+cargo check
 ```
-
-该脚本只检查已安装 App 的可执行文件、内置资源、短暂启动和退出后的端口残留；不会安装、卸载、加载或修改 `launchd`，不会修改已有真实定时备份任务，也不会执行真实恢复。
-
-macOS 发布前可运行只读 release smoke：
-
-```zsh
-./tests/test-macos-release-smoke.sh
-```
-
-该脚本检查当前 `.app/.dmg`、sha256、图标和内置资源，不启动 App，不加载系统任务，不修改已有自动备份。
-
-GUI 的安全边界保持不变：可以做目标端检查、配置保存、Keychain 密钥管理、受控真实备份、备份结果展示、本地为准一致性检查和恢复预案；不会在界面里执行真实恢复，不会安装、卸载、加载或修改已有定时备份任务，不会开放任意 shell 命令。
-
-0.10.1 起，桌面 App 已接入正式图标资源。当前图标采用黑底玻璃质感备份图标方向，包含多尺寸 PNG、`icon.icns` 和 `icon.ico`，用于 `.app`、Dock、Finder、DMG 和 Windows 安装包资源。
-
-## 浏览器模式和本机服务
-
-启动 GUI：
-
-```zsh
-cd gui
-npm ci
-npm run dev
-```
-
-默认地址：`http://127.0.0.1:5173`
-
-开发模式下可手动启动本机服务：
-
-```zsh
-node helper/server.mjs
-```
-
-本机服务默认只监听 `127.0.0.1:37371`。它负责把 GUI 的点击转换为受控 CLI 动作，例如目标端检查、配置保存、Keychain 密钥写入、备份历史读取、受控真实备份和恢复预案。服务离线时，涉及本机读写的按钮会禁用。
-
-本机服务仍会阻止真实恢复、安装、卸载、status 和拼接额外 shell 命令。自动化状态读取使用 `GET /automation`，只读取路径存在性和 `launchctl print` 状态，不会调用安装、卸载、加载或卸载命令。配置会保存到 `~/Library/Application Support/CodexBackupToolkit/config.json`，敏感字段会被过滤；密码类信息应通过 macOS Keychain 接口保存。备份历史会保存到 `~/Library/Application Support/CodexBackupToolkit/history.json`。协议细节见 [helper-protocol.md](docs/helper-protocol.md)。
-
-## 加密与安全
-
-启用 age 加密：
-
-```zsh
-CODEX_BACKUP_ENCRYPT=1 \
-CODEX_BACKUP_AGE_RECIPIENT='age1...' \
-./scripts/codexbackup.sh --target local --local-output "$HOME/CodexBackups"
-```
-
-Codex 备份可能包含认证文件、cookies、sessions、memory、插件状态和项目文件。上传到第三方云盘前建议启用加密，并阅读 [security.md](docs/security.md)。
-
-## 保留策略
-
-本地和 SMB 目标端支持按份数和天数清理：
-
-```zsh
-CODEX_BACKUP_RETENTION_COUNT=10
-CODEX_BACKUP_RETENTION_DAYS=30
-```
-
-WebDAV 和 rclone 的远端保留策略默认关闭。只有显式设置下面的变量后，才会删除旧远端归档：
-
-```zsh
-CODEX_BACKUP_REMOTE_RETENTION=1
-```
-
-## 本地为准一致性检查
-
-一致性检查默认关闭，不会改变既有定时备份行为。启用后，定时脚本会先运行本地为准检查；如果最新备份缺失或与本地状态不同，就创建一个新的时间戳备份，然后按保留策略清理旧归档。本机数据永远优先，不会把备份内容同步回本机，也不会覆盖旧备份。
-
-```zsh
-CODEX_BACKUP_SYNC_ENABLED=1
-CODEX_BACKUP_SYNC_CHECK_INTERVAL_HOURS=24
-CODEX_BACKUP_SYNC_MIN_BACKUP_INTERVAL_HOURS=24
-```
-
-只读检查：
-
-```zsh
-./scripts/codexbackup.sh --sync-check --target local
-```
-
-本地为准生成备份：
-
-```zsh
-./scripts/codexbackup.sh --sync-local-authoritative --target local
-```
-
-0.14.0 先支持 `local` 和 `smb` 目标端的一致性检查。WebDAV 和 rclone 仍可继续使用普通备份、最新恢复和远端保留策略。
-
-## 恢复安全
-
-真实恢复前，`codexrestore` 会创建安全备份：
-
-```text
-~/CodexRestoreSafetyBackups/codex-before-restore-<timestamp>.tar.gz
-```
-
-恢复前建议先运行 `--plan`。完整流程见 [restore-guide.md](docs/restore-guide.md)。
-
-## 开发验证
-
-常用检查：
-
-```zsh
-./tests/test-open-source-framework.sh
-./tests/test-restore-plan.sh
-./tests/test-windows-preview.sh
-node --test helper/*.test.mjs
-cd gui && npm test && npm run build
-```
-
-## 许可证
-
-MIT

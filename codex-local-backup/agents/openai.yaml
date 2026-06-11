@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 本地备份"
+  short_description: "把 Codex 状态和 ~/Documents/Codex 备份到用户指定本地路径，并从指定归档生成恢复预案或执行确认恢复。"
+  default_prompt: "把我的 Codex 数据备份到这个本地路径，或者从这个备份归档生成恢复预案。"
