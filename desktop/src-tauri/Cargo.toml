@@ -1,5 +1,5 @@
 [package]
-name = "codex-backup"
+name = "clb"
 version = "0.1.0"
 description = "A small desktop backup tool for Codex state"
 authors = ["Codex Local Backup contributors"]

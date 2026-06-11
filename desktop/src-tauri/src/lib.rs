@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
+
+const EMBEDDED_BACKUP_SCRIPT: &str = include_str!("../../../codex-local-backup/scripts/codex_local_backup.py");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,7 +45,7 @@ impl Default for AppState {
 fn state_path() -> Result<PathBuf, String> {
     let base = dirs::config_dir()
         .ok_or_else(|| "无法定位用户配置目录".to_string())?
-        .join("CodexBackup");
+        .join("CLB");
     fs::create_dir_all(&base).map_err(|error| format!("无法创建配置目录：{error}"))?;
     Ok(base.join("state.json"))
 }
@@ -64,21 +66,15 @@ fn write_state(state: &AppState) -> Result<(), String> {
     fs::write(path, format!("{content}\n")).map_err(|error| format!("无法写入状态：{error}"))
 }
 
-fn repo_root() -> Result<PathBuf, String> {
-    if let Ok(root) = std::env::var("CODEX_BACKUP_REPO_ROOT") {
-        return Ok(PathBuf::from(root));
-    }
-
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .parent()
-        .and_then(Path::parent)
-        .map(Path::to_path_buf)
-        .ok_or_else(|| "无法定位仓库根目录".to_string())
-}
-
 fn backup_script() -> Result<PathBuf, String> {
-    Ok(repo_root()?.join("codex-local-backup/scripts/codex_local_backup.py"))
+    let base = dirs::config_dir()
+        .ok_or_else(|| "无法定位用户配置目录".to_string())?
+        .join("CLB")
+        .join("runtime");
+    fs::create_dir_all(&base).map_err(|error| format!("无法创建运行目录：{error}"))?;
+    let script = base.join("codex_local_backup.py");
+    fs::write(&script, EMBEDDED_BACKUP_SCRIPT).map_err(|error| format!("无法写入备份脚本：{error}"))?;
+    Ok(script)
 }
 
 fn run_script(args: &[&str]) -> Result<Value, String> {
@@ -166,10 +162,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "打开窗口", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "退出 Codex Backup", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "退出 CLB", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&open, &quit])?;
             let _tray = TrayIconBuilder::with_id("main")
-                .tooltip("Codex Backup")
+                .tooltip("CLB")
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => {

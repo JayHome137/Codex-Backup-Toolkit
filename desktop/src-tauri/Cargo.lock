@@ -328,7 +328,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "codex-backup"
+name = "clb"
 version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",

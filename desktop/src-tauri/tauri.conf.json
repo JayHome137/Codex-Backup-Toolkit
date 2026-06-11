@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Codex Backup",
+  "productName": "CLB",
   "version": "0.1.0",
-  "identifier": "com.jay.codex-backup",
+  "identifier": "com.jay.clb",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:5173",
@@ -14,7 +14,7 @@
     "macOSPrivateApi": false,
     "windows": [
       {
-        "title": "Codex Backup",
+        "title": "CLB",
         "width": 980,
         "height": 720,
         "minWidth": 860,
@@ -30,6 +30,16 @@
   "bundle": {
     "active": true,
     "targets": ["app", "dmg"],
-    "icon": []
+    "category": "Utility",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "shortDescription": "CLB local Codex backup",
+    "longDescription": "CLB backs up local Codex state and Documents/Codex to a user-selected local folder."
   }
 }

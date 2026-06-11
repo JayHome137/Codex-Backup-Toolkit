@@ -157,7 +157,7 @@ function App() {
     <main className="app-shell">
       <section className="hero">
         <div>
-          <h1>Codex Backup</h1>
+          <h1>CLB</h1>
           <p>常驻桌面的 Codex 数据备份。选择本地目录，按周期自动备份，也可以随时手动备份。</p>
         </div>
         <div className={`status-pill ${statusOk ? "ok" : "bad"}`}>

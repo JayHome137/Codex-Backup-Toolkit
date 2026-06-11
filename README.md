@@ -1,6 +1,6 @@
-# Codex Backup
+# CLB
 
-Codex Backup 是一个极简桌面端备份工具，用来把 Codex 本地状态和 `~/Documents/Codex` 备份到用户指定的本地目录。它提供手动备份、自动周期备份、菜单栏常驻和恢复预案，让 Codex 数据有一个清楚、可见、可验证的本地保险箱。
+CLB 是一个极简桌面端备份工具，用来把 Codex 本地状态和 `~/Documents/Codex` 备份到用户指定的本地目录。它提供手动备份、自动周期备份、菜单栏常驻和恢复预案，让 Codex 数据有一个清楚、可见、可验证的本地保险箱。
 
 当前结构分为两层：
 
@@ -39,28 +39,28 @@ Codex Backup 是一个极简桌面端备份工具，用来把 Codex 本地状态
 
 ```zsh
 python3 codex-local-backup/scripts/codex_local_backup.py backup \
-  --output-dir "$HOME/CodexBackups"
+  --output-dir "$HOME/CLBBackups"
 ```
 
 检查备份：
 
 ```zsh
 python3 codex-local-backup/scripts/codex_local_backup.py inspect \
-  --archive "$HOME/CodexBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz"
+  --archive "$HOME/CLBBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz"
 ```
 
 生成恢复预案：
 
 ```zsh
 python3 codex-local-backup/scripts/codex_local_backup.py restore-plan \
-  --archive "$HOME/CodexBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz"
+  --archive "$HOME/CLBBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz"
 ```
 
 确认恢复：
 
 ```zsh
 python3 codex-local-backup/scripts/codex_local_backup.py restore \
-  --archive "$HOME/CodexBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz" \
+  --archive "$HOME/CLBBackups/codex-local-backup-host-YYYYmmdd-HHMMSS.tar.gz" \
   --confirm
 ```
 
