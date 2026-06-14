@@ -121,3 +121,12 @@ npm run build
 cd src-tauri
 cargo check
 ```
+
+改动桌面端、Tauri 配置、图标、打包资源或备份核心后，还需要重新构建本机产物：
+
+```zsh
+cd desktop
+npm run desktop:build
+```
+
+构建完成后应确认 `CLB.app` 和 `CLB_0.1.0_aarch64.dmg` 都已生成。
